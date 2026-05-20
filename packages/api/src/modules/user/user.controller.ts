@@ -21,6 +21,7 @@ import { UserService } from './user.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { VerifyPinDto } from './dto/verify-pin.dto'
+import { RecordWatchDto } from './dto/record-watch.dto'
 
 @ApiTags('Users & Profils')
 @ApiBearerAuth()
@@ -100,6 +101,17 @@ export class UserController {
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ) {
     return this.userService.getWatchHistory(user.sub, profileId, Math.min(limit, 100))
+  }
+
+  @Post('me/profiles/:profileId/history')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Enregistrer un événement de visionnage' })
+  recordWatch(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() dto: RecordWatchDto,
+  ) {
+    return this.userService.recordWatchEvent(user.sub, profileId, dto)
   }
 
   @Delete('me/profiles/:profileId/history')

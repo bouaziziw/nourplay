@@ -10,6 +10,7 @@ import * as argon2 from 'argon2'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
+import { RecordWatchDto } from './dto/record-watch.dto'
 
 const PIN_SELECT = {
   id: true,
@@ -131,6 +132,25 @@ export class UserService {
   async clearWatchHistory(userId: string, profileId: string) {
     await this.assertProfileOwner(userId, profileId)
     await this.prisma.watchHistory.deleteMany({ where: { profileId } })
+  }
+
+  async recordWatchEvent(userId: string, profileId: string, dto: RecordWatchDto) {
+    await this.assertProfileOwner(userId, profileId)
+
+    const video = await this.prisma.video.findUnique({
+      where: { id: dto.videoId },
+      select: { id: true, validationStatus: true },
+    })
+    if (!video) throw new NotFoundException('Vidéo introuvable')
+
+    return this.prisma.watchHistory.create({
+      data: {
+        profileId,
+        videoId: dto.videoId,
+        durationWatchedSec: dto.durationWatchedSec,
+        completed: dto.completed,
+      },
+    })
   }
 
   // ── Privé ──────────────────────────────────────────────────

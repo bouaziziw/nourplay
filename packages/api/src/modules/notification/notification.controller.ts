@@ -1,17 +1,58 @@
-import { Controller, Get, UseGuards } from '@nestjs/common'
-import { ApiTags } from '@nestjs/swagger'
+import {
+  Controller, Get, Patch, Delete, Param, Query,
+  ParseUUIDPipe, UseGuards, HttpCode, HttpStatus,
+} from '@nestjs/common'
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { NotificationService } from './notification.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator'
+import { IsOptional, IsBoolean, IsInt, Min, Max } from 'class-validator'
+import { Transform, Type } from 'class-transformer'
+
+class QueryNotificationsDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1)
+  page = 1
+
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
+  limit = 20
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  unread?: boolean
+}
 
 @ApiTags('Notifications')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller({ path: 'notifications', version: '1' })
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  findForUser(@CurrentUser() user: JwtPayload) {
-    return this.notificationService.findForUser(user.sub)
+  @ApiOperation({ summary: 'Mes notifications (paginées)' })
+  findAll(@CurrentUser() user: JwtPayload, @Query() query: QueryNotificationsDto) {
+    return this.notificationService.findForUser(user.sub, query.page, query.limit, query.unread)
+  }
+
+  @Patch(':id/read')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Marquer une notification comme lue' })
+  markRead(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    return this.notificationService.markRead(user.sub, id)
+  }
+
+  @Patch('read-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Marquer toutes les notifications comme lues' })
+  markAllRead(@CurrentUser() user: JwtPayload) {
+    return this.notificationService.markAllRead(user.sub)
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Supprimer une notification' })
+  deleteNotification(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    return this.notificationService.deleteNotification(user.sub, id)
   }
 }

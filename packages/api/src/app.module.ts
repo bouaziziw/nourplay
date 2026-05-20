@@ -6,6 +6,7 @@ import { PrismaModule } from './common/prisma/prisma.module'
 import { BullModule } from './common/bull/bull.module'
 import { EmailModule } from './common/email/email.module'
 import { RedisTokenModule } from './common/redis/redis-token.module'
+import { AuditModule } from './common/audit/audit.module'
 import { GdprModule } from './modules/gdpr/gdpr.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UserModule } from './modules/user/user.module'
@@ -46,6 +47,7 @@ import { appConfig, validateConfig } from './config/app.config'
     BullModule,
     EmailModule,
     RedisTokenModule,
+    AuditModule,
 
     // ── Modules fonctionnels ─────────────────────────────────────
     AuthModule,
