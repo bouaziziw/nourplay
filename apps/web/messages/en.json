@@ -1,0 +1,12 @@
+{
+  "home": {
+    "title": "NourPlay",
+    "subtitle": "The secure video platform for your children"
+  },
+  "auth": {
+    "login": "Sign in",
+    "register": "Create account",
+    "email": "Email address",
+    "password": "Password"
+  }
+}

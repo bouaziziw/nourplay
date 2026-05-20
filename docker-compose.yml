@@ -1,0 +1,82 @@
+version: '3.9'
+
+services:
+  # ── Base de données principale ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: nourplay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nourplay
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: nourplay
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nourplay']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis — Cache, sessions, queues BullMQ ──────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nourplay-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass secret
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'secret', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Adminer — Interface BDD (dev uniquement) ─────────────────
+  adminer:
+    image: adminer:4
+    container_name: nourplay-adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Redis Commander — Interface Redis (dev uniquement) ───────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: nourplay-redis-ui
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      REDIS_HOSTS: 'local:redis:6379:0:secret'
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── MailHog — Serveur SMTP local (dev uniquement) ────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: nourplay-mail
+    restart: unless-stopped
+    ports:
+      - '1025:1025'  # SMTP
+      - '8025:8025'  # Interface web
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: nourplay-network
