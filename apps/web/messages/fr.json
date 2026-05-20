@@ -22,5 +22,23 @@
     "createProfile": "Créer un profil",
     "noPlaylists": "Aucune playlist encore",
     "createPlaylist": "Créer une playlist"
+  },
+  "child": {
+    "whoWatching": "Qui regarde ?",
+    "chooseProfile": "Choisissez votre profil pour commencer",
+    "noProfiles": "Aucun profil enfant disponible.",
+    "backToDashboard": "Retourner au tableau de bord",
+    "pinTitle": "Code PIN",
+    "pinLabel": "Entrez votre code PIN",
+    "pinSubmit": "Confirmer",
+    "pinError": "PIN incorrect, réessayez.",
+    "leave": "Quitter",
+    "remaining": "{n} min restantes",
+    "blockedTitle": "Pas maintenant",
+    "blockedSchedule": "La lecture vidéo n'est pas disponible à cette heure.",
+    "blockedTime": "La session de {name} est terminée pour aujourd'hui.",
+    "noVideos": "Aucune vidéo disponible pour le moment.",
+    "backToPlaylist": "Retour à la playlist",
+    "next": "Suivant"
   }
 }

@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message)
   }
@@ -22,13 +22,70 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>
 }
 
+// ── Domain types ──────────────────────────────────────────────────────────────
+
+export interface ProfileSummary {
+  id: string
+  displayName: string
+  ageGroup: string
+  avatarKey: string | null
+  birthYear: number | null
+  dailyLimitMin: number | null
+  sessionLimitMin: number | null
+  viewingSchedule: Record<string, string[]> | null
+  createdAt: string
+}
+
+export interface VideoSummary {
+  id: string
+  title: string
+  thumbnailUrl: string | null
+  embedUrl: string
+  durationSec: number | null
+  language: string | null
+  ageRating: string
+}
+
+export interface PlaylistVideo {
+  id: string
+  position: number
+  video: VideoSummary
+}
+
+export interface PlaylistDetail {
+  id: string
+  name: string
+  description: string | null
+  visibility: string
+  targetAgeGroup: string[]
+  languages: string[]
+  createdAt: string
+  playlistVideos: PlaylistVideo[]
+}
+
+export interface PlaylistSummary {
+  id: string
+  name: string
+  description: string | null
+  _count: { playlistVideos: number }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function bearer(token: string): { headers: Record<string, string> } {
+  return { headers: { Authorization: `Bearer ${token}` } }
+}
+
+// ── API client ────────────────────────────────────────────────────────────────
+
 export const api = {
   auth: {
     register: (data: { email: string; password: string; role?: string; locale?: string }) =>
       request<{ id: string; email: string }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
 
     login: (data: { email: string; password: string }) =>
-      request<{ accessToken?: string; requiresTwoFactor?: boolean; userId?: string }>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+      request<{ accessToken?: string; requiresTwoFactor?: boolean; userId?: string }>(
+        '/auth/login', { method: 'POST', body: JSON.stringify(data) }),
 
     loginWith2fa: (data: { userId: string; code: string }) =>
       request<{ accessToken: string }>('/auth/login/2fa', { method: 'POST', body: JSON.stringify(data) }),
@@ -48,19 +105,39 @@ export const api = {
   },
 
   users: {
-    me: (token: string) => request<{ id: string; email: string; role: string; locale: string }>('/users/me', {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-    profiles: (token: string) => request<Array<{ id: string; displayName: string; ageGroup: string }>>('/users/me/profiles', {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+    me: (token: string) =>
+      request<{ id: string; email: string; role: string; locale: string }>('/users/me', bearer(token)),
+
+    profiles: (token: string) =>
+      request<ProfileSummary[]>('/users/me/profiles', bearer(token)),
+
+    getProfile: (token: string, profileId: string) =>
+      request<ProfileSummary>(`/users/me/profiles/${profileId}`, bearer(token)),
+
+    verifyPin: (token: string, profileId: string, pin: string) =>
+      request<boolean>(`/users/me/profiles/${profileId}/pin/verify`, {
+        method: 'POST',
+        body: JSON.stringify({ pin }),
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    recordWatch: (
+      token: string,
+      profileId: string,
+      data: { videoId: string; durationWatchedSec: number; completed: boolean },
+    ) =>
+      request<{ id: string }>(`/users/me/profiles/${profileId}/history`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { Authorization: `Bearer ${token}` },
+      }),
   },
 
   playlists: {
-    list: (token: string) => request<Array<{ id: string; name: string; _count: { playlistVideos: number } }>>('/playlists', {
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+    list: (token: string) =>
+      request<PlaylistSummary[]>('/playlists', bearer(token)),
+
+    getById: (token: string, id: string) =>
+      request<PlaylistDetail>(`/playlists/${id}`, bearer(token)),
   },
 }
-
-export { ApiError }

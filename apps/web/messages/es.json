@@ -22,5 +22,23 @@
     "createProfile": "Crear perfil",
     "noPlaylists": "Aún no hay listas",
     "createPlaylist": "Crear lista"
+  },
+  "child": {
+    "whoWatching": "¿Quién mira?",
+    "chooseProfile": "Elige tu perfil para empezar",
+    "noProfiles": "No hay perfiles de niños disponibles.",
+    "backToDashboard": "Volver al panel de control",
+    "pinTitle": "Código PIN",
+    "pinLabel": "Introduce tu código PIN",
+    "pinSubmit": "Confirmar",
+    "pinError": "PIN incorrecto, inténtalo de nuevo.",
+    "leave": "Salir",
+    "remaining": "{n} min restantes",
+    "blockedTitle": "Ahora no",
+    "blockedSchedule": "La reproducción de vídeo no está disponible en este momento.",
+    "blockedTime": "La sesión de {name} ha terminado por hoy.",
+    "noVideos": "No hay vídeos disponibles en este momento.",
+    "backToPlaylist": "Volver a la lista",
+    "next": "Siguiente"
   }
 }

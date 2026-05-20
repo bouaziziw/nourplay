@@ -3,18 +3,23 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../../../hooks/useAuth'
-import { api } from '../../../lib/api'
+import { useChildSession } from '../../../hooks/useChildSession'
+import { PinModal } from '../../../components/PinModal'
+import { api, ProfileSummary } from '../../../lib/api'
 
-interface Profile { id: string; displayName: string; ageGroup: string }
 interface Playlist { id: string; name: string; _count: { playlistVideos: number } }
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard')
   const locale = useLocale()
+  const router = useRouter()
   const { user, token, loading } = useAuth()
-  const [profiles, setProfiles] = useState<Profile[]>([])
+  const { set: setChildSession } = useChildSession()
+  const [profiles, setProfiles] = useState<ProfileSummary[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [selectedProfile, setSelectedProfile] = useState<ProfileSummary | null>(null)
 
   useEffect(() => {
     if (!token) return
@@ -23,6 +28,21 @@ export default function DashboardPage() {
       api.playlists.list(token).then(setPlaylists).catch(() => {}),
     ])
   }, [token])
+
+  const handlePinSuccess = (pin: string) => {
+    if (!token || !selectedProfile) return Promise.reject()
+    return api.users.verifyPin(token, selectedProfile.id, pin).then(() => {
+      setChildSession({
+        profileId: selectedProfile.id,
+        displayName: selectedProfile.displayName,
+        ageGroup: selectedProfile.ageGroup,
+        dailyLimitMin: selectedProfile.dailyLimitMin,
+        sessionLimitMin: selectedProfile.sessionLimitMin,
+        viewingSchedule: selectedProfile.viewingSchedule,
+      })
+      router.push(`/${locale}/child/playlists`)
+    })
+  }
 
   if (loading) {
     return (
@@ -74,14 +94,29 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {profiles.map(p => (
-              <Link key={p.id} href={`/${locale}/dashboard/profiles/${p.id}`}
-                className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-indigo-300 hover:shadow-sm transition-all group">
-                <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold text-indigo-600 group-hover:bg-indigo-200 transition-colors">
-                  {p.displayName.slice(0, 2).toUpperCase()}
-                </div>
-                <p className="font-medium text-gray-900 text-sm truncate">{p.displayName}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{ageLabels[p.ageGroup] ?? p.ageGroup}</p>
-              </Link>
+              <div key={p.id} className="relative group">
+                <button
+                  onClick={() => setSelectedProfile(p)}
+                  className="w-full bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-indigo-300 hover:shadow-sm transition-all"
+                >
+                  <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold text-indigo-600 group-hover:bg-indigo-200 transition-colors">
+                    {p.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <p className="font-medium text-gray-900 text-sm truncate">{p.displayName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{ageLabels[p.ageGroup] ?? p.ageGroup}</p>
+                  <span className="text-xs text-indigo-500 mt-1 block">▶ Mode enfant</span>
+                </button>
+                <Link
+                  href={`/${locale}/dashboard/profiles/${p.id}`}
+                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Modifier"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H9v-2.414a2 2 0 01.586-1.414z" />
+                  </svg>
+                </Link>
+              </div>
             ))}
           </div>
         )}
@@ -122,6 +157,13 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+      {selectedProfile && (
+        <PinModal
+          profileName={selectedProfile.displayName}
+          onSubmit={handlePinSuccess}
+          onClose={() => setSelectedProfile(null)}
+        />
+      )}
     </div>
   )
 }

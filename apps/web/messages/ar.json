@@ -22,5 +22,23 @@
     "createProfile": "إنشاء ملف",
     "noPlaylists": "لا توجد قوائم بعد",
     "createPlaylist": "إنشاء قائمة"
+  },
+  "child": {
+    "whoWatching": "من يشاهد؟",
+    "chooseProfile": "اختر ملفك الشخصي للبدء",
+    "noProfiles": "لا توجد ملفات أطفال متاحة.",
+    "backToDashboard": "العودة إلى لوحة التحكم",
+    "pinTitle": "رمز PIN",
+    "pinLabel": "أدخل رمز PIN الخاص بك",
+    "pinSubmit": "تأكيد",
+    "pinError": "رمز PIN غير صحيح، حاول مرة أخرى.",
+    "leave": "خروج",
+    "remaining": "دقيقة {n} متبقية",
+    "blockedTitle": "ليس الآن",
+    "blockedSchedule": "تشغيل الفيديو غير متاح في هذا الوقت.",
+    "blockedTime": "انتهت جلسة {name} لهذا اليوم.",
+    "noVideos": "لا توجد مقاطع فيديو متاحة في الوقت الحالي.",
+    "backToPlaylist": "العودة إلى قائمة التشغيل",
+    "next": "التالي"
   }
 }
