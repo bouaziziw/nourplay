@@ -67,7 +67,20 @@ export interface PlaylistSummary {
   id: string
   name: string
   description: string | null
+  visibility: string
   _count: { playlistVideos: number }
+}
+
+export interface VideoSearchResult {
+  id: string
+  title: string
+  thumbnailUrl: string | null
+  embedUrl: string
+  durationSec: number | null
+  language: string | null
+  ageRating: string
+  validationStatus: string
+  source?: { name: string; slug: string }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -114,12 +127,32 @@ export const api = {
     getProfile: (token: string, profileId: string) =>
       request<ProfileSummary>(`/users/me/profiles/${profileId}`, bearer(token)),
 
+    createProfile: (
+      token: string,
+      data: { displayName: string; ageGroup: string; pin: string; birthYear?: number; dailyLimitMin?: number; sessionLimitMin?: number },
+    ) => request<ProfileSummary>('/users/me/profiles', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    updateProfile: (
+      token: string,
+      profileId: string,
+      data: { displayName?: string; ageGroup?: string; dailyLimitMin?: number | null; sessionLimitMin?: number | null; viewingSchedule?: Record<string, string[]> | null },
+    ) => request<ProfileSummary>(`/users/me/profiles/${profileId}`, { method: 'PATCH', body: JSON.stringify(data), ...bearer(token) }),
+
+    deleteProfile: (token: string, profileId: string) =>
+      request<void>(`/users/me/profiles/${profileId}`, { method: 'DELETE', ...bearer(token) }),
+
     verifyPin: (token: string, profileId: string, pin: string) =>
       request<boolean>(`/users/me/profiles/${profileId}/pin/verify`, {
         method: 'POST',
         body: JSON.stringify({ pin }),
-        headers: { Authorization: `Bearer ${token}` },
+        ...bearer(token),
       }),
+
+    getWatchHistory: (token: string, profileId: string, limit = 20) =>
+      request<Array<{ id: string; watchedAt: string; durationWatchedSec: number; completed: boolean; video: VideoSummary }>>(
+        `/users/me/profiles/${profileId}/history?limit=${limit}`,
+        bearer(token),
+      ),
 
     recordWatch: (
       token: string,
@@ -129,7 +162,7 @@ export const api = {
       request<{ id: string }>(`/users/me/profiles/${profileId}/history`, {
         method: 'POST',
         body: JSON.stringify(data),
-        headers: { Authorization: `Bearer ${token}` },
+        ...bearer(token),
       }),
   },
 
@@ -139,5 +172,57 @@ export const api = {
 
     getById: (token: string, id: string) =>
       request<PlaylistDetail>(`/playlists/${id}`, bearer(token)),
+
+    create: (
+      token: string,
+      data: { name: string; description?: string; visibility?: string; targetAgeGroup?: string[]; languages?: string[] },
+    ) => request<PlaylistSummary>('/playlists', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    update: (
+      token: string,
+      id: string,
+      data: { name?: string; description?: string; visibility?: string; targetAgeGroup?: string[]; languages?: string[] },
+    ) => request<PlaylistSummary>(`/playlists/${id}`, { method: 'PATCH', body: JSON.stringify(data), ...bearer(token) }),
+
+    delete: (token: string, id: string) =>
+      request<void>(`/playlists/${id}`, { method: 'DELETE', ...bearer(token) }),
+
+    addVideo: (token: string, id: string, videoId: string, position?: number) =>
+      request<{ id: string; position: number }>(`/playlists/${id}/videos`, {
+        method: 'POST',
+        body: JSON.stringify({ videoId, ...(position !== undefined && { position }) }),
+        ...bearer(token),
+      }),
+
+    removeVideo: (token: string, id: string, videoId: string) =>
+      request<void>(`/playlists/${id}/videos/${videoId}`, { method: 'DELETE', ...bearer(token) }),
+
+    reorderVideos: (token: string, id: string, videoIds: string[]) =>
+      request<void>(`/playlists/${id}/videos/reorder`, {
+        method: 'PATCH',
+        body: JSON.stringify({ videoIds }),
+        ...bearer(token),
+      }),
+  },
+
+  videos: {
+    search: (token: string, params: { q?: string; language?: string; ageRating?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams()
+      if (params.q) qs.set('q', params.q)
+      if (params.language) qs.set('language', params.language)
+      if (params.ageRating) qs.set('ageRating', params.ageRating)
+      if (params.page) qs.set('page', String(params.page))
+      if (params.limit) qs.set('limit', String(params.limit))
+      return request<{ items: VideoSearchResult[]; total: number; page: number; pages: number }>(
+        `/videos/search?${qs}`,
+        bearer(token),
+      )
+    },
+
+    getById: (token: string, id: string) =>
+      request<VideoSearchResult>(`/videos/${id}`, bearer(token)),
+
+    submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
+      request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
   },
 }
