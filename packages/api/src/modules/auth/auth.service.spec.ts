@@ -10,7 +10,7 @@ vi.mock('argon2', () => ({
 }))
 
 const makePrisma = () => ({
-  user: { findUnique: vi.fn(), create: vi.fn() },
+  user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
   refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
 })
 
@@ -26,18 +26,45 @@ const makeConfig = () => ({
   }),
 })
 
+const makeEmailService = () => ({
+  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+})
+
+const makeTokenService = () => ({
+  createEmailVerificationToken: vi.fn().mockResolvedValue('test-verify-token'),
+  consumeEmailVerificationToken: vi.fn().mockResolvedValue(null),
+  createPasswordResetToken: vi.fn().mockResolvedValue('test-reset-token'),
+  consumePasswordResetToken: vi.fn().mockResolvedValue(null),
+  redis: {
+    setex: vi.fn().mockResolvedValue('OK'),
+    get: vi.fn().mockResolvedValue(null),
+    del: vi.fn().mockResolvedValue(1),
+  },
+})
+
 describe('AuthService', () => {
   let service: AuthService
   let prisma: ReturnType<typeof makePrisma>
   let jwt: ReturnType<typeof makeJwt>
   let config: ReturnType<typeof makeConfig>
+  let emailService: ReturnType<typeof makeEmailService>
+  let tokenService: ReturnType<typeof makeTokenService>
 
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = makePrisma()
     jwt = makeJwt()
     config = makeConfig()
-    service = new AuthService(prisma as never, jwt as never, config as never)
+    emailService = makeEmailService()
+    tokenService = makeTokenService()
+    service = new AuthService(
+      prisma as never,
+      jwt as never,
+      config as never,
+      emailService as never,
+      tokenService as never,
+    )
   })
 
   describe('register', () => {
@@ -55,6 +82,18 @@ describe('AuthService', () => {
       expect(prisma.user.create).toHaveBeenCalledOnce()
     })
 
+    it('envoie un email de vérification après la création', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+      prisma.user.create.mockResolvedValue({
+        id: 'uuid-1', email: 'test@example.com', role: UserRole.PARENT, locale: 'fr', createdAt: new Date(),
+      })
+
+      await service.register({ email: 'test@example.com', password: 'TestPassword1!', role: UserRole.PARENT, locale: 'fr' })
+
+      expect(tokenService.createEmailVerificationToken).toHaveBeenCalledWith('uuid-1')
+      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith('test@example.com', 'test-verify-token', 'fr')
+    })
+
     it('lève ConflictException si l\'email existe déjà', async () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'existing-id' })
 
@@ -63,6 +102,27 @@ describe('AuthService', () => {
       ).rejects.toThrow(ConflictException)
 
       expect(prisma.user.create).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('verifyEmail', () => {
+    it('marque l\'email comme vérifié avec un token valide', async () => {
+      tokenService.consumeEmailVerificationToken.mockResolvedValue('uuid-1')
+      prisma.user.update.mockResolvedValue({})
+
+      const result = await service.verifyEmail('valid-token')
+
+      expect(result).toEqual({ verified: true })
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'uuid-1' },
+        data: expect.objectContaining({ emailVerified: true }),
+      })
+    })
+
+    it('lève BadRequestException si le token est invalide', async () => {
+      tokenService.consumeEmailVerificationToken.mockResolvedValue(null)
+
+      await expect(service.verifyEmail('invalid-token')).rejects.toThrow('Token invalide ou expiré')
     })
   })
 
@@ -163,6 +223,24 @@ describe('AuthService', () => {
       await expect(service.refreshTokens('token-hash', 'fp-different')).rejects.toThrow(UnauthorizedException)
       expect(prisma.refreshToken.updateMany).toHaveBeenCalledOnce()
       expect(prisma.refreshToken.updateMany.mock.calls[0][0].where.userId).toBe('u-1')
+    })
+  })
+
+  describe('forgotPassword', () => {
+    it('envoie un email de reset si l\'utilisateur existe', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'uuid-1', locale: 'fr' })
+
+      await service.forgotPassword('test@example.com')
+
+      expect(tokenService.createPasswordResetToken).toHaveBeenCalledWith('uuid-1')
+      expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith('test@example.com', 'test-reset-token', 'fr')
+    })
+
+    it('ne lève pas d\'exception si l\'email n\'existe pas (anti-énumération)', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(service.forgotPassword('unknown@example.com')).resolves.not.toThrow()
+      expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled()
     })
   })
 })

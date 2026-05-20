@@ -7,6 +7,20 @@
     "login": "Iniciar sesión",
     "register": "Crear cuenta",
     "email": "Correo electrónico",
-    "password": "Contraseña"
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "resetPassword": "Nueva contraseña",
+    "verifyEmail": "Verificar correo",
+    "twoFactor": "Código de verificación"
+  },
+  "dashboard": {
+    "title": "Panel de control",
+    "welcome": "¡Hola!",
+    "profiles": "Perfiles de niños",
+    "playlists": "Mis listas",
+    "noProfiles": "Aún no hay perfiles",
+    "createProfile": "Crear perfil",
+    "noPlaylists": "Aún no hay listas",
+    "createPlaylist": "Crear lista"
   }
 }

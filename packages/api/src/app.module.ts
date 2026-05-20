@@ -4,6 +4,8 @@ import { ThrottlerModule } from '@nestjs/throttler'
 import { ScheduleModule } from '@nestjs/schedule'
 import { PrismaModule } from './common/prisma/prisma.module'
 import { BullModule } from './common/bull/bull.module'
+import { EmailModule } from './common/email/email.module'
+import { RedisTokenModule } from './common/redis/redis-token.module'
 import { GdprModule } from './modules/gdpr/gdpr.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UserModule } from './modules/user/user.module'
@@ -42,6 +44,8 @@ import { appConfig, validateConfig } from './config/app.config'
     // ── Infra partagée ───────────────────────────────────────────
     PrismaModule,
     BullModule,
+    EmailModule,
+    RedisTokenModule,
 
     // ── Modules fonctionnels ─────────────────────────────────────
     AuthModule,

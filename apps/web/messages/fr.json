@@ -7,6 +7,20 @@
     "login": "Connexion",
     "register": "Créer un compte",
     "email": "Adresse email",
-    "password": "Mot de passe"
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Nouveau mot de passe",
+    "verifyEmail": "Vérifier l'email",
+    "twoFactor": "Code de vérification"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bonjour !",
+    "profiles": "Profils enfants",
+    "playlists": "Mes playlists",
+    "noProfiles": "Aucun profil encore",
+    "createProfile": "Créer un profil",
+    "noPlaylists": "Aucune playlist encore",
+    "createPlaylist": "Créer une playlist"
   }
 }

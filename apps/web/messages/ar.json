@@ -7,6 +7,20 @@
     "login": "تسجيل الدخول",
     "register": "إنشاء حساب",
     "email": "البريد الإلكتروني",
-    "password": "كلمة المرور"
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "resetPassword": "كلمة مرور جديدة",
+    "verifyEmail": "تحقق من البريد الإلكتروني",
+    "twoFactor": "رمز التحقق"
+  },
+  "dashboard": {
+    "title": "لوحة التحكم",
+    "welcome": "مرحباً!",
+    "profiles": "ملفات الأطفال",
+    "playlists": "قوائمي",
+    "noProfiles": "لا توجد ملفات بعد",
+    "createProfile": "إنشاء ملف",
+    "noPlaylists": "لا توجد قوائم بعد",
+    "createPlaylist": "إنشاء قائمة"
   }
 }
