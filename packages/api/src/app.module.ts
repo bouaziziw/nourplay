@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { ScheduleModule } from '@nestjs/schedule'
 import { PrismaModule } from './common/prisma/prisma.module'
+import { BullModule } from './common/bull/bull.module'
+import { GdprModule } from './modules/gdpr/gdpr.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UserModule } from './modules/user/user.module'
 import { PlaylistModule } from './modules/playlist/playlist.module'
@@ -39,6 +41,7 @@ import { appConfig, validateConfig } from './config/app.config'
 
     // ── Infra partagée ───────────────────────────────────────────
     PrismaModule,
+    BullModule,
 
     // ── Modules fonctionnels ─────────────────────────────────────
     AuthModule,
@@ -49,6 +52,7 @@ import { appConfig, validateConfig } from './config/app.config'
     ModerationModule,
     AdminModule,
     NotificationModule,
+    GdprModule,
   ],
 })
 export class AppModule {}

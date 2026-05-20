@@ -17,16 +17,16 @@ class EnvironmentVariables {
   PORT: number = 4000
 
   @IsString()
-  DATABASE_URL: string
+  DATABASE_URL!: string
 
   @IsString()
-  REDIS_URL: string
+  REDIS_URL!: string
 
   @IsString()
-  JWT_ACCESS_SECRET: string
+  JWT_ACCESS_SECRET!: string
 
   @IsString()
-  JWT_REFRESH_SECRET: string
+  JWT_REFRESH_SECRET!: string
 
   @IsNumber()
   JWT_ACCESS_TTL: number = 900
@@ -35,7 +35,7 @@ class EnvironmentVariables {
   JWT_REFRESH_TTL: number = 604800
 
   @IsString()
-  COOKIE_SECRET: string
+  COOKIE_SECRET!: string
 
   @IsString()
   CORS_ORIGINS: string = 'http://localhost:3000'

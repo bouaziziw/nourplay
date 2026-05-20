@@ -5,7 +5,7 @@ import { UserRole } from '@nourplay/db'
 export class RegisterDto {
   @ApiProperty({ example: 'parent@exemple.fr' })
   @IsEmail({}, { message: 'Adresse email invalide' })
-  email: string
+  declare email: string
 
   @ApiProperty({ minLength: 12, description: 'Min 12 caractères, 1 majuscule, 1 chiffre, 1 spécial' })
   @IsString()
@@ -13,7 +13,7 @@ export class RegisterDto {
   @Matches(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/, {
     message: 'Le mot de passe doit contenir au moins une majuscule, un chiffre et un caractère spécial',
   })
-  password: string
+  declare password: string
 
   @ApiProperty({ enum: [UserRole.PARENT, UserRole.TEACHER], default: UserRole.PARENT })
   @IsEnum([UserRole.PARENT, UserRole.TEACHER])

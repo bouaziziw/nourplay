@@ -154,6 +154,9 @@ importers:
       helmet:
         specifier: ^8.0.0
         version: 8.1.0
+      ioredis:
+        specifier: ^5.4.1
+        version: 5.10.1
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
