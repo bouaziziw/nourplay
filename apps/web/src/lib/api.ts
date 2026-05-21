@@ -239,6 +239,9 @@ export const api = {
 
     generateShareLink: (token: string, id: string) =>
       request<{ shareToken: string }>(`/playlists/${id}/share-link`, { method: 'POST', ...bearer(token) }),
+
+    getShared: (shareToken: string) =>
+      request<PlaylistDetail>(`/playlists/shared/${shareToken}`),
   },
 
   videos: {

@@ -182,6 +182,33 @@ export class PlaylistService {
     return { shareToken: playlist.shareToken }
   }
 
+  async findByShareToken(shareToken: string) {
+    const playlist = await this.prisma.playlist.findFirst({
+      where: { shareToken, visibility: 'SHARED_LINK', deletedAt: null },
+      include: {
+        playlistVideos: {
+          where: { video: { validationStatus: 'APPROVED' } },
+          orderBy: { position: 'asc' },
+          include: {
+            video: {
+              select: {
+                id: true,
+                title: true,
+                thumbnailUrl: true,
+                durationSec: true,
+                embedUrl: true,
+                language: true,
+                ageRating: true,
+              },
+            },
+          },
+        },
+      },
+    })
+    if (!playlist) throw new NotFoundException('Playlist introuvable ou accès non autorisé')
+    return playlist
+  }
+
   private async assertOwner(userId: string, playlistId: string) {
     const playlist = await this.prisma.playlist.findFirst({
       where: { id: playlistId, ownerId: userId, deletedAt: null },
