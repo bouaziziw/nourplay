@@ -83,6 +83,29 @@ export interface VideoSearchResult {
   source?: { name: string; slug: string }
 }
 
+export interface PlaylistAccess {
+  id: string
+  grantedTo: string
+  role: 'VIEWER' | 'EDITOR'
+  createdAt: string
+}
+
+export interface Notification {
+  id: string
+  type: string
+  payload: Record<string, unknown>
+  readAt: string | null
+  createdAt: string
+}
+
+export interface GdprRequest {
+  id: string
+  type: 'EXPORT' | 'DELETION'
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+  createdAt: string
+  completedAt: string | null
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function bearer(token: string): { headers: Record<string, string> } {
@@ -203,6 +226,19 @@ export const api = {
         body: JSON.stringify({ videoIds }),
         ...bearer(token),
       }),
+
+    share: (token: string, id: string, data: { email: string; role?: 'VIEWER' | 'EDITOR' }) =>
+      request<PlaylistAccess>(`/playlists/${id}/share`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
+    revokeShare: (token: string, id: string, userId: string) =>
+      request<void>(`/playlists/${id}/share/${userId}`, { method: 'DELETE', ...bearer(token) }),
+
+    generateShareLink: (token: string, id: string) =>
+      request<{ shareToken: string }>(`/playlists/${id}/share-link`, { method: 'POST', ...bearer(token) }),
   },
 
   videos: {
@@ -224,5 +260,39 @@ export const api = {
 
     submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
       request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+  },
+
+  notifications: {
+    list: (token: string, params?: { page?: number; limit?: number; unread?: boolean }) => {
+      const qs = new URLSearchParams()
+      if (params?.page) qs.set('page', String(params.page))
+      if (params?.limit) qs.set('limit', String(params.limit))
+      if (params?.unread !== undefined) qs.set('unread', String(params.unread))
+      return request<{ items: Notification[]; total: number; unread: number; page: number; limit: number }>(
+        `/notifications?${qs}`, bearer(token))
+    },
+
+    markRead: (token: string, id: string) =>
+      request<Notification>(`/notifications/${id}/read`, { method: 'PATCH', ...bearer(token) }),
+
+    markAllRead: (token: string) =>
+      request<{ updated: number }>('/notifications/read-all', { method: 'PATCH', ...bearer(token) }),
+
+    delete: (token: string, id: string) =>
+      request<void>(`/notifications/${id}`, { method: 'DELETE', ...bearer(token) }),
+  },
+
+  gdpr: {
+    requestExport: (token: string) =>
+      request<GdprRequest>('/gdpr/export', { method: 'POST', ...bearer(token) }),
+
+    requestDeletion: (token: string) =>
+      request<GdprRequest>('/gdpr/delete', { method: 'POST', ...bearer(token) }),
+
+    getRequest: (token: string, id: string) =>
+      request<GdprRequest>(`/gdpr/requests/${id}`, bearer(token)),
+
+    getMyData: (token: string) =>
+      request<Record<string, unknown>>('/gdpr/my-data', bearer(token)),
   },
 }

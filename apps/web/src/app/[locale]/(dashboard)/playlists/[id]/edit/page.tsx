@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import Link from 'next/link'
 import { useAuth } from '../../../../../../hooks/useAuth'
-import { api, PlaylistDetail, VideoSearchResult } from '../../../../../../lib/api'
+import { api, PlaylistDetail, VideoSearchResult, PlaylistAccess } from '../../../../../../lib/api'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3' },
@@ -48,6 +48,16 @@ export default function EditPlaylistPage() {
     languages: '',
   })
 
+  // Sharing
+  const [shareEmail, setShareEmail] = useState('')
+  const [shareRole, setShareRole] = useState<'VIEWER' | 'EDITOR'>('VIEWER')
+  const [sharing, setSharing] = useState(false)
+  const [shareResult, setShareResult] = useState<PlaylistAccess | null>(null)
+  const [shareError, setShareError] = useState('')
+  const [shareLink, setShareLink] = useState('')
+  const [generatingLink, setGeneratingLink] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
   // Video search
   const [searchQ, setSearchQ] = useState('')
   const [searchLang, setSearchLang] = useState('')
@@ -74,6 +84,44 @@ export default function EditPlaylistPage() {
   }, [token, id, locale, router])
 
   useEffect(() => { load() }, [load])
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !shareEmail.trim()) return
+    setSharing(true)
+    setShareError('')
+    setShareResult(null)
+    try {
+      const result = await api.playlists.share(token, id, { email: shareEmail.trim(), role: shareRole })
+      setShareResult(result)
+      setShareEmail('')
+    } catch (err: unknown) {
+      setShareError(err instanceof Error ? err.message : 'Erreur lors du partage.')
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  const handleGenerateLink = async () => {
+    if (!token) return
+    setGeneratingLink(true)
+    try {
+      const { shareToken } = await api.playlists.generateShareLink(token, id)
+      const link = `${window.location.origin}/${locale}/shared/${shareToken}`
+      setShareLink(link)
+      load()
+    } catch {
+      // ignore
+    } finally {
+      setGeneratingLink(false)
+    }
+  }
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   const handleSaveMeta = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -421,6 +469,81 @@ export default function EditPlaylistPage() {
           </div>
         </div>
       </div>
+
+      {/* Sharing panel — visible when not private */}
+      {meta.visibility !== 'PRIVATE' && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-5">
+          <h2 className="font-semibold text-gray-900">Partage</h2>
+
+          {/* Invite by email — only for SHARED_USERS */}
+          {meta.visibility === 'SHARED_USERS' && (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">Inviter un utilisateur par email</p>
+              <form onSubmit={handleShare} className="flex flex-wrap gap-2 items-end">
+                <input
+                  type="email"
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  placeholder="email@exemple.com"
+                  required
+                  className="flex-1 min-w-48 h-9 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <select
+                  value={shareRole}
+                  onChange={e => setShareRole(e.target.value as 'VIEWER' | 'EDITOR')}
+                  className="h-9 px-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="VIEWER">Lecteur</option>
+                  <option value="EDITOR">Éditeur</option>
+                </select>
+                <button
+                  type="submit"
+                  disabled={sharing}
+                  className="h-9 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  {sharing ? '…' : 'Inviter'}
+                </button>
+              </form>
+              {shareError && <p className="text-xs text-red-600">{shareError}</p>}
+              {shareResult && (
+                <p className="text-xs text-green-600">
+                  Accès accordé ({shareResult.role === 'EDITOR' ? 'éditeur' : 'lecteur'}).
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Share link — only for SHARED_LINK */}
+          {meta.visibility === 'SHARED_LINK' && (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">Lien de partage public</p>
+              {shareLink ? (
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={shareLink}
+                    className="flex-1 h-9 px-3 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-700 font-mono"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    className="h-9 px-4 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    {linkCopied ? '✓ Copié' : 'Copier'}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleGenerateLink}
+                  disabled={generatingLink}
+                  className="h-9 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                >
+                  {generatingLink ? '…' : 'Générer un lien'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

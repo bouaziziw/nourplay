@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { AuthProvider, useAuth } from '../../../hooks/useAuth'
+import { NotificationBell } from '../../../components/NotificationBell'
 
 const NAV_LINKS = [
   { href: '/dashboard', label: 'Accueil', exact: true },
@@ -14,7 +15,7 @@ const NAV_LINKS = [
 function DashboardNav() {
   const locale = useLocale()
   const pathname = usePathname()
-  const { user } = useAuth()
+  const { user, token } = useAuth()
 
   return (
     <nav className="bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between sticky top-0 z-40">
@@ -38,7 +39,7 @@ function DashboardNav() {
           })}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Link
           href={`/${locale}/child`}
           className="hidden sm:flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
@@ -48,8 +49,14 @@ function DashboardNav() {
           </svg>
           Mode enfant
         </Link>
+        {token && <NotificationBell token={token} />}
         {user && (
-          <span className="text-xs text-gray-400 hidden sm:block">{user.email}</span>
+          <Link
+            href={`/${locale}/dashboard/account`}
+            className="hidden sm:block text-xs text-gray-400 hover:text-gray-700 transition-colors truncate max-w-40"
+          >
+            {user.email}
+          </Link>
         )}
       </div>
     </nav>
