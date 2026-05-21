@@ -123,4 +123,34 @@ export class UserController {
   ) {
     return this.userService.clearWatchHistory(user.sub, profileId)
   }
+
+  // ── Filtres de contenu ──────────────────────────────────────
+
+  @Get('me/blocks')
+  @ApiOperation({ summary: 'Liste des filtres de contenu (listes blanches/noires)' })
+  getBlocks(
+    @CurrentUser() user: JwtPayload,
+    @Query('profileId') profileId?: string,
+  ) {
+    return this.userService.getBlocks(user.sub, profileId)
+  }
+
+  @Post('me/blocks')
+  @ApiOperation({ summary: 'Créer un filtre de contenu' })
+  createBlock(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { profileId?: string; type: string; value: string },
+  ) {
+    return this.userService.createBlock(user.sub, body)
+  }
+
+  @Delete('me/blocks/:blockId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Supprimer un filtre de contenu' })
+  deleteBlock(
+    @CurrentUser() user: JwtPayload,
+    @Param('blockId', ParseUUIDPipe) blockId: string,
+  ) {
+    return this.userService.deleteBlock(user.sub, blockId)
+  }
 }

@@ -169,9 +169,7 @@ export class AuthService {
     const otpauth = authenticator.keyuri(user.email, appName, secret)
     const qrCode = await toDataURL(otpauth)
 
-    // Stocke le secret temporaire en Redis (pas encore validé)
-    const { REDIS_CLIENT } = await import('../../../common/bull/bull.module')
-    // On encode le secret dans un token intermédiaire pour éviter de stocker en clair
+    // Stocke le secret temporaire en Redis (TTL 10 min, pas encore validé)
     await this.tokenService['redis'].setex(`totp_setup:${userId}`, 600, secret)
 
     return { secret, qrCode, otpauth }

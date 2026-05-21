@@ -98,6 +98,15 @@ export interface Notification {
   createdAt: string
 }
 
+export interface UserBlock {
+  id: string
+  userId: string
+  profileId: string | null
+  type: 'CHANNEL_WHITELIST' | 'CHANNEL_BLACKLIST' | 'KEYWORD_BLACKLIST' | 'KEYWORD_WHITELIST'
+  value: string
+  createdAt: string
+}
+
 export interface GdprRequest {
   id: string
   type: 'EXPORT' | 'DELETION'
@@ -263,6 +272,17 @@ export const api = {
 
     submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
       request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+  },
+
+  blocks: {
+    list: (token: string, profileId?: string) =>
+      request<UserBlock[]>(`/users/me/blocks${profileId ? `?profileId=${profileId}` : ''}`, bearer(token)),
+
+    create: (token: string, data: { profileId?: string; type: string; value: string }) =>
+      request<UserBlock>('/users/me/blocks', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    delete: (token: string, blockId: string) =>
+      request<void>(`/users/me/blocks/${blockId}`, { method: 'DELETE', ...bearer(token) }),
   },
 
   notifications: {

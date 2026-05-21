@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Prisma } from '@nourplay/db'
 import { PrismaService } from '../../common/prisma/prisma.service'
 
 export interface CreateNotificationParams {
@@ -63,7 +64,7 @@ export class NotificationService {
   // Called internally by other services (moderation, GDPR, etc.)
   create(params: CreateNotificationParams) {
     return this.prisma.notification.create({
-      data: { userId: params.userId, type: params.type, payload: params.payload },
+      data: { userId: params.userId, type: params.type, payload: params.payload as Prisma.InputJsonValue },
     })
   }
 }

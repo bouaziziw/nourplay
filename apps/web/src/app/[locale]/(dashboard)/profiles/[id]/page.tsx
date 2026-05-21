@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
-import { api, ProfileSummary } from '../../../../../lib/api'
+import { api, ProfileSummary, UserBlock } from '../../../../../lib/api'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3 ans' },
@@ -39,7 +39,7 @@ export default function EditProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [tab, setTab] = useState<'settings' | 'history'>('settings')
+  const [tab, setTab] = useState<'settings' | 'history' | 'filters'>('settings')
 
   const [form, setForm] = useState({
     displayName: '',
@@ -53,6 +53,13 @@ export default function EditProfilePage() {
     video: { id: string; title: string; thumbnailUrl: string | null }
   }>>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+
+  const [blocks, setBlocks] = useState<UserBlock[]>([])
+  const [blocksLoading, setBlocksLoading] = useState(false)
+  const [newBlockType, setNewBlockType] = useState('KEYWORD_BLACKLIST')
+  const [newBlockValue, setNewBlockValue] = useState('')
+  const [addingBlock, setAddingBlock] = useState(false)
+  const [blockError, setBlockError] = useState('')
 
   useEffect(() => {
     if (!token) return
@@ -80,6 +87,41 @@ export default function EditProfilePage() {
       .catch(() => {})
       .finally(() => setHistoryLoading(false))
   }, [tab, token, id])
+
+  useEffect(() => {
+    if (tab !== 'filters' || !token) return
+    setBlocksLoading(true)
+    api.blocks.list(token, id)
+      .then(setBlocks)
+      .catch(() => {})
+      .finally(() => setBlocksLoading(false))
+  }, [tab, token, id])
+
+  const handleAddBlock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !newBlockValue.trim()) return
+    setAddingBlock(true)
+    setBlockError('')
+    try {
+      const block = await api.blocks.create(token, { profileId: id, type: newBlockType, value: newBlockValue.trim() })
+      setBlocks(prev => [block, ...prev])
+      setNewBlockValue('')
+    } catch (err: unknown) {
+      setBlockError(err instanceof Error ? err.message : 'Erreur lors de la création.')
+    } finally {
+      setAddingBlock(false)
+    }
+  }
+
+  const handleDeleteBlock = async (blockId: string) => {
+    if (!token) return
+    try {
+      await api.blocks.delete(token, blockId)
+      setBlocks(prev => prev.filter(b => b.id !== blockId))
+    } catch {
+      // ignore
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -151,7 +193,7 @@ export default function EditProfilePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-        {(['settings', 'history'] as const).map(t => (
+        {(['settings', 'filters', 'history'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -159,7 +201,7 @@ export default function EditProfilePage() {
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'settings' ? 'Paramètres' : 'Historique'}
+            {t === 'settings' ? 'Paramètres' : t === 'filters' ? 'Filtres' : 'Historique'}
           </button>
         ))}
       </div>
@@ -275,6 +317,96 @@ export default function EditProfilePage() {
             </button>
           </div>
         </form>
+      )}
+
+      {tab === 'filters' && (
+        <div className="space-y-5">
+          {/* Add block form */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold text-gray-900">Ajouter un filtre</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Bloquez des mots-clés dans les titres ou des chaînes spécifiques.</p>
+            </div>
+            <form onSubmit={handleAddBlock} className="flex flex-wrap gap-2 items-end">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Type</label>
+                <select
+                  value={newBlockType}
+                  onChange={e => setNewBlockType(e.target.value)}
+                  className="h-9 px-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="KEYWORD_BLACKLIST">Mot-clé bloqué</option>
+                  <option value="KEYWORD_WHITELIST">Mot-clé autorisé uniquement</option>
+                  <option value="CHANNEL_BLACKLIST">Chaîne bloquée</option>
+                  <option value="CHANNEL_WHITELIST">Chaîne autorisée uniquement</option>
+                </select>
+              </div>
+              <div className="flex-1 min-w-48">
+                <label className="block text-xs text-gray-500 mb-1">Valeur</label>
+                <input
+                  type="text"
+                  value={newBlockValue}
+                  onChange={e => setNewBlockValue(e.target.value)}
+                  placeholder={newBlockType.includes('KEYWORD') ? 'ex: violence, publicité…' : 'ID ou nom de la chaîne'}
+                  required
+                  className="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={addingBlock}
+                className="h-9 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {addingBlock ? '…' : 'Ajouter'}
+              </button>
+            </form>
+            {blockError && <p className="text-xs text-red-600">{blockError}</p>}
+          </div>
+
+          {/* Block list */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {blocksLoading ? (
+              <div className="flex items-center justify-center h-24">
+                <div className="animate-spin h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full" />
+              </div>
+            ) : blocks.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-sm">Aucun filtre configuré.</div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {blocks.map(b => {
+                  const typeLabel: Record<string, string> = {
+                    KEYWORD_BLACKLIST: 'Mot-clé bloqué',
+                    KEYWORD_WHITELIST: 'Mot-clé autorisé',
+                    CHANNEL_BLACKLIST: 'Chaîne bloquée',
+                    CHANNEL_WHITELIST: 'Chaîne autorisée',
+                  }
+                  const typeColor: Record<string, string> = {
+                    KEYWORD_BLACKLIST: 'bg-red-50 text-red-700',
+                    KEYWORD_WHITELIST: 'bg-green-50 text-green-700',
+                    CHANNEL_BLACKLIST: 'bg-orange-50 text-orange-700',
+                    CHANNEL_WHITELIST: 'bg-sky-50 text-sky-700',
+                  }
+                  return (
+                    <div key={b.id} className="flex items-center gap-3 px-4 py-3">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColor[b.type] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {typeLabel[b.type] ?? b.type}
+                      </span>
+                      <span className="flex-1 text-sm text-gray-800 font-medium">{b.value}</span>
+                      <button
+                        onClick={() => handleDeleteBlock(b.id)}
+                        className="text-gray-300 hover:text-red-500 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {tab === 'history' && (

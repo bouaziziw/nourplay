@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Prisma } from '@nourplay/db'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { AuditService } from '../../common/audit/audit.service'
+import { EmailService } from '../../common/email/email.service'
 import { QueryQueueDto } from './dto/query-queue.dto'
 import { ReviewVideoDto, ReviewAction } from './dto/review-video.dto'
 import { QueryReportsDto } from './dto/query-reports.dto'
@@ -28,6 +30,7 @@ export class ModerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly email: EmailService,
   ) {}
 
   // ── File d'attente ────────────────────────────────────────────
@@ -84,8 +87,31 @@ export class ModerationService {
           validationLog: { ...((video.validationLog as object) ?? {}), rejectionReason: dto.reason },
         }),
       },
-      select: { id: true, title: true, validationStatus: true },
+      select: { id: true, title: true, validationStatus: true, submittedById: true },
     })
+
+    // Notify the submitter by email + in-app notification
+    if (video.submittedById) {
+      const submitter = await this.prisma.user.findUnique({
+        where: { id: video.submittedById },
+        select: { email: true, locale: true },
+      })
+      if (submitter) {
+        const action = dto.action === ReviewAction.APPROVE ? 'approve' : 'reject'
+        void this.email.sendVideoReviewEmail(submitter.email, video.title, action, dto.reason, submitter.locale)
+        void this.prisma.notification.create({
+          data: {
+            userId: video.submittedById,
+            type: dto.action === ReviewAction.APPROVE ? 'VIDEO_APPROVED' : 'VIDEO_REJECTED',
+            payload: {
+              videoId,
+              videoTitle: video.title,
+              ...(dto.reason && { reason: dto.reason }),
+            } as Prisma.InputJsonValue,
+          },
+        })
+      }
+    }
 
     await this.audit.log({
       actorId,

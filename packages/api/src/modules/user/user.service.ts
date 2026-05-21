@@ -155,6 +155,30 @@ export class UserService {
 
   // ── Privé ──────────────────────────────────────────────────
 
+  // ── Filtres de contenu (UserBlock) ───────────────────────────
+
+  async getBlocks(userId: string, profileId?: string) {
+    return this.prisma.userBlock.findMany({
+      where: { userId, ...(profileId ? { profileId } : {}) },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async createBlock(userId: string, dto: { profileId?: string; type: string; value: string }) {
+    if (dto.profileId) {
+      await this.assertProfileOwner(userId, dto.profileId)
+    }
+    return this.prisma.userBlock.create({
+      data: { userId, profileId: dto.profileId ?? null, type: dto.type as never, value: dto.value },
+    })
+  }
+
+  async deleteBlock(userId: string, blockId: string) {
+    const block = await this.prisma.userBlock.findUnique({ where: { id: blockId } })
+    if (!block || block.userId !== userId) throw new NotFoundException('Filtre introuvable')
+    await this.prisma.userBlock.delete({ where: { id: blockId } })
+  }
+
   private async assertProfileOwner(userId: string, profileId: string) {
     const profile = await this.prisma.childProfile.findFirst({
       where: { id: profileId, userId, deletedAt: null },

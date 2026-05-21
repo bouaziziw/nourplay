@@ -137,9 +137,9 @@ export class AdminService {
       pendingGdpr,
     ] = await this.prisma.$transaction([
       this.prisma.user.count({ where: { deletedAt: null } }),
-      this.prisma.user.groupBy({ by: ['role'], where: { deletedAt: null }, _count: true }),
+      this.prisma.user.groupBy({ by: ['role'], where: { deletedAt: null }, _count: true, orderBy: { role: 'asc' } }),
       this.prisma.video.count(),
-      this.prisma.video.groupBy({ by: ['validationStatus'], _count: true }),
+      this.prisma.video.groupBy({ by: ['validationStatus'], _count: true, orderBy: { validationStatus: 'asc' } }),
       this.prisma.videoReport.count({ where: { resolved: false } }),
       this.prisma.gdprRequest.count({ where: { status: 'PENDING' } }),
     ])

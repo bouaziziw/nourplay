@@ -64,6 +64,24 @@ export class EmailService {
     })
   }
 
+  async sendVideoReviewEmail(to: string, videoTitle: string, action: 'approve' | 'reject', reason?: string, locale = 'fr') {
+    const approved = action === 'approve'
+    const subjects: Record<string, [string, string]> = {
+      fr: ['Votre vidéo a été approuvée — NourPlay', 'Votre vidéo a été refusée — NourPlay'],
+      en: ['Your video was approved — NourPlay', 'Your video was rejected — NourPlay'],
+    }
+    const [subjectApproved, subjectRejected] = subjects[locale] ?? subjects['fr']
+    const title = approved ? subjectApproved : subjectRejected
+    const bodyFr = approved
+      ? `Votre vidéo <strong>${videoTitle}</strong> a été approuvée et est maintenant disponible dans la bibliothèque.`
+      : `Votre vidéo <strong>${videoTitle}</strong> n'a pas été acceptée.${reason ? `<br><br><strong>Motif :</strong> ${reason}` : ''}`
+    const bodyEn = approved
+      ? `Your video <strong>${videoTitle}</strong> has been approved and is now available in the library.`
+      : `Your video <strong>${videoTitle}</strong> was not accepted.${reason ? `<br><br><strong>Reason:</strong> ${reason}` : ''}`
+    const body = locale === 'en' ? bodyEn : bodyFr
+    await this.send({ to, subject: title, html: this.layout(title, `<p>${body}</p>`) })
+  }
+
   private async sendViaResend(options: SendOptions) {
     const apiKey = this.config.get<string>('RESEND_API_KEY')
     if (!apiKey) throw new Error('RESEND_API_KEY manquant')

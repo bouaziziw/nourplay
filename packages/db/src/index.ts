@@ -1,4 +1,4 @@
-export { PrismaClient } from '../generated/client'
+export { PrismaClient, Prisma } from '../generated/client'
 
 // Enums exportés comme valeurs (pas `export type`) — nécessaire à l'exécution
 export {

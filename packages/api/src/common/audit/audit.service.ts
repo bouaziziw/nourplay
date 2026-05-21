@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { Prisma } from '@nourplay/db'
 import { PrismaService } from '../prisma/prisma.service'
 
 export interface AuditEntry {
@@ -17,6 +18,6 @@ export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
   log(entry: AuditEntry) {
-    return this.prisma.auditLog.create({ data: entry })
+    return this.prisma.auditLog.create({ data: entry as Prisma.AuditLogUncheckedCreateInput })
   }
 }
