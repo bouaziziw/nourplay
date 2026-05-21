@@ -4,6 +4,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
