@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../hooks/useAuth'
-import { api, VideoSearchResult } from '../../../../lib/api'
+import { api, VideoSearchResult, ApiError } from '../../../../lib/api'
+import { AddToPlaylistModal } from '../../../../components/AddToPlaylistModal'
 
 const AGE_RATINGS = [
   { value: '', label: 'Tous' },
@@ -13,6 +14,14 @@ const AGE_RATINGS = [
   { value: 'AGE_7_PLUS', label: '7+' },
   { value: 'AGE_10_PLUS', label: '10+' },
   { value: 'AGE_13_PLUS', label: '13+' },
+]
+
+const REPORT_REASONS = [
+  { value: 'INAPPROPRIATE', label: 'Contenu inapproprié' },
+  { value: 'MISLEADING', label: 'Contenu trompeur' },
+  { value: 'VIOLENCE', label: 'Violence' },
+  { value: 'COPYRIGHT', label: 'Droits d\'auteur' },
+  { value: 'OTHER', label: 'Autre' },
 ]
 
 function formatDuration(sec: number | null): string {
@@ -36,6 +45,17 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
 
+  // Add-to-playlist modal
+  const [addTarget, setAddTarget] = useState<{ id: string; title: string } | null>(null)
+
+  // Report modal
+  const [reportTarget, setReportTarget] = useState<{ id: string; title: string } | null>(null)
+  const [reportReason, setReportReason] = useState('INAPPROPRIATE')
+  const [reportDescription, setReportDescription] = useState('')
+  const [reporting, setReporting] = useState(false)
+  const [reportDone, setReportDone] = useState(false)
+  const [reportError, setReportError] = useState('')
+
   const search = useCallback(async (p = 1) => {
     if (!token) return
     setLoading(true)
@@ -58,6 +78,30 @@ export default function VideosPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     search(1)
+  }
+
+  const openReport = (v: VideoSearchResult) => {
+    setReportTarget({ id: v.id, title: v.title })
+    setReportReason('INAPPROPRIATE')
+    setReportDescription('')
+    setReportDone(false)
+    setReportError('')
+  }
+
+  const handleReport = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !reportTarget) return
+    setReporting(true)
+    setReportError('')
+    try {
+      await api.videos.report(token, reportTarget.id, { reason: reportReason, description: reportDescription || undefined })
+      setReportDone(true)
+      setTimeout(() => setReportTarget(null), 1500)
+    } catch (err) {
+      setReportError(err instanceof ApiError ? err.message : 'Erreur lors du signalement.')
+    } finally {
+      setReporting(false)
+    }
   }
 
   return (
@@ -130,7 +174,8 @@ export default function VideosPage() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {results.map(v => (
-              <div key={v.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-sm transition-all group">
+              <div key={v.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-sm transition-all group relative">
+                {/* Thumbnail */}
                 <div className="relative w-full bg-gray-100" style={{ paddingBottom: '56.25%' }}>
                   {v.thumbnailUrl ? (
                     <img
@@ -151,9 +196,20 @@ export default function VideosPage() {
                       {formatDuration(v.durationSec)}
                     </span>
                   )}
+                  {/* Hover overlay — add to playlist */}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-start p-2">
+                    <button
+                      onClick={() => setAddTarget({ id: v.id, title: v.title })}
+                      className="h-7 px-3 bg-white text-gray-900 text-xs font-semibold rounded-lg hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                    >
+                      + Playlist
+                    </button>
+                  </div>
                 </div>
+
+                {/* Card body */}
                 <div className="p-3">
-                  <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{v.title}</p>
+                  <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug pr-5">{v.title}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     {v.language && <span className="text-xs text-gray-400 uppercase">{v.language}</span>}
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 ml-auto">
@@ -161,6 +217,18 @@ export default function VideosPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Report button — top-right corner */}
+                <button
+                  onClick={() => openReport(v)}
+                  title="Signaler cette vidéo"
+                  className="absolute top-2 left-2 w-6 h-6 flex items-center justify-center rounded-full bg-white/80 text-gray-400 hover:text-red-500 hover:bg-white opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5a2 2 0 012-2h14l-3 3H5v13" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 6l11-1 1 6-12 1V6z" />
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
@@ -185,6 +253,83 @@ export default function VideosPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Add-to-playlist modal */}
+      {addTarget && token && (
+        <AddToPlaylistModal
+          videoId={addTarget.id}
+          videoTitle={addTarget.title}
+          token={token}
+          onClose={() => setAddTarget(null)}
+        />
+      )}
+
+      {/* Report modal */}
+      {reportTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setReportTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-gray-900 text-sm">Signaler une vidéo</h2>
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{reportTarget.title}</p>
+              </div>
+              <button onClick={() => setReportTarget(null)} className="text-gray-400 hover:text-gray-600 mt-0.5 shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {reportDone ? (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-green-600 font-medium text-sm">Signalement envoyé</p>
+                <p className="text-xs text-gray-400">Notre équipe examinera cette vidéo.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleReport} className="space-y-3">
+                {reportError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{reportError}</div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Motif</label>
+                  <div className="grid grid-cols-1 gap-1">
+                    {REPORT_REASONS.map(r => (
+                      <label key={r.value} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer border transition-colors ${reportReason === r.value ? 'bg-red-50 border-red-200' : 'border-transparent hover:bg-gray-50'}`}>
+                        <input
+                          type="radio" name="reason" value={r.value}
+                          checked={reportReason === r.value}
+                          onChange={() => setReportReason(r.value)}
+                          className="accent-red-500"
+                        />
+                        <span className="text-sm text-gray-700">{r.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Détails <span className="text-gray-400 font-normal">(optionnel)</span></label>
+                  <textarea
+                    value={reportDescription}
+                    onChange={e => setReportDescription(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Précisez si nécessaire…"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={reporting}
+                  className="w-full h-9 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {reporting ? 'Envoi…' : 'Envoyer le signalement'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

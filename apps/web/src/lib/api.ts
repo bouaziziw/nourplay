@@ -281,6 +281,9 @@ export const api = {
 
     submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
       request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    report: (token: string, id: string, data: { reason: string; description?: string }) =>
+      request<{ id: string }>(`/videos/${id}/report`, { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
   },
 
   blocks: {
