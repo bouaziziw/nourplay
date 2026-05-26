@@ -8,6 +8,7 @@ interface User {
   email: string
   role: string
   locale: string
+  twoFactorEnabled: boolean
 }
 
 interface AuthState {

@@ -31,7 +31,7 @@ export class UserService {
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id, deletedAt: null },
-      select: { id: true, email: true, role: true, locale: true, createdAt: true, emailVerified: true },
+      select: { id: true, email: true, role: true, locale: true, createdAt: true, emailVerified: true, twoFactorEnabled: true },
     })
     if (!user) throw new NotFoundException('Utilisateur introuvable')
     return user

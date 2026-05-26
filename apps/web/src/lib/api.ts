@@ -147,11 +147,20 @@ export const api = {
 
     resetPassword: (token: string, password: string) =>
       request<{ reset: boolean }>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+
+    initTotp: (token: string) =>
+      request<{ qrCode: string; secret: string; otpauth: string }>('/auth/2fa/init', { method: 'POST', ...bearer(token) }),
+
+    enableTotp: (token: string, code: string) =>
+      request<{ enabled: boolean }>('/auth/2fa/enable', { method: 'POST', body: JSON.stringify({ code }), ...bearer(token) }),
+
+    disableTotp: (token: string, code: string) =>
+      request<{ disabled: boolean }>('/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ code }), ...bearer(token) }),
   },
 
   users: {
     me: (token: string) =>
-      request<{ id: string; email: string; role: string; locale: string }>('/users/me', bearer(token)),
+      request<{ id: string; email: string; role: string; locale: string; twoFactorEnabled: boolean }>('/users/me', bearer(token)),
 
     profiles: (token: string) =>
       request<ProfileSummary[]>('/users/me/profiles', bearer(token)),
