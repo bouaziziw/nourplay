@@ -1,7 +1,53 @@
 {
   "home": {
-    "title": "NourPlay",
-    "subtitle": "La plataforma de vídeo segura para sus hijos"
+    "nav": {
+      "login": "Iniciar sesión",
+      "register": "Crear cuenta",
+      "dashboard": "Mi panel"
+    },
+    "hero": {
+      "badge": "Para padres y educadores",
+      "title": "La videoteca segura para tus hijos",
+      "subtitle": "Selecciona, organiza y comparte contenido de vídeo adecuado para la edad de tus hijos. Controla lo que ven.",
+      "cta": "Empezar gratis",
+      "ctaSecondary": "Iniciar sesión"
+    },
+    "features": {
+      "title": "Todo lo que necesitas",
+      "subtitle": "NourPlay reúne todas las herramientas para gestionar los contenidos de vídeo de tus hijos con tranquilidad.",
+      "safe": {
+        "title": "Contenido validado",
+        "description": "Cada vídeo se revisa antes de estar disponible. Sistema de reporte comunitario integrado."
+      },
+      "profiles": {
+        "title": "Perfiles personalizados",
+        "description": "Un perfil por hijo con límites de tiempo, horarios de visualización y filtros de contenido."
+      },
+      "playlists": {
+        "title": "Listas temáticas",
+        "description": "Organiza los vídeos en listas y compártelas con otros padres o el equipo educativo."
+      },
+      "multilang": {
+        "title": "Multilingüe",
+        "description": "Interfaz en francés, inglés, árabe y español. Contenido filtrado por idioma."
+      }
+    },
+    "steps": {
+      "title": "Cómo funciona",
+      "1": { "label": "Crea tu cuenta", "desc": "Regístrate en 30 segundos, sin tarjeta de crédito." },
+      "2": { "label": "Configura los perfiles", "desc": "Un perfil por hijo con sus límites y edad." },
+      "3": { "label": "Añade vídeos", "desc": "Envía URLs — se validan automáticamente." },
+      "4": { "label": "Ver en familia", "desc": "Tus hijos acceden a su espacio seguro mediante PIN." }
+    },
+    "cta": {
+      "title": "¿Listo para proteger la experiencia visual de tus hijos?",
+      "subtitle": "Únete a NourPlay hoy. Es gratis.",
+      "button": "Crear mi cuenta"
+    },
+    "footer": {
+      "tagline": "La plataforma de vídeo segura para niños.",
+      "copyright": "© 2025 NourPlay. Todos los derechos reservados."
+    }
   },
   "auth": {
     "login": "Iniciar sesión",
