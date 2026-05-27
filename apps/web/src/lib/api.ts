@@ -98,6 +98,17 @@ export interface Notification {
   createdAt: string
 }
 
+export interface ProfileAnalytics {
+  today: { watchedSec: number; count: number }
+  week: { watchedSec: number; count: number }
+  month: { watchedSec: number; count: number; completionRate: number }
+  topVideos: Array<{
+    video: { id: string; title: string; thumbnailUrl: string | null; durationSec: number | null }
+    watchCount: number
+    totalWatchedSec: number
+  }>
+}
+
 export interface UserBlock {
   id: string
   userId: string
@@ -188,6 +199,9 @@ export const api = {
         body: JSON.stringify({ pin }),
         ...bearer(token),
       }),
+
+    getProfileAnalytics: (token: string, profileId: string) =>
+      request<ProfileAnalytics>(`/users/me/profiles/${profileId}/analytics`, bearer(token)),
 
     getWatchHistory: (token: string, profileId: string, limit = 20) =>
       request<Array<{ id: string; watchedAt: string; durationWatchedSec: number; completed: boolean; video: VideoSummary }>>(

@@ -124,6 +124,15 @@ export class UserController {
     return this.userService.clearWatchHistory(user.sub, profileId)
   }
 
+  @Get('me/profiles/:profileId/analytics')
+  @ApiOperation({ summary: 'Statistiques de visionnage d\'un profil (30 jours)' })
+  getProfileAnalytics(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getProfileAnalytics(user.sub, profileId)
+  }
+
   // ── Filtres de contenu ──────────────────────────────────────
 
   @Get('me/blocks')

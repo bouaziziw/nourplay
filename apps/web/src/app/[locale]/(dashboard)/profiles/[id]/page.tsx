@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
-import { api, ProfileSummary, UserBlock } from '../../../../../lib/api'
+import { api, ProfileSummary, UserBlock, ProfileAnalytics } from '../../../../../lib/api'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3 ans' },
@@ -27,6 +27,14 @@ function formatDuration(sec: number): string {
   return m > 0 ? `${m}m${s > 0 ? ` ${s}s` : ''}` : `${sec}s`
 }
 
+function formatWatchTime(sec: number): string {
+  if (sec === 0) return '0 min'
+  const h = Math.floor(sec / 3600)
+  const m = Math.floor((sec % 3600) / 60)
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
+  return `${m} min`
+}
+
 export default function EditProfilePage() {
   const { id } = useParams<{ id: string }>()
   const locale = useLocale()
@@ -39,7 +47,7 @@ export default function EditProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [tab, setTab] = useState<'settings' | 'history' | 'filters'>('settings')
+  const [tab, setTab] = useState<'settings' | 'history' | 'filters' | 'stats'>('settings')
 
   const [form, setForm] = useState({
     displayName: '',
@@ -53,6 +61,9 @@ export default function EditProfilePage() {
     video: { id: string; title: string; thumbnailUrl: string | null }
   }>>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+
+  const [analytics, setAnalytics] = useState<ProfileAnalytics | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   const [blocks, setBlocks] = useState<UserBlock[]>([])
   const [blocksLoading, setBlocksLoading] = useState(false)
@@ -95,6 +106,15 @@ export default function EditProfilePage() {
       .then(setBlocks)
       .catch(() => {})
       .finally(() => setBlocksLoading(false))
+  }, [tab, token, id])
+
+  useEffect(() => {
+    if (tab !== 'stats' || !token) return
+    setAnalyticsLoading(true)
+    api.users.getProfileAnalytics(token, id)
+      .then(setAnalytics)
+      .catch(() => {})
+      .finally(() => setAnalyticsLoading(false))
   }, [tab, token, id])
 
   const handleAddBlock = async (e: React.FormEvent) => {
@@ -192,8 +212,8 @@ export default function EditProfilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-        {(['settings', 'filters', 'history'] as const).map(t => (
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit flex-wrap">
+        {(['settings', 'stats', 'filters', 'history'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -201,7 +221,7 @@ export default function EditProfilePage() {
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'settings' ? 'Paramètres' : t === 'filters' ? 'Filtres' : 'Historique'}
+            {t === 'settings' ? 'Paramètres' : t === 'stats' ? 'Statistiques' : t === 'filters' ? 'Filtres' : 'Historique'}
           </button>
         ))}
       </div>
@@ -406,6 +426,76 @@ export default function EditProfilePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {tab === 'stats' && (
+        <div className="space-y-5">
+          {analyticsLoading || !analytics ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+            </div>
+          ) : (
+            <>
+              {/* Period cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "Aujourd'hui", data: analytics.today, extra: null },
+                  { label: '7 derniers jours', data: analytics.week, extra: null },
+                  { label: '30 derniers jours', data: analytics.month, extra: analytics.month.completionRate },
+                ].map(({ label, data, extra }) => (
+                  <div key={label} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-1">
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatWatchTime(data.watchedSec)}</p>
+                    <p className="text-xs text-gray-400">{data.count} vidéo{data.count !== 1 ? 's' : ''}</p>
+                    {extra !== null && (
+                      <div className="pt-2">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Complétions</span>
+                          <span>{extra}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full transition-all"
+                            style={{ width: `${extra}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Top videos */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4">Vidéos les plus regardées (30 j)</h3>
+                {analytics.topVideos.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">Aucune vidéo regardée ce mois-ci.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {analytics.topVideos.map(({ video, watchCount, totalWatchedSec }, i) => (
+                      <div key={video!.id} className="flex items-center gap-3">
+                        <span className="w-5 text-sm font-bold text-gray-300 text-right flex-shrink-0">{i + 1}</span>
+                        <div className="w-12 h-8 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                          {video!.thumbnailUrl
+                            ? <img src={video!.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-sm">🎥</div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{video!.title}</p>
+                          <p className="text-xs text-gray-400">{formatWatchTime(totalWatchedSec)} regardées</p>
+                        </div>
+                        <span className="flex-shrink-0 text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          ×{watchCount}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

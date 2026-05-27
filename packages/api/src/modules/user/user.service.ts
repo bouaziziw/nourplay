@@ -1,11 +1,9 @@
 import {
   Injectable,
   NotFoundException,
-  ForbiddenException,
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common'
-import { createHash } from 'crypto'
 import * as argon2 from 'argon2'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
@@ -177,6 +175,77 @@ export class UserService {
     const block = await this.prisma.userBlock.findUnique({ where: { id: blockId } })
     if (!block || block.userId !== userId) throw new NotFoundException('Filtre introuvable')
     await this.prisma.userBlock.delete({ where: { id: blockId } })
+  }
+
+  async getProfileAnalytics(userId: string, profileId: string) {
+    await this.assertProfileOwner(userId, profileId)
+
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+    const [todayAgg, weekAgg, monthAgg, monthCompleted, topVideos] = await Promise.all([
+      this.prisma.watchHistory.aggregate({
+        where: { profileId, watchedAt: { gte: todayStart } },
+        _sum: { durationWatchedSec: true },
+        _count: { id: true },
+      }),
+      this.prisma.watchHistory.aggregate({
+        where: { profileId, watchedAt: { gte: weekAgo } },
+        _sum: { durationWatchedSec: true },
+        _count: { id: true },
+      }),
+      this.prisma.watchHistory.aggregate({
+        where: { profileId, watchedAt: { gte: monthAgo } },
+        _sum: { durationWatchedSec: true },
+        _count: { id: true },
+      }),
+      this.prisma.watchHistory.count({
+        where: { profileId, watchedAt: { gte: monthAgo }, completed: true },
+      }),
+      this.prisma.watchHistory.groupBy({
+        by: ['videoId'],
+        where: { profileId, watchedAt: { gte: monthAgo } },
+        _count: { id: true },
+        _sum: { durationWatchedSec: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
+      }),
+    ])
+
+    const videoIds = topVideos.map(w => w.videoId)
+    const videos = videoIds.length
+      ? await this.prisma.video.findMany({
+          where: { id: { in: videoIds } },
+          select: { id: true, title: true, thumbnailUrl: true, durationSec: true },
+        })
+      : []
+    const videoMap = new Map(videos.map(v => [v.id, v]))
+    const monthTotal = monthAgg._count.id
+
+    return {
+      today: {
+        watchedSec: todayAgg._sum.durationWatchedSec ?? 0,
+        count: todayAgg._count.id,
+      },
+      week: {
+        watchedSec: weekAgg._sum.durationWatchedSec ?? 0,
+        count: weekAgg._count.id,
+      },
+      month: {
+        watchedSec: monthAgg._sum.durationWatchedSec ?? 0,
+        count: monthTotal,
+        completionRate: monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0,
+      },
+      topVideos: topVideos
+        .map(w => ({
+          video: videoMap.get(w.videoId) ?? null,
+          watchCount: w._count.id,
+          totalWatchedSec: w._sum.durationWatchedSec ?? 0,
+        }))
+        .filter(w => w.video !== null),
+    }
   }
 
   private async assertProfileOwner(userId: string, profileId: string) {
