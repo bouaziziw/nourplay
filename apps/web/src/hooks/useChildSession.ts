@@ -32,6 +32,11 @@ export function sessionElapsedMin(activatedAt: number): number {
   return Math.floor((Date.now() - activatedAt) / 60000)
 }
 
+export function isDailyLimitReached(dailyLimitMin: number | null | undefined, watchedSec: number): boolean {
+  if (dailyLimitMin == null || dailyLimitMin <= 0) return false
+  return Math.floor(watchedSec / 60) >= dailyLimitMin
+}
+
 export function useChildSession() {
   const [session, setSessionState] = useState<ChildSession | null>(null)
   const [hydrated, setHydrated] = useState(false)

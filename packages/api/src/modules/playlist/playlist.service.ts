@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { PrismaService } from '../../common/prisma/prisma.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 import { CreatePlaylistDto } from './dto/create-playlist.dto'
 import { UpdatePlaylistDto } from './dto/update-playlist.dto'
 import { AddVideoDto } from './dto/add-video.dto'
@@ -27,7 +28,10 @@ const PLAYLIST_SELECT = {
 
 @Injectable()
 export class PlaylistService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   async findAll(userId: string) {
     return this.prisma.playlist.findMany({
@@ -38,6 +42,18 @@ export class PlaylistService {
   }
 
   async create(userId: string, dto: CreatePlaylistDto) {
+    const count = await this.prisma.playlist.count({
+      where: { ownerId: userId, deletedAt: null },
+    })
+    const { maxPlaylists, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
+    if (count >= maxPlaylists) {
+      throw new BadRequestException(
+        planSlug === 'free'
+          ? 'Votre forfait gratuit est limité à 5 playlists. Passez à Premium pour créer des playlists illimitées.'
+          : `Maximum de playlists atteint (${maxPlaylists})`,
+      )
+    }
+
     return this.prisma.playlist.create({
       data: {
         ownerId: userId,

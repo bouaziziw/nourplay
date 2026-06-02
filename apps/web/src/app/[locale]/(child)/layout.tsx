@@ -1,16 +1,19 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLocale } from 'next-intl'
-import { AuthProvider } from '../../../hooks/useAuth'
-import { useChildSession, isWithinSchedule, sessionElapsedMin } from '../../../hooks/useChildSession'
+import { AuthProvider, useAuth } from '../../../hooks/useAuth'
+import { useChildSession, isWithinSchedule, sessionElapsedMin, isDailyLimitReached } from '../../../hooks/useChildSession'
+import { api } from '../../../lib/api'
 
 function ChildGuard({ children }: { children: React.ReactNode }) {
   const { session, hydrated, clear, isSessionExpired } = useChildSession()
+  const { token } = useAuth()
   const router = useRouter()
   const locale = useLocale()
   const pathname = usePathname()
+  const [dailyWatchedSec, setDailyWatchedSec] = useState<number | null>(null)
 
   // Redirect to profile selector if no active session (but allow the selector page itself)
   const isProfileSelector = pathname === `/${locale}/child`
@@ -21,6 +24,24 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
       router.replace(`/${locale}/child`)
     }
   }, [hydrated, session, isProfileSelector, router, locale])
+
+  // Fetch daily watch time on session load; re-poll every 60s
+  useEffect(() => {
+    if (!token || !session) return
+    const profileId = session.profileId
+    const fetch = async () => {
+      try {
+        const { watchedSec } = await api.users.getDailyWatchTime(token, profileId)
+        setDailyWatchedSec(watchedSec)
+      } catch {
+        // Fail open — don't block if the API is unavailable
+      }
+    }
+    fetch()
+    const interval = setInterval(fetch, 60_000)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, session?.profileId])
 
   if (!hydrated) {
     return (

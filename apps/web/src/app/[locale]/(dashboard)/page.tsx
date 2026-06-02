@@ -99,8 +99,11 @@ export default function DashboardPage() {
                   onClick={() => setSelectedProfile(p)}
                   className="w-full bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-indigo-300 hover:shadow-sm transition-all"
                 >
-                  <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold text-indigo-600 group-hover:bg-indigo-200 transition-colors">
-                    {p.displayName.slice(0, 2).toUpperCase()}
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center mx-auto mb-3 text-xl font-bold text-indigo-600 group-hover:bg-indigo-200 transition-colors">
+                    {p.avatarKey
+                      ? <img src={`${process.env.NEXT_PUBLIC_S3_PUBLIC_URL}/${p.avatarKey}`} alt={p.displayName} className="w-full h-full object-cover" />
+                      : p.displayName.slice(0, 2).toUpperCase()
+                    }
                   </div>
                   <p className="font-medium text-gray-900 text-sm truncate">{p.displayName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{ageLabels[p.ageGroup] ?? p.ageGroup}</p>
