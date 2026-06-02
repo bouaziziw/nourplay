@@ -10,6 +10,9 @@ const NAV = [
   { href: '/dashboard/moderation', label: 'File de modération', icon: '▶' },
   { href: '/dashboard/moderation/reports', label: 'Signalements', icon: '⚑' },
   { href: '/dashboard/users', label: 'Utilisateurs', icon: '◉', adminOnly: true },
+  { href: '/dashboard/compliance', label: 'Conformité RGPD', icon: '⊕', adminOnly: true },
+  { href: '/dashboard/legal', label: 'Textes légaux', icon: '§', adminOnly: true },
+  { href: '/dashboard/subscriptions', label: 'Abonnements', icon: '★', adminOnly: true },
   { href: '/dashboard/audit', label: 'Journal d\'audit', icon: '≡', adminOnly: true },
 ]
 
