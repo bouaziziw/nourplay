@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { ThrottlerModule } from '@nestjs/throttler'
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { ScheduleModule } from '@nestjs/schedule'
 import { PrismaModule } from './common/prisma/prisma.module'
 import { BullModule } from './common/bull/bull.module'
 import { EmailModule } from './common/email/email.module'
 import { RedisTokenModule } from './common/redis/redis-token.module'
+import { CacheModule } from './common/cache/cache.module'
 import { AuditModule } from './common/audit/audit.module'
 import { GdprModule } from './modules/gdpr/gdpr.module'
 import { AuthModule } from './modules/auth/auth.module'
@@ -16,6 +18,9 @@ import { ConsentModule } from './modules/consent/consent.module'
 import { ModerationModule } from './modules/moderation/moderation.module'
 import { AdminModule } from './modules/admin/admin.module'
 import { NotificationModule } from './modules/notification/notification.module'
+import { LegalModule } from './modules/legal/legal.module'
+import { SubscriptionModule } from './modules/subscription/subscription.module'
+import { StorageModule } from './modules/storage/storage.module'
 import { appConfig, validateConfig } from './config/app.config'
 
 @Module({
@@ -47,6 +52,7 @@ import { appConfig, validateConfig } from './config/app.config'
     BullModule,
     EmailModule,
     RedisTokenModule,
+    CacheModule,
     AuditModule,
 
     // ── Modules fonctionnels ─────────────────────────────────────
@@ -59,6 +65,12 @@ import { appConfig, validateConfig } from './config/app.config'
     AdminModule,
     NotificationModule,
     GdprModule,
+    LegalModule,
+    SubscriptionModule,
+    StorageModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}
