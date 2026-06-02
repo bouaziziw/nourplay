@@ -7,8 +7,11 @@ import {
 } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import { PrismaService } from '../../common/prisma/prisma.service'
+import { CacheService } from '../../common/cache/cache.service'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
 import { SubmitVideoDto } from './dto/submit-video.dto'
+
+const VIDEO_SEARCH_TTL = 120
 
 const YOUTUBE_REGEX = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/
 const VIMEO_REGEX = /vimeo\.com\/(\d+)/
@@ -26,6 +29,7 @@ export class VideoService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
     @Inject(VIDEO_VALIDATION_QUEUE) private readonly validationQueue: Queue,
   ) {}
 
@@ -98,6 +102,12 @@ export class VideoService {
     limit?: number
   }) {
     const { q, language, ageRating, sourceSlug, page = 1, limit = 20 } = params
+    const cacheKey = `videos:search:${q ?? '_'}:${language ?? '_'}:${ageRating ?? '_'}:${sourceSlug ?? '_'}:p${page}:l${limit}`
+
+    type SearchResult = { items: unknown[]; total: number; page: number; limit: number; pages: number }
+    const cached = await this.cache.get<SearchResult>(cacheKey)
+    if (cached) return cached
+
     const skip = (page - 1) * Math.min(limit, 50)
 
     const where: Record<string, unknown> = { validationStatus: 'APPROVED' }
@@ -121,7 +131,9 @@ export class VideoService {
       this.prisma.video.count({ where }),
     ])
 
-    return { items, total, page, limit, pages: Math.ceil(total / limit) }
+    const result: SearchResult = { items, total, page, limit, pages: Math.ceil(total / limit) }
+    await this.cache.set(cacheKey, result, VIDEO_SEARCH_TTL)
+    return result
   }
 
   async report(userId: string, videoId: string, reason: string, description?: string) {

@@ -64,6 +64,63 @@ export class EmailService {
     })
   }
 
+  async sendMagicLinkEmail(to: string, token: string, locale = 'fr') {
+    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000')
+    const link = `${appUrl}/${locale}/auth/magic-link/verify?token=${token}`
+
+    const subjects: Record<string, string> = {
+      fr: 'Votre lien de connexion NourPlay',
+      en: 'Your NourPlay sign-in link',
+      ar: 'رابط تسجيل الدخول إلى NourPlay',
+      es: 'Tu enlace de acceso a NourPlay',
+    }
+
+    const texts: Record<string, { title: string; body: string; cta: string; note: string }> = {
+      fr: { title: 'Connexion sans mot de passe', body: 'Cliquez sur le bouton ci-dessous pour vous connecter. Ce lien est valable 15 minutes et à usage unique.', cta: 'Se connecter', note: 'Si vous n\'avez pas demandé ce lien, ignorez cet email.' },
+      en: { title: 'Passwordless sign-in', body: 'Click the button below to sign in. This link is valid for 15 minutes and can only be used once.', cta: 'Sign in', note: 'If you didn\'t request this, ignore this email.' },
+    }
+    const t = texts[locale] ?? texts['fr']
+
+    await this.send({
+      to,
+      subject: subjects[locale] ?? subjects['fr'],
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`),
+      text: link,
+    })
+  }
+
+  async sendSubscriptionExpiryEmail(to: string, daysLeft: number, locale = 'fr') {
+    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000')
+    const link = `${appUrl}/${locale}/dashboard/subscription`
+
+    const subjects: Record<string, string> = {
+      fr: `Votre abonnement NourPlay expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
+      en: `Your NourPlay subscription expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
+    }
+
+    const bodies: Record<string, { title: string; body: string; cta: string }> = {
+      fr: {
+        title: `Abonnement Premium — encore ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`,
+        body: `Votre abonnement Premium expire dans <strong>${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong>. Pour continuer à profiter de toutes les fonctionnalités (profils illimités, playlists illimitées), renouvelez votre abonnement dès maintenant.`,
+        cta: 'Renouveler mon abonnement',
+      },
+      en: {
+        title: `Premium subscription — ${daysLeft} day${daysLeft > 1 ? 's' : ''} left`,
+        body: `Your Premium subscription expires in <strong>${daysLeft} day${daysLeft > 1 ? 's' : ''}</strong>. To keep enjoying all features (unlimited profiles, unlimited playlists), renew now.`,
+        cta: 'Renew my subscription',
+      },
+    }
+
+    const t = bodies[locale] ?? bodies['fr']
+
+    await this.send({
+      to,
+      subject: subjects[locale] ?? subjects['fr'],
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a>`),
+      text: `${t.body} ${link}`,
+    })
+  }
+
   async sendVideoReviewEmail(to: string, videoTitle: string, action: 'approve' | 'reject', reason?: string, locale = 'fr') {
     const approved = action === 'approve'
     const subjects: Record<string, [string, string]> = {
