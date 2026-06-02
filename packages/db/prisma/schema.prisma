@@ -82,6 +82,19 @@ enum GdprRequestStatus {
   REJECTED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  TRIALING
+  EXPIRED
+}
+
+enum PlanInterval {
+  MONTHLY
+  YEARLY
+}
+
 // ─────────────────────────────────────────────────────────────
 //  User & Profils
 // ─────────────────────────────────────────────────────────────
@@ -118,6 +131,12 @@ model User {
   notifications    Notification[]
   gdprRequests     GdprRequest[]
   reportedVideos   VideoReport[]
+  subscription     Subscription?
+  legalDocuments   LegalDocument[]
+  deviceTokens     DeviceToken[]
+
+  // Stripe
+  stripeCustomerId String? @unique
 
   @@index([email])
   @@index([deletedAt])
@@ -143,8 +162,9 @@ model ChildProfile {
   deletedAt DateTime?
 
   // Relations
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   watchHistory WatchHistory[]
+  favorites    VideoFavorite[]
 
   @@index([userId])
   @@map("child_profiles")
@@ -221,6 +241,7 @@ model Video {
   tags           VideoTag[]
   watchHistory   WatchHistory[]
   reports        VideoReport[]
+  favorites      VideoFavorite[]
 
   @@unique([sourceId, externalId]) // pas de doublon par plateforme
   @@index([validationStatus])
@@ -348,6 +369,24 @@ model WatchHistory {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  Favoris par profil enfant
+// ─────────────────────────────────────────────────────────────
+
+model VideoFavorite {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @db.Uuid
+  videoId   String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  profile ChildProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  video   Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, videoId])
+  @@index([profileId])
+  @@map("video_favorites")
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Blocs / Filtres
 // ─────────────────────────────────────────────────────────────
 
@@ -463,4 +502,82 @@ model AuditLog {
   @@index([action])
   @@index([occurredAt])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Abonnements (socle premium — non actif en MVP)
+// ─────────────────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String       @unique // "Free", "Family", "School"
+  slug          String       @unique
+  priceEur      Int          @default(0) // centimes — 0 = gratuit
+  interval      PlanInterval @default(MONTHLY)
+  features      Json         // liste des fonctionnalités incluses
+  isActive      Boolean      @default(true)
+  stripePriceId String?      // Stripe Price ID (null pour le plan gratuit)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @unique @db.Uuid
+  planId     String             @db.Uuid
+  status     SubscriptionStatus @default(TRIALING)
+  startedAt  DateTime           @default(now())
+  expiresAt  DateTime?
+  cancelledAt DateTime?
+  // Référence Stripe (ou autre PSP) — null pour le plan gratuit
+  externalId String?
+
+  user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Textes légaux (CGU, Politique de confidentialité…)
+// ─────────────────────────────────────────────────────────────
+
+model LegalDocument {
+  id          String      @id @default(uuid()) @db.Uuid
+  type        ConsentType
+  version     String      // ex: "2026-01-01" — date ISO utilisée comme identifiant de version
+  content     String      // Contenu Markdown
+  publishedAt DateTime?   // null = brouillon
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById String?     @db.Uuid
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([type, version])
+  @@index([type, publishedAt])
+  @@map("legal_documents")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Tokens de notifications push (Expo)
+// ─────────────────────────────────────────────────────────────
+
+model DeviceToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  token     String   @unique // Expo push token (ExponentPushToken[…])
+  platform  String   // "ios" | "android"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("device_tokens")
 }

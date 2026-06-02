@@ -21,6 +21,7 @@ interface AuthContext extends AuthState {
   login: (email: string, password: string) => Promise<{ requiresTwoFactor?: boolean; userId?: string }>
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
+  setToken: (token: string) => Promise<void>
 }
 
 const AuthCtx = createContext<AuthContext | null>(null)
@@ -60,8 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user: null, token: null, loading: false })
   }
 
+  const setToken = useCallback(async (token: string) => {
+    await loadUser(token)
+  }, [loadUser])
+
   return (
-    <AuthCtx.Provider value={{ ...state, login, logout, refreshToken }}>
+    <AuthCtx.Provider value={{ ...state, login, logout, refreshToken, setToken }}>
       {children}
     </AuthCtx.Provider>
   )

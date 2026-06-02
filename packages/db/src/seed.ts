@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, VideoValidationStatus, AgeRating } from '../generated/client'
+import { PrismaClient, UserRole, PlanInterval } from '../generated/client'
 import { createHash } from 'crypto'
 
 const prisma = new PrismaClient()
@@ -86,6 +86,39 @@ async function main() {
       pinHash: createHash('sha256').update('1234').digest('hex'),
     },
   })
+
+  // ── Plans d'abonnement ───────────────────────────────────────
+  const plans = [
+    {
+      slug: 'free',
+      name: 'Gratuit',
+      priceEur: 0,
+      interval: PlanInterval.MONTHLY,
+      features: ['1 profil enfant', '5 playlists', 'Vidéothèque complète', 'Support par email'],
+    },
+    {
+      slug: 'premium-monthly',
+      name: 'Premium Mensuel',
+      priceEur: 999,
+      interval: PlanInterval.MONTHLY,
+      features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire'],
+    },
+    {
+      slug: 'premium-yearly',
+      name: 'Premium Annuel',
+      priceEur: 7999,
+      interval: PlanInterval.YEARLY,
+      features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire', '2 mois offerts'],
+    },
+  ]
+
+  for (const plan of plans) {
+    await prisma.subscriptionPlan.upsert({
+      where: { slug: plan.slug },
+      update: { features: plan.features },
+      create: plan,
+    })
+  }
 
   console.log('Seed completed.')
 }

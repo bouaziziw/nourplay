@@ -55,6 +55,7 @@ export function validateConfig(config: Record<string, unknown>) {
 export const appConfig = () => ({
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '4000', 10),
+  appUrl: process.env.APP_URL || 'http://localhost:3000',
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:3000').split(','),
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
@@ -71,5 +72,10 @@ export const appConfig = () => ({
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
     bucket: process.env.S3_BUCKET,
     publicUrl: process.env.S3_PUBLIC_URL,
+  },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
   },
 })

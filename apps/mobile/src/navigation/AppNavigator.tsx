@@ -2,6 +2,7 @@ import React, { useContext } from 'react'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { AuthContext } from '../hooks/useAuth'
 import { ChildSessionContext } from '../hooks/useChildSession'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 import LoginScreen from '../screens/LoginScreen'
 import TwoFactorScreen from '../screens/TwoFactorScreen'
@@ -9,13 +10,15 @@ import ProfileSelectorScreen from '../screens/child/ProfileSelectorScreen'
 import ChildPlaylistsScreen from '../screens/child/PlaylistsScreen'
 import ChildPlaylistDetailScreen from '../screens/child/PlaylistDetailScreen'
 import WatchScreen from '../screens/child/WatchScreen'
-import ParentDashboardScreen from '../screens/parent/DashboardScreen'
+import ParentTabNavigator from './ParentTabNavigator'
+import ParentPlaylistDetailScreen from '../screens/parent/ParentPlaylistDetailScreen'
 
 export type RootStackParamList = {
   Login: undefined
   TwoFactor: { userId: string }
   ProfileSelector: undefined
-  ParentDashboard: undefined
+  ParentTabs: undefined
+  ParentPlaylistDetail: { playlistId: string; playlistName: string }
   ChildPlaylists: undefined
   ChildPlaylistDetail: { playlistId: string; playlistName: string }
   Watch: { videoId: string; playlistId: string }
@@ -30,6 +33,9 @@ export default function AppNavigator() {
   if (!auth || !childCtx) return null
 
   const { session } = childCtx
+
+  // Register Expo push token when the user is authenticated
+  usePushNotifications(auth.token ?? null)
 
   if (auth.loading || !childCtx.hydrated) return null
 
@@ -49,10 +55,15 @@ export default function AppNavigator() {
           <Stack.Screen name="Watch" component={WatchScreen} options={{ headerShown: true, headerTitle: '', headerBackTitle: 'Retour', headerTransparent: true }} />
         </>
       ) : (
-        // ── Parent / profile selector stack ────────────────────────────────────
+        // ── Parent stack ───────────────────────────────────────────────────────
         <>
           <Stack.Screen name="ProfileSelector" component={ProfileSelectorScreen} />
-          <Stack.Screen name="ParentDashboard" component={ParentDashboardScreen} options={{ headerShown: true, headerTitle: 'Tableau de bord', headerBackTitle: 'Profils' }} />
+          <Stack.Screen name="ParentTabs" component={ParentTabNavigator} />
+          <Stack.Screen
+            name="ParentPlaylistDetail"
+            component={ParentPlaylistDetailScreen}
+            options={{ headerShown: true, headerTitle: 'Playlist', headerBackTitle: 'Retour' }}
+          />
         </>
       )}
     </Stack.Navigator>

@@ -38,6 +38,14 @@ export class UserController {
     return this.userService.findById(user.sub)
   }
 
+  // ── Limites du forfait ───────────────────────────────────────
+
+  @Get('me/limits')
+  @ApiOperation({ summary: 'Limites du forfait actuel (profils, playlists)' })
+  getLimits(@CurrentUser() user: JwtPayload) {
+    return this.userService.getMyLimits(user.sub)
+  }
+
   // ── Profils enfants ──────────────────────────────────────────
 
   @Get('me/profiles')
@@ -131,6 +139,49 @@ export class UserController {
     @Param('profileId', ParseUUIDPipe) profileId: string,
   ) {
     return this.userService.getProfileAnalytics(user.sub, profileId)
+  }
+
+  @Get('me/profiles/:profileId/daily-watch-time')
+  @ApiOperation({ summary: 'Temps de visionnage du jour pour un profil enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  getDailyWatchTime(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getDailyWatchTime(user.sub, profileId)
+  }
+
+  // ── Favoris par profil enfant ────────────────────────────────
+
+  @Get('me/profiles/:profileId/favorites')
+  @ApiOperation({ summary: 'Vidéos en favoris d\'un profil enfant' })
+  getFavorites(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getFavorites(user.sub, profileId)
+  }
+
+  @Post('me/profiles/:profileId/favorites/:videoId')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Ajouter une vidéo aux favoris d\'un profil' })
+  addFavorite(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+  ) {
+    return this.userService.addFavorite(user.sub, profileId, videoId)
+  }
+
+  @Delete('me/profiles/:profileId/favorites/:videoId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Retirer une vidéo des favoris d\'un profil' })
+  removeFavorite(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+  ) {
+    return this.userService.removeFavorite(user.sub, profileId, videoId)
   }
 
   // ── Filtres de contenu ──────────────────────────────────────

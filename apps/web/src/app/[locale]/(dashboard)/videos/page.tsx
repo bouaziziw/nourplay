@@ -6,6 +6,7 @@ import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../hooks/useAuth'
 import { api, VideoSearchResult, ApiError } from '../../../../lib/api'
 import { AddToPlaylistModal } from '../../../../components/AddToPlaylistModal'
+import { AddToFavoritesModal } from '../../../../components/AddToFavoritesModal'
 
 const AGE_RATINGS = [
   { value: '', label: 'Tous' },
@@ -47,6 +48,9 @@ export default function VideosPage() {
 
   // Add-to-playlist modal
   const [addTarget, setAddTarget] = useState<{ id: string; title: string } | null>(null)
+
+  // Add-to-favorites modal
+  const [favTarget, setFavTarget] = useState<{ id: string; title: string } | null>(null)
 
   // Report modal
   const [reportTarget, setReportTarget] = useState<{ id: string; title: string } | null>(null)
@@ -218,7 +222,7 @@ export default function VideosPage() {
                   </div>
                 </div>
 
-                {/* Report button — top-right corner */}
+                {/* Report button — top-left corner */}
                 <button
                   onClick={() => openReport(v)}
                   title="Signaler cette vidéo"
@@ -227,6 +231,17 @@ export default function VideosPage() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21V5a2 2 0 012-2h14l-3 3H5v13" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 6l11-1 1 6-12 1V6z" />
+                  </svg>
+                </button>
+
+                {/* Favorite button — top-right corner */}
+                <button
+                  onClick={() => setFavTarget({ id: v.id, title: v.title })}
+                  title="Ajouter aux favoris d'un profil"
+                  className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-white/80 text-gray-400 hover:text-pink-500 hover:bg-white opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 </button>
               </div>
@@ -262,6 +277,16 @@ export default function VideosPage() {
           videoTitle={addTarget.title}
           token={token}
           onClose={() => setAddTarget(null)}
+        />
+      )}
+
+      {/* Add-to-favorites modal */}
+      {favTarget && token && (
+        <AddToFavoritesModal
+          videoId={favTarget.id}
+          videoTitle={favTarget.title}
+          token={token}
+          onClose={() => setFavTarget(null)}
         />
       )}
 

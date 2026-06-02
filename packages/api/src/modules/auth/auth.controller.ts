@@ -14,6 +14,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { SetupTotpDto } from './dto/setup-totp.dto'
 import { VerifyTotpDto } from './dto/verify-totp.dto'
+import { MagicLinkDto } from './dto/magic-link.dto'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { Public } from '../../common/decorators/public.decorator'
@@ -156,6 +157,33 @@ export class AuthController {
   @ApiOperation({ summary: 'Réinitialiser le mot de passe avec le token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password)
+  }
+
+  // ── Magic link ───────────────────────────────────────────────
+
+  @Public()
+  @Post('magic-link')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 3, ttl: 300000 } })
+  @ApiOperation({ summary: 'Demander un lien de connexion sans mot de passe (magic link)' })
+  @ApiResponse({ status: 204, description: 'Email envoyé (réponse identique si email inconnu)' })
+  requestMagicLink(@Body() dto: MagicLinkDto) {
+    return this.authService.requestMagicLink(dto.email)
+  }
+
+  @Public()
+  @Get('magic-link/verify')
+  @ApiOperation({ summary: 'Vérifier le token magic link et créer la session' })
+  async verifyMagicLink(
+    @Query('token') token: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || ''
+    const fingerprint = this.authService.buildFingerprint(req.headers['user-agent'] || '', ip)
+    const { accessToken, refreshToken } = await this.authService.loginWithMagicLink(token, fingerprint)
+    res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
+    return { accessToken }
   }
 
   // ── 2FA TOTP ─────────────────────────────────────────────────

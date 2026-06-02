@@ -72,6 +72,25 @@ export interface PlaylistSummary {
   _count: { playlistVideos: number }
 }
 
+export interface VideoSearchResult {
+  id: string
+  title: string
+  thumbnailUrl: string | null
+  embedUrl: string
+  durationSec: number | null
+  language: string | null
+  ageRating: string
+  validationStatus: string
+}
+
+export interface VideoFavorite {
+  id: string
+  profileId: string
+  videoId: string
+  createdAt: string
+  video: VideoSummary
+}
+
 // ── API client ────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -92,7 +111,7 @@ export const api = {
 
   users: {
     me: (token: string) =>
-      request<{ id: string; email: string; role: string; locale: string }>('/users/me', bearer(token)),
+      request<{ id: string; email: string; role: string; locale: string; twoFactorEnabled: boolean }>('/users/me', bearer(token)),
 
     profiles: (token: string) =>
       request<ProfileSummary[]>('/users/me/profiles', bearer(token)),
@@ -125,5 +144,60 @@ export const api = {
 
     getById: (token: string, id: string) =>
       request<PlaylistDetail>(`/playlists/${id}`, bearer(token)),
+
+    addVideo: (token: string, id: string, videoId: string) =>
+      request<{ id: string; position: number }>(`/playlists/${id}/videos`, {
+        method: 'POST',
+        body: JSON.stringify({ videoId }),
+        ...bearer(token),
+      }),
+  },
+
+  videos: {
+    search: (token: string, params: { q?: string; language?: string; ageRating?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams()
+      if (params.q) qs.set('q', params.q)
+      if (params.language) qs.set('language', params.language)
+      if (params.ageRating) qs.set('ageRating', params.ageRating)
+      if (params.page) qs.set('page', String(params.page))
+      if (params.limit) qs.set('limit', String(params.limit))
+      return request<{ items: VideoSearchResult[]; total: number; page: number; pages: number }>(
+        `/videos/search?${qs}`,
+        bearer(token),
+      )
+    },
+  },
+
+  deviceTokens: {
+    register: (token: string, data: { token: string; platform: string }) =>
+      request<{ registered: boolean }>('/notifications/device-tokens', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
+    unregister: (token: string, deviceToken: string) =>
+      request<{ unregistered: boolean }>('/notifications/device-tokens/unregister', {
+        method: 'DELETE',
+        body: JSON.stringify({ token: deviceToken }),
+        ...bearer(token),
+      }),
+  },
+
+  favorites: {
+    list: (token: string, profileId: string) =>
+      request<VideoFavorite[]>(`/users/me/profiles/${profileId}/favorites`, bearer(token)),
+
+    add: (token: string, profileId: string, videoId: string) =>
+      request<VideoFavorite>(`/users/me/profiles/${profileId}/favorites/${videoId}`, {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
+    remove: (token: string, profileId: string, videoId: string) =>
+      request<void>(`/users/me/profiles/${profileId}/favorites/${videoId}`, {
+        method: 'DELETE',
+        ...bearer(token),
+      }),
   },
 }

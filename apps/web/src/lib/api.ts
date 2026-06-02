@@ -126,6 +126,32 @@ export interface GdprRequest {
   completedAt: string | null
 }
 
+export interface VideoFavorite {
+  id: string
+  profileId: string
+  videoId: string
+  createdAt: string
+  video: VideoSummary
+}
+
+export interface SubscriptionPlan {
+  id: string
+  name: string
+  slug: string
+  priceEur: number
+  interval: 'MONTHLY' | 'YEARLY'
+  features: string[]
+}
+
+export interface UserSubscription {
+  id: string
+  status: 'ACTIVE' | 'CANCELLED' | 'PAST_DUE' | 'TRIALING' | 'EXPIRED'
+  startedAt: string
+  expiresAt: string | null
+  cancelledAt: string | null
+  plan: { id: string; name: string; slug: string; priceEur: number; interval: string }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function bearer(token: string): { headers: Record<string, string> } {
@@ -167,6 +193,12 @@ export const api = {
 
     disableTotp: (token: string, code: string) =>
       request<{ disabled: boolean }>('/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ code }), ...bearer(token) }),
+
+    requestMagicLink: (email: string) =>
+      request<void>('/auth/magic-link', { method: 'POST', body: JSON.stringify({ email }) }),
+
+    verifyMagicLink: (token: string) =>
+      request<{ accessToken: string }>(`/auth/magic-link/verify?token=${encodeURIComponent(token)}`),
   },
 
   users: {
@@ -187,7 +219,7 @@ export const api = {
     updateProfile: (
       token: string,
       profileId: string,
-      data: { displayName?: string; ageGroup?: string; dailyLimitMin?: number | null; sessionLimitMin?: number | null; viewingSchedule?: Record<string, string[]> | null },
+      data: { displayName?: string; ageGroup?: string; dailyLimitMin?: number | null; sessionLimitMin?: number | null; viewingSchedule?: Record<string, string[]> | null; avatarKey?: string | null },
     ) => request<ProfileSummary>(`/users/me/profiles/${profileId}`, { method: 'PATCH', body: JSON.stringify(data), ...bearer(token) }),
 
     deleteProfile: (token: string, profileId: string) =>
@@ -219,6 +251,9 @@ export const api = {
         body: JSON.stringify(data),
         ...bearer(token),
       }),
+
+    getDailyWatchTime: (token: string, profileId: string) =>
+      request<{ watchedSec: number }>(`/users/me/profiles/${profileId}/daily-watch-time`, bearer(token)),
   },
 
   playlists: {
@@ -343,5 +378,52 @@ export const api = {
 
     getMyData: (token: string) =>
       request<Record<string, unknown>>('/gdpr/my-data', bearer(token)),
+  },
+
+  favorites: {
+    list: (token: string, profileId: string) =>
+      request<VideoFavorite[]>(`/users/me/profiles/${profileId}/favorites`, bearer(token)),
+
+    add: (token: string, profileId: string, videoId: string) =>
+      request<VideoFavorite>(`/users/me/profiles/${profileId}/favorites/${videoId}`, {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
+    remove: (token: string, profileId: string, videoId: string) =>
+      request<void>(`/users/me/profiles/${profileId}/favorites/${videoId}`, {
+        method: 'DELETE',
+        ...bearer(token),
+      }),
+  },
+
+  storage: {
+    getPresignedUploadUrl: (token: string, data: { folder: 'avatars' | 'thumbnails'; contentType: string; sizeBytes: number }) =>
+      request<{ uploadUrl: string; key: string; publicUrl: string }>('/storage/presigned-url', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+  },
+
+  subscriptions: {
+    getPlans: () =>
+      request<SubscriptionPlan[]>('/subscriptions/plans'),
+
+    getMine: (token: string) =>
+      request<UserSubscription | null>('/subscriptions/me', bearer(token)),
+
+    checkout: (token: string, planId: string) =>
+      request<{ url: string }>('/subscriptions/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ planId }),
+        ...bearer(token),
+      }),
+
+    portal: (token: string) =>
+      request<{ url: string }>('/subscriptions/portal', {
+        method: 'POST',
+        ...bearer(token),
+      }),
   },
 }

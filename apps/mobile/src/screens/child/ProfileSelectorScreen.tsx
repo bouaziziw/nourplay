@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -60,7 +60,7 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.appName}>NourPlay</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('ParentDashboard')}>
+        <TouchableOpacity onPress={() => navigation.navigate('ParentTabs')}>
           <Text style={styles.dashboardLink}>Tableau de bord</Text>
         </TouchableOpacity>
       </View>
@@ -75,7 +75,7 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
       ) : profiles.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Aucun profil enfant disponible.</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ParentDashboard')}>
+          <TouchableOpacity onPress={() => navigation.navigate('ParentTabs')}>
             <Text style={styles.linkText}>Créer un profil →</Text>
           </TouchableOpacity>
         </View>
@@ -92,9 +92,16 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
             return (
               <TouchableOpacity style={styles.profileCard} onPress={() => setSelected(p)} activeOpacity={0.7}>
                 <View style={[styles.avatar, { backgroundColor: bg }]}>
-                  <Text style={[styles.avatarText, { color: fg }]}>
-                    {p.displayName.slice(0, 2).toUpperCase()}
-                  </Text>
+                  {p.avatarKey && process.env.EXPO_PUBLIC_S3_PUBLIC_URL ? (
+                    <Image
+                      source={{ uri: `${process.env.EXPO_PUBLIC_S3_PUBLIC_URL}/${p.avatarKey}` }}
+                      style={styles.avatarImg}
+                    />
+                  ) : (
+                    <Text style={[styles.avatarText, { color: fg }]}>
+                      {p.displayName.slice(0, 2).toUpperCase()}
+                    </Text>
+                  )}
                 </View>
                 <Text style={styles.profileName} numberOfLines={1}>{p.displayName}</Text>
                 <Text style={styles.profileAge}>{AGE_LABELS[p.ageGroup] ?? p.ageGroup} ans</Text>
@@ -129,7 +136,8 @@ const styles = StyleSheet.create({
   grid: { paddingHorizontal: 16, paddingBottom: 24 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
   profileCard: { width: '47%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
-  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
+  avatarImg: { width: 72, height: 72, borderRadius: 36 },
   avatarText: { fontSize: 22, fontWeight: '800' },
   profileName: { fontSize: 14, fontWeight: '600', color: '#111827', textAlign: 'center' },
   profileAge: { fontSize: 12, color: '#9ca3af', marginTop: 2 },

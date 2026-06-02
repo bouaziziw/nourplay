@@ -83,6 +83,63 @@ export interface AuditLog {
   actor: { id: string; email: string; role: string } | null
 }
 
+export interface ComplianceStats {
+  consents: {
+    activeTotal: number
+    revokedTotal: number
+    byType: Record<string, number>
+    activeAll: number
+  }
+  gdpr: {
+    byStatus: Record<string, number>
+    byType: Record<string, number>
+    pendingRequests: Array<{
+      id: string
+      type: string
+      status: string
+      requestedAt: string
+      user: { id: string; email: string }
+    }>
+  }
+}
+
+export interface LegalDocument {
+  id: string
+  type: string
+  version: string
+  content?: string
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  createdById: string | null
+}
+
+export interface AdminSubscription {
+  id: string
+  status: 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED'
+  startedAt: string
+  expiresAt: string | null
+  cancelledAt: string | null
+  externalId: string | null
+  user: { id: string; email: string; role: string }
+  plan: { id: string; name: string; slug: string; priceEur: number; interval: string }
+}
+
+export interface SubscriptionStats {
+  total: number
+  byStatus: Record<string, number>
+  byPlan: Record<string, number>
+}
+
+export interface SubscriptionPlan {
+  id: string
+  name: string
+  slug: string
+  priceEur: number
+  interval: 'MONTHLY' | 'YEARLY'
+  isActive: boolean
+}
+
 export interface Paginated<T> {
   items: T[]
   total: number
@@ -134,6 +191,41 @@ export const api = {
       Object.entries(params).forEach(([k, v]) => { if (v !== undefined) qs.set(k, String(v)) })
       return request<Paginated<AuditLog>>(`/admin/audit-logs?${qs}`, bearer(token))
     },
+
+    getComplianceStats: (token: string) =>
+      request<ComplianceStats>('/admin/compliance', bearer(token)),
+
+    listLegalDocuments: (token: string) =>
+      request<LegalDocument[]>('/admin/legal', bearer(token)),
+
+    getLegalDocument: (token: string, id: string) =>
+      request<LegalDocument>(`/admin/legal/${id}`, bearer(token)),
+
+    createLegalDocument: (token: string, data: { type: string; version: string; content: string }) =>
+      request<LegalDocument>('/admin/legal', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    publishLegalDocument: (token: string, id: string) =>
+      request<LegalDocument>(`/admin/legal/${id}/publish`, { method: 'PATCH', ...bearer(token) }),
+
+    getSubscriptions: (token: string, params: { page?: number; limit?: number; status?: string; userId?: string }) => {
+      const qs = new URLSearchParams()
+      Object.entries(params).forEach(([k, v]) => { if (v !== undefined) qs.set(k, String(v)) })
+      return request<Paginated<AdminSubscription>>(`/admin/subscriptions?${qs}`, bearer(token))
+    },
+
+    getSubscriptionStats: (token: string) =>
+      request<SubscriptionStats>('/admin/subscriptions/stats', bearer(token)),
+
+    grantSubscription: (token: string, data: { userId: string; planId: string; expiresAt?: string }) =>
+      request<AdminSubscription>('/admin/subscriptions', {
+        method: 'POST', body: JSON.stringify(data), ...bearer(token),
+      }),
+
+    revokeSubscription: (token: string, id: string) =>
+      request<AdminSubscription>(`/admin/subscriptions/${id}`, { method: 'DELETE', ...bearer(token) }),
+
+    getPlans: (token: string) =>
+      request<SubscriptionPlan[]>('/subscriptions/plans', bearer(token)),
   },
 
   moderation: {

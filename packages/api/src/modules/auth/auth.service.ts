@@ -212,6 +212,46 @@ export class AuthService {
     return { disabled: true }
   }
 
+  // ── Magic link ───────────────────────────────────────────────
+
+  async requestMagicLink(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email, deletedAt: null },
+      select: { id: true, locale: true },
+    })
+    // Réponse identique si l'email n'existe pas (prévention énumération)
+    if (!user) return
+
+    const token = await this.tokenService.createMagicLinkToken(email)
+    await this.emailService.sendMagicLinkEmail(email, token, user.locale)
+  }
+
+  async loginWithMagicLink(token: string, fingerprint: string) {
+    const email = await this.tokenService.consumeMagicLinkToken(token)
+    if (!email) throw new UnauthorizedException('Lien invalide ou expiré')
+
+    let user = await this.prisma.user.findUnique({
+      where: { email, deletedAt: null },
+      select: { id: true, email: true, role: true, emailVerified: true },
+    })
+
+    if (!user) {
+      // Création automatique d'un compte si l'email est inconnu (premier usage magic link)
+      user = await this.prisma.user.create({
+        data: { email, role: 'PARENT', emailVerified: true, emailVerifiedAt: new Date() },
+        select: { id: true, email: true, role: true, emailVerified: true },
+      })
+      this.logger.log(`New account created via magic link: ${email}`)
+    } else if (!user.emailVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true, emailVerifiedAt: new Date() },
+      })
+    }
+
+    return this.login(user.id, user.email, user.role, fingerprint)
+  }
+
   // ── OAuth helpers ─────────────────────────────────────────────
 
   async findOrCreateOAuthUser(profile: { googleId: string; email: string; locale?: string }) {

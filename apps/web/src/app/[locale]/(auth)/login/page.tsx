@@ -86,7 +86,13 @@ export default function LoginPage() {
         {loading ? 'Connexion…' : t('login')}
       </button>
 
-      <p className="mt-4 text-center text-sm text-gray-500">
+      <p className="mt-3 text-center text-sm">
+        <Link href={`/${locale}/auth/magic-link`} className="text-indigo-600 hover:underline">
+          Connexion sans mot de passe (lien email)
+        </Link>
+      </p>
+
+      <p className="mt-2 text-center text-sm text-gray-500">
         Pas encore de compte ?{' '}
         <Link href={`/${locale}/auth/register`} className="text-indigo-600 font-medium hover:underline">
           {t('register')}

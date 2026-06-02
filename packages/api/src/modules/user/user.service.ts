@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import * as argon2 from 'argon2'
 import { PrismaService } from '../../common/prisma/prisma.service'
+import { SubscriptionService } from '../subscription/subscription.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { RecordWatchDto } from './dto/record-watch.dto'
@@ -24,7 +25,10 @@ const PIN_SELECT = {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -45,12 +49,32 @@ export class UserService {
     })
   }
 
+  async getMyLimits(userId: string) {
+    const [{ maxProfiles, maxPlaylists, planSlug }, currentProfiles, currentPlaylists] =
+      await Promise.all([
+        this.subscriptionService.getUserPlanLimits(userId),
+        this.prisma.childProfile.count({ where: { userId, deletedAt: null } }),
+        this.prisma.playlist.count({ where: { ownerId: userId, deletedAt: null } }),
+      ])
+    return {
+      planSlug,
+      profiles: { current: currentProfiles, max: maxProfiles },
+      playlists: { current: currentPlaylists, max: maxPlaylists },
+    }
+  }
+
   async createProfile(userId: string, dto: CreateProfileDto) {
     const count = await this.prisma.childProfile.count({
       where: { userId, deletedAt: null },
     })
-    if (count >= 6) {
-      throw new BadRequestException('Maximum 6 profils enfants par compte')
+
+    const { maxProfiles, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
+    if (count >= maxProfiles) {
+      throw new BadRequestException(
+        planSlug === 'free'
+          ? 'Votre forfait gratuit est limité à 1 profil enfant. Passez à Premium pour créer des profils illimités.'
+          : `Maximum de profils enfants atteint (${maxProfiles})`,
+      )
     }
 
     const pinHash = await this.hashPin(dto.pin)
@@ -88,6 +112,7 @@ export class UserService {
         ...(dto.dailyLimitMin !== undefined && { dailyLimitMin: dto.dailyLimitMin }),
         ...(dto.sessionLimitMin !== undefined && { sessionLimitMin: dto.sessionLimitMin }),
         ...(dto.viewingSchedule !== undefined && { viewingSchedule: dto.viewingSchedule }),
+        ...('avatarKey' in dto && { avatarKey: dto.avatarKey }),
       },
       select: PIN_SELECT,
     })
@@ -246,6 +271,59 @@ export class UserService {
         }))
         .filter(w => w.video !== null),
     }
+  }
+
+  // ── Temps de visionnage quotidien ───────────────────────────
+
+  async getDailyWatchTime(userId: string, profileId: string): Promise<{ watchedSec: number }> {
+    await this.assertProfileOwner(userId, profileId)
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const agg = await this.prisma.watchHistory.aggregate({
+      where: { profileId, watchedAt: { gte: startOfDay } },
+      _sum: { durationWatchedSec: true },
+    })
+    return { watchedSec: agg._sum.durationWatchedSec ?? 0 }
+  }
+
+  // ── Favoris par profil enfant ────────────────────────────────
+
+  async getFavorites(userId: string, profileId: string) {
+    await this.assertProfileOwner(userId, profileId)
+    return this.prisma.videoFavorite.findMany({
+      where: { profileId },
+      include: {
+        video: {
+          select: { id: true, title: true, thumbnailUrl: true, durationSec: true, ageRating: true, language: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async addFavorite(userId: string, profileId: string, videoId: string) {
+    await this.assertProfileOwner(userId, profileId)
+
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      select: { id: true, validationStatus: true },
+    })
+    if (!video) throw new NotFoundException('Vidéo introuvable')
+    if (video.validationStatus !== 'APPROVED') {
+      throw new BadRequestException('Seules les vidéos approuvées peuvent être mises en favoris')
+    }
+
+    return this.prisma.videoFavorite.upsert({
+      where: { profileId_videoId: { profileId, videoId } },
+      create: { profileId, videoId },
+      update: {},
+      select: { id: true, videoId: true, createdAt: true },
+    })
+  }
+
+  async removeFavorite(userId: string, profileId: string, videoId: string) {
+    await this.assertProfileOwner(userId, profileId)
+    await this.prisma.videoFavorite.deleteMany({ where: { profileId, videoId } })
   }
 
   private async assertProfileOwner(userId: string, profileId: string) {

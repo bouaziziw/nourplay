@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: '/dashboard', label: 'Accueil', exact: true },
   { href: '/dashboard/playlists', label: 'Playlists' },
   { href: '/dashboard/videos', label: 'Vidéothèque' },
+  { href: '/dashboard/subscription', label: 'Abonnement' },
 ]
 
 function DashboardNav() {

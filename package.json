@@ -14,14 +14,15 @@
     "test:e2e": "turbo run test:e2e",
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules",
-    "db:migrate": "pnpm --filter @nourplay/db migrate:dev",
-    "db:migrate:prod": "pnpm --filter @nourplay/db migrate:deploy",
-    "db:seed": "pnpm --filter @nourplay/db seed",
-    "db:studio": "pnpm --filter @nourplay/db studio",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:dev",
+    "db:migrate:prod": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:deploy",
+    "db:seed": "dotenv -e .env -- pnpm --filter @nourplay/db seed",
+    "db:studio": "dotenv -e .env -- pnpm --filter @nourplay/db studio",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "dotenv-cli": "^7.1.0",
     "prettier": "^3.3.3",
     "turbo": "^2.3.3",
     "typescript": "^5.5.4"
