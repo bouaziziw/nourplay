@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
-import { api, ProfileSummary, UserBlock, ProfileAnalytics } from '../../../../../lib/api'
+import { api, ProfileSummary, UserBlock, ProfileAnalytics, VideoFavorite } from '../../../../../lib/api'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3 ans' },
@@ -47,7 +47,11 @@ export default function EditProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [tab, setTab] = useState<'settings' | 'history' | 'filters' | 'stats'>('settings')
+  const [tab, setTab] = useState<'settings' | 'history' | 'filters' | 'stats' | 'favorites'>('settings')
+
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     displayName: '',
@@ -64,6 +68,9 @@ export default function EditProfilePage() {
 
   const [analytics, setAnalytics] = useState<ProfileAnalytics | null>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
+
+  const [favorites, setFavorites] = useState<VideoFavorite[]>([])
+  const [favoritesLoading, setFavoritesLoading] = useState(false)
 
   const [blocks, setBlocks] = useState<UserBlock[]>([])
   const [blocksLoading, setBlocksLoading] = useState(false)
@@ -97,6 +104,15 @@ export default function EditProfilePage() {
       .then(setHistory)
       .catch(() => {})
       .finally(() => setHistoryLoading(false))
+  }, [tab, token, id])
+
+  useEffect(() => {
+    if (tab !== 'favorites' || !token) return
+    setFavoritesLoading(true)
+    api.favorites.list(token, id)
+      .then(setFavorites)
+      .catch(() => {})
+      .finally(() => setFavoritesLoading(false))
   }, [tab, token, id])
 
   useEffect(() => {
@@ -140,6 +156,36 @@ export default function EditProfilePage() {
       setBlocks(prev => prev.filter(b => b.id !== blockId))
     } catch {
       // ignore
+    }
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !token) return
+    setAvatarError('')
+    setAvatarUploading(true)
+
+    try {
+      const { uploadUrl, key, publicUrl } = await api.storage.getPresignedUploadUrl(token, {
+        folder: 'avatars',
+        contentType: file.type,
+        sizeBytes: file.size,
+      })
+
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+
+      await api.users.updateProfile(token, id, { avatarKey: key })
+      setProfile(p => p ? { ...p, avatarKey: key } : p)
+      setAvatarPreview(publicUrl || URL.createObjectURL(file))
+    } catch (err: unknown) {
+      setAvatarError(err instanceof Error ? err.message : 'Erreur lors du téléversement.')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
     }
   }
 
@@ -204,8 +250,11 @@ export default function EditProfilePage() {
           </svg>
         </button>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600">
-            {profile.displayName.slice(0, 2).toUpperCase()}
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-600 shrink-0">
+            {(avatarPreview || profile.avatarKey)
+              ? <img src={avatarPreview ?? `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL}/${profile.avatarKey}`} alt="" className="w-full h-full object-cover" />
+              : profile.displayName.slice(0, 2).toUpperCase()
+            }
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{profile.displayName}</h1>
         </div>
@@ -213,7 +262,7 @@ export default function EditProfilePage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit flex-wrap">
-        {(['settings', 'stats', 'filters', 'history'] as const).map(t => (
+        {(['settings', 'stats', 'filters', 'history', 'favorites'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -221,7 +270,11 @@ export default function EditProfilePage() {
               tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            {t === 'settings' ? 'Paramètres' : t === 'stats' ? 'Statistiques' : t === 'filters' ? 'Filtres' : 'Historique'}
+            {t === 'settings' ? 'Paramètres'
+              : t === 'stats' ? 'Statistiques'
+              : t === 'filters' ? 'Filtres'
+              : t === 'history' ? 'Historique'
+              : 'Favoris'}
           </button>
         ))}
       </div>
@@ -234,6 +287,35 @@ export default function EditProfilePage() {
 
           <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
             <h2 className="font-semibold text-gray-900">Informations</h2>
+
+            {/* Avatar upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Photo de profil</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-indigo-50 flex items-center justify-center text-xl font-bold text-indigo-400 shrink-0">
+                  {(avatarPreview || profile.avatarKey)
+                    ? <img src={avatarPreview ?? `${process.env.NEXT_PUBLIC_S3_PUBLIC_URL}/${profile.avatarKey}`} alt="" className="w-full h-full object-cover" />
+                    : profile.displayName.slice(0, 2).toUpperCase()
+                  }
+                </div>
+                <div className="space-y-1.5">
+                  <label className={`inline-block cursor-pointer h-9 px-4 text-sm font-medium rounded-lg border transition-colors ${
+                    avatarUploading ? 'opacity-50 pointer-events-none border-gray-200 text-gray-400' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'
+                  }`}>
+                    {avatarUploading ? 'Téléversement…' : 'Changer la photo'}
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                    />
+                  </label>
+                  {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
+                  <p className="text-xs text-gray-400">JPG, PNG ou WebP · max 5 MB</p>
+                </div>
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom affiché</label>
@@ -495,6 +577,52 @@ export default function EditProfilePage() {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {tab === 'favorites' && (
+        <div className="space-y-4">
+          {favoritesLoading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+            </div>
+          ) : favorites.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-200 text-center py-14 text-gray-400 text-sm">
+              Aucune vidéo en favoris pour ce profil.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {favorites.map(fav => (
+                <div key={fav.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden flex gap-3 p-3 group">
+                  <div className="w-20 h-14 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                    {fav.video.thumbnailUrl
+                      ? <img src={fav.video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-xl">🎥</div>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                    <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{fav.video.title}</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(fav.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!token) return
+                      await api.favorites.remove(token, id, fav.videoId).catch(() => {})
+                      setFavorites(prev => prev.filter(f => f.id !== fav.id))
+                    }}
+                    title="Retirer des favoris"
+                    className="self-start text-gray-300 hover:text-red-500 transition-colors mt-0.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

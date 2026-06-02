@@ -34,4 +34,9 @@ export class UpdateProfileDto {
   })
   @IsOptional()
   viewingSchedule?: Record<string, string[]>
+
+  @ApiProperty({ required: false, description: 'Clé S3 de l\'avatar (ex: avatars/uuid.webp)' })
+  @IsOptional()
+  @IsString()
+  avatarKey?: string | null
 }
