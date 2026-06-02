@@ -1,0 +1,115 @@
+name: E2E Tests (Playwright)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  playwright:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nourplay
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: nourplay_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # API
+      DATABASE_URL: postgresql://nourplay:secret@localhost:5432/nourplay_e2e
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: e2e-access-secret-min-32-characters-ok
+      JWT_REFRESH_SECRET: e2e-refresh-secret-min-32-characters-ok
+      COOKIE_SECRET: e2e-cookie-secret-min-32-characters-ok
+      NODE_ENV: test
+      PORT: 4000
+      CORS_ORIGINS: http://localhost:3000
+      # Web
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      BASE_URL: http://localhost:3000
+      # Playwright test account (seeded below)
+      TEST_EMAIL: parent@nourplay.local
+      TEST_PASSWORD: Parent1234!
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @nourplay/web exec playwright install --with-deps chromium
+
+      - name: Run DB migrations
+        run: pnpm --filter @nourplay/db migrate:deploy
+
+      - name: Seed test database
+        run: pnpm --filter @nourplay/db seed
+
+      - name: Build API
+        run: pnpm --filter @nourplay/api build
+
+      - name: Start API server
+        run: pnpm --filter @nourplay/api start &
+
+      - name: Build web app
+        run: pnpm --filter @nourplay/web build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+
+      - name: Start web server
+        run: pnpm --filter @nourplay/web start &
+
+      - name: Wait for servers to be ready
+        run: |
+          npx wait-on http://localhost:4000/api/health --timeout 30000
+          npx wait-on http://localhost:3000 --timeout 30000
+
+      - name: Run Playwright tests
+        run: pnpm --filter @nourplay/web test:e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
