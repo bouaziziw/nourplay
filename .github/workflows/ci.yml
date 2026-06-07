@@ -183,17 +183,5 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
 
-  # ── Deploy Staging (push sur main uniquement) ────────────────
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build, test-integration]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to staging
-        run: echo "Deploy to staging — configurer selon l'hébergeur choisi (Railway, Render, K8s...)"
-        env:
-          DEPLOY_TOKEN: ${{ secrets.STAGING_DEPLOY_TOKEN }}
+  # Deploy is handled by .github/workflows/deploy.yml
+  # It triggers automatically via workflow_run when this CI completes on main.

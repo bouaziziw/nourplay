@@ -1,0 +1,219 @@
+name: Deploy
+
+on:
+  # Auto-deploy to staging when CI passes on main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Manual trigger for staging or production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, production]
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  # Short SHA used as image tag (7 chars)
+  IMAGE_TAG: ${{ github.sha && github.sha || github.event.workflow_run.head_sha }}
+
+jobs:
+  # ── Guard: skip if CI failed ──────────────────────────────────
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      - id: gate
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Build & push Docker images ────────────────────────────────
+  build-push:
+    name: Build & Push images
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.should_run == 'true'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      # ── API image ─────────────────────────────────────────────
+      - name: Build & push API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nourplay-api:${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/nourplay-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Migrate image ─────────────────────────────────────────
+      - name: Build & push Migrate
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/db/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nourplay-migrate:${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/nourplay-migrate:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Web image ─────────────────────────────────────────────
+      - name: Build & push Web
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.STAGING_API_URL || 'https://api.staging.nourplay.app/api/v1' }}
+          tags: |
+            ${{ env.REGISTRY }}/nourplay-web:${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/nourplay-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image tag
+        run: echo "IMAGE_TAG=${{ steps.sha.outputs.short }}" >> $GITHUB_STEP_SUMMARY
+
+  # ── Deploy to Staging ─────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: |
+      needs.build-push.result == 'success' &&
+      (github.event_name == 'workflow_run' ||
+       (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging'))
+    environment:
+      name: staging
+      url: https://staging.nourplay.app
+
+    steps:
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: REGISTRY,IMAGE_TAG,GHCR_TOKEN,GH_ACTOR
+          script: |
+            set -e
+            cd /opt/nourplay
+
+            # Authenticate Docker to pull from ghcr.io
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            # Write image coordinates for docker compose
+            printf "REGISTRY=%s\nIMAGE_TAG=%s\n" "$REGISTRY" "$IMAGE_TAG" > .image.env
+
+            # Pull new images
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml \
+              pull migrate api web
+
+            # Restart services (migrate runs first, then api + web)
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml \
+              up -d --remove-orphans
+
+            # Basic health check
+            sleep 5
+            curl -fsS http://localhost:4000/api/health || (docker compose logs api --tail 50 && exit 1)
+
+            # Remove dangling images to free disk space
+            docker image prune -f
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_TAG: ${{ steps.sha.outputs.short }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+
+  # ── Deploy to Production ──────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: |
+      needs.build-push.result == 'success' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://nourplay.app
+
+    steps:
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: REGISTRY,IMAGE_TAG,GHCR_TOKEN,GH_ACTOR
+          script: |
+            set -e
+            cd /opt/nourplay
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+
+            printf "REGISTRY=%s\nIMAGE_TAG=%s\n" "$REGISTRY" "$IMAGE_TAG" > .image.env
+
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml \
+              pull migrate api web
+
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml \
+              up -d --remove-orphans
+
+            sleep 5
+            curl -fsS http://localhost:4000/api/health || (docker compose logs api --tail 50 && exit 1)
+
+            docker image prune -f
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_TAG: ${{ steps.sha.outputs.short }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
