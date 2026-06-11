@@ -102,6 +102,7 @@ export interface ProfileAnalytics {
   today: { watchedSec: number; count: number }
   week: { watchedSec: number; count: number }
   month: { watchedSec: number; count: number; completionRate: number }
+  watchTimeByDay: Array<{ date: string; watchedSec: number }>
   topVideos: Array<{
     video: { id: string; title: string; thumbnailUrl: string | null; durationSec: number | null }
     watchCount: number

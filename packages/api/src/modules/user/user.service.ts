@@ -210,7 +210,7 @@ export class UserService {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    const [todayAgg, weekAgg, monthAgg, monthCompleted, topVideos] = await Promise.all([
+    const [todayAgg, weekAgg, monthAgg, monthCompleted, topVideos, weekRaw] = await Promise.all([
       this.prisma.watchHistory.aggregate({
         where: { profileId, watchedAt: { gte: todayStart } },
         _sum: { durationWatchedSec: true },
@@ -237,7 +237,25 @@ export class UserService {
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       }),
+      this.prisma.watchHistory.findMany({
+        where: { profileId, watchedAt: { gte: weekAgo } },
+        select: { watchedAt: true, durationWatchedSec: true },
+      }),
     ])
+
+    // Build per-day watch time for the last 7 days
+    const dayMap = new Map<string, number>()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      dayMap.set(key, 0)
+    }
+    for (const entry of weekRaw) {
+      const d = new Date(entry.watchedAt)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (dayMap.has(key)) dayMap.set(key, (dayMap.get(key) ?? 0) + entry.durationWatchedSec)
+    }
+    const watchTimeByDay = Array.from(dayMap.entries()).map(([date, watchedSec]) => ({ date, watchedSec }))
 
     const videoIds = topVideos.map(w => w.videoId)
     const videos = videoIds.length
@@ -263,6 +281,7 @@ export class UserService {
         count: monthTotal,
         completionRate: monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0,
       },
+      watchTimeByDay,
       topVideos: topVideos
         .map(w => ({
           video: videoMap.get(w.videoId) ?? null,

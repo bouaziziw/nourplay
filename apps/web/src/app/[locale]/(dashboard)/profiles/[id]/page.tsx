@@ -548,6 +548,45 @@ export default function EditProfilePage() {
                 ))}
               </div>
 
+              {/* Daily bar chart */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <h3 className="font-semibold text-gray-900 mb-4">Visionnage par jour (7 jours)</h3>
+                {(() => {
+                  const days = analytics.watchTimeByDay
+                  const maxSec = Math.max(...days.map(d => d.watchedSec), 1)
+                  const DAY_LABELS: Record<string, string> = {
+                    '0': 'Dim', '1': 'Lun', '2': 'Mar', '3': 'Mer', '4': 'Jeu', '5': 'Ven', '6': 'Sam',
+                  }
+                  return (
+                    <div className="flex items-end gap-1.5 h-28">
+                      {days.map(({ date, watchedSec }) => {
+                        const pct = Math.round((watchedSec / maxSec) * 100)
+                        const dayIdx = String(new Date(date + 'T12:00:00').getDay())
+                        const isToday = date === new Date().toISOString().slice(0, 10)
+                        return (
+                          <div key={date} className="flex flex-col items-center gap-1 flex-1">
+                            {watchedSec > 0 && (
+                              <span className="text-[10px] text-gray-400 leading-none">
+                                {formatWatchTime(watchedSec)}
+                              </span>
+                            )}
+                            <div className="w-full flex items-end" style={{ height: '72px' }}>
+                              <div
+                                className={`w-full rounded-t transition-all ${isToday ? 'bg-indigo-500' : 'bg-indigo-200'}`}
+                                style={{ height: `${Math.max(pct, watchedSec > 0 ? 8 : 2)}%` }}
+                              />
+                            </div>
+                            <span className={`text-[11px] font-medium ${isToday ? 'text-indigo-600' : 'text-gray-400'}`}>
+                              {DAY_LABELS[dayIdx]}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+
               {/* Top videos */}
               <div className="bg-white rounded-2xl border border-gray-200 p-5">
                 <h3 className="font-semibold text-gray-900 mb-4">Vidéos les plus regardées (30 j)</h3>
