@@ -93,6 +93,50 @@ export class VideoService {
     return video
   }
 
+  async findSimilar(videoId: string, limit = 4) {
+    const video = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      select: { ageRating: true, language: true },
+    })
+    if (!video) throw new NotFoundException('Vidéo introuvable')
+
+    const videoSelect = {
+      id: true, title: true, thumbnailUrl: true,
+      embedUrl: true, durationSec: true, language: true, ageRating: true,
+    }
+    const baseWhere = { validationStatus: 'APPROVED' as const }
+
+    // Tier 1: same ageRating + same language
+    const tier1 = await this.prisma.video.findMany({
+      where: {
+        ...baseWhere,
+        id: { not: videoId },
+        ageRating: video.ageRating,
+        ...(video.language ? { language: video.language } : {}),
+      },
+      select: videoSelect,
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    })
+
+    if (tier1.length >= limit) return tier1
+
+    // Tier 2: same ageRating, any language — fill remaining slots
+    const found = tier1.map(v => v.id)
+    const tier2 = await this.prisma.video.findMany({
+      where: {
+        ...baseWhere,
+        id: { notIn: [videoId, ...found] },
+        ageRating: video.ageRating,
+      },
+      select: videoSelect,
+      orderBy: { createdAt: 'desc' },
+      take: limit - tier1.length,
+    })
+
+    return [...tier1, ...tier2]
+  }
+
   async listTags() {
     return this.prisma.tag.findMany({
       orderBy: { name: 'asc' },

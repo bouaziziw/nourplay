@@ -339,6 +339,9 @@ export const api = {
     getById: (token: string, id: string) =>
       request<VideoSearchResult>(`/videos/${id}`, bearer(token)),
 
+    getSimilar: (token: string, id: string, limit = 4) =>
+      request<VideoSummary[]>(`/videos/${id}/similar?limit=${limit}`, bearer(token)),
+
     submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
       request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
 

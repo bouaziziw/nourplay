@@ -58,6 +58,16 @@ export class VideoController {
     })
   }
 
+  @Get(':id/similar')
+  @ApiOperation({ summary: 'Vidéos similaires' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findSimilar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('limit') limit = 4,
+  ) {
+    return this.videoService.findSimilar(id, +limit)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Détail d\'une vidéo' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {

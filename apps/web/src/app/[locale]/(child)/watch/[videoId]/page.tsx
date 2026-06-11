@@ -6,7 +6,7 @@ import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { useChildSession } from '../../../../../hooks/useChildSession'
 import { VideoPlayer } from '../../../../../components/VideoPlayer'
-import { api, PlaylistDetail } from '../../../../../lib/api'
+import { api, PlaylistDetail, VideoSummary } from '../../../../../lib/api'
 
 export default function ChildWatchPage() {
   const { videoId } = useParams<{ videoId: string }>()
@@ -18,6 +18,7 @@ export default function ChildWatchPage() {
   const { session } = useChildSession()
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [similarVideos, setSimilarVideos] = useState<VideoSummary[]>([])
 
   useEffect(() => {
     if (!token || !playlistId) {
@@ -29,6 +30,13 @@ export default function ChildWatchPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [token, playlistId])
+
+  useEffect(() => {
+    if (!token || !videoId) return
+    api.videos.getSimilar(token, videoId)
+      .then(setSimilarVideos)
+      .catch(() => {})
+  }, [token, videoId])
 
   const handleWatched = (durationSec: number, completed: boolean) => {
     if (!token || !session?.profileId) return
@@ -105,6 +113,35 @@ export default function ChildWatchPage() {
           </p>
         )}
       </div>
+
+      {/* Similar videos */}
+      {similarVideos.length > 0 && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm">
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-3 font-medium">Vous pourriez aimer</p>
+          <div className="grid grid-cols-2 gap-3">
+            {similarVideos.map(sv => (
+              <button
+                key={sv.id}
+                onClick={() => router.push(`/${locale}/child/watch/${sv.id}${playlistId ? `?playlist=${playlistId}` : ''}`)}
+                className="text-left group"
+              >
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-1.5" style={{ paddingBottom: '56.25%' }}>
+                  {sv.thumbnailUrl ? (
+                    <img src={sv.thumbnailUrl} alt={sv.title} className="absolute inset-0 w-full h-full object-cover" />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-2xl">🎥</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs font-medium text-gray-800 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                  {sv.title}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Next video */}
       {nextVideo && (
