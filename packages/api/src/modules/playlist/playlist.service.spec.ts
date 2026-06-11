@@ -8,6 +8,7 @@ const makePrisma = () => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
   },
   playlistVideo: {
     create: vi.fn(),
@@ -25,14 +26,20 @@ const makePrisma = () => ({
   $transaction: vi.fn(),
 })
 
+const makeSubscriptionService = () => ({
+  getUserPlanLimits: vi.fn().mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' }),
+})
+
 describe('PlaylistService', () => {
   let service: PlaylistService
   let prisma: ReturnType<typeof makePrisma>
+  let subscriptionService: ReturnType<typeof makeSubscriptionService>
 
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = makePrisma()
-    service = new PlaylistService(prisma as never)
+    subscriptionService = makeSubscriptionService()
+    service = new PlaylistService(prisma as never, subscriptionService as never)
   })
 
   // ── findAll ───────────────────────────────────────────────────
@@ -53,7 +60,9 @@ describe('PlaylistService', () => {
   // ── create ────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('creates a playlist with default arrays', async () => {
+    it('creates a playlist with default arrays when under the limit', async () => {
+      prisma.playlist.count.mockResolvedValue(2)
+      subscriptionService.getUserPlanLimits.mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' })
       const created = { id: 'pl-new', name: 'Animals' }
       prisma.playlist.create.mockResolvedValue(created)
 
@@ -63,6 +72,15 @@ describe('PlaylistService', () => {
       const data = prisma.playlist.create.mock.calls[0][0].data
       expect(data.targetAgeGroup).toEqual([])
       expect(data.languages).toEqual([])
+    })
+
+    it('lève BadRequestException quand la limite de playlists est atteinte', async () => {
+      prisma.playlist.count.mockResolvedValue(5)
+      subscriptionService.getUserPlanLimits.mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' })
+
+      await expect(
+        service.create('user-1', { name: 'Trop', visibility: 'PRIVATE' } as never),
+      ).rejects.toThrow(BadRequestException)
     })
   })
 

@@ -29,16 +29,27 @@ const makePrisma = () => ({
     delete: vi.fn(),
   },
   video: { findUnique: vi.fn() },
+  videoFavorite: {
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+})
+
+const makeSubscriptionService = () => ({
+  getUserPlanLimits: vi.fn().mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' }),
 })
 
 describe('UserService', () => {
   let service: UserService
   let prisma: ReturnType<typeof makePrisma>
+  let subscriptionService: ReturnType<typeof makeSubscriptionService>
 
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = makePrisma()
-    service = new UserService(prisma as never)
+    subscriptionService = makeSubscriptionService()
+    service = new UserService(prisma as never, subscriptionService as never)
   })
 
   // ── findById ──────────────────────────────────────────────────
@@ -77,8 +88,9 @@ describe('UserService', () => {
   describe('createProfile', () => {
     const dto = { displayName: 'Bob', ageGroup: 'K6', pin: '1234' } as never
 
-    it('creates a profile when under the 6-profile limit', async () => {
-      prisma.childProfile.count.mockResolvedValue(2)
+    it('crée un profil quand le compte est en dessous de la limite', async () => {
+      prisma.childProfile.count.mockResolvedValue(0)
+      subscriptionService.getUserPlanLimits.mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' })
       const profile = { id: 'p-new', displayName: 'Bob' }
       prisma.childProfile.create.mockResolvedValue(profile)
 
@@ -89,8 +101,17 @@ describe('UserService', () => {
       expect(data.pinHash).toBe('$argon2id$hashed_pin')
     })
 
-    it('throws BadRequestException when 6 profiles already exist', async () => {
-      prisma.childProfile.count.mockResolvedValue(6)
+    it('lève BadRequestException avec message free quand la limite gratuite est atteinte', async () => {
+      prisma.childProfile.count.mockResolvedValue(1)
+      subscriptionService.getUserPlanLimits.mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' })
+
+      await expect(service.createProfile('u-1', dto)).rejects.toThrow(BadRequestException)
+    })
+
+    it('lève BadRequestException avec message générique pour les plans premium', async () => {
+      prisma.childProfile.count.mockResolvedValue(999)
+      subscriptionService.getUserPlanLimits.mockResolvedValue({ maxProfiles: 999, maxPlaylists: 999, planSlug: 'premium-monthly' })
+
       await expect(service.createProfile('u-1', dto)).rejects.toThrow(BadRequestException)
     })
   })
@@ -213,6 +234,90 @@ describe('UserService', () => {
     it('throws NotFoundException when block does not exist', async () => {
       prisma.userBlock.findUnique.mockResolvedValue(null)
       await expect(service.deleteBlock('u-1', 'missing')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── getFavorites ──────────────────────────────────────────────
+
+  describe('getFavorites', () => {
+    it('retourne les favoris du profil', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      const favorites = [{ id: 'f-1', video: { id: 'v-1', title: 'Test' } }]
+      prisma.videoFavorite.findMany.mockResolvedValue(favorites)
+
+      expect(await service.getFavorites('u-1', 'p-1')).toBe(favorites)
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas à l\'utilisateur', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+
+      await expect(service.getFavorites('u-2', 'p-1')).rejects.toThrow(NotFoundException)
+      expect(prisma.videoFavorite.findMany).not.toHaveBeenCalled()
+    })
+  })
+
+  // ── addFavorite ───────────────────────────────────────────────
+
+  describe('addFavorite', () => {
+    it('ajoute la vidéo aux favoris (upsert idempotent)', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+      const favorite = { id: 'f-1', videoId: 'v-1', createdAt: new Date() }
+      prisma.videoFavorite.upsert.mockResolvedValue(favorite)
+
+      expect(await service.addFavorite('u-1', 'p-1', 'v-1')).toBe(favorite)
+      expect(prisma.videoFavorite.upsert.mock.calls[0][0].where).toEqual({
+        profileId_videoId: { profileId: 'p-1', videoId: 'v-1' },
+      })
+    })
+
+    it('lève NotFoundException si la vidéo est introuvable', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.video.findUnique.mockResolvedValue(null)
+
+      await expect(service.addFavorite('u-1', 'p-1', 'bad-id')).rejects.toThrow(NotFoundException)
+      expect(prisma.videoFavorite.upsert).not.toHaveBeenCalled()
+    })
+
+    it('lève BadRequestException si la vidéo n\'est pas APPROVED', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'PENDING' })
+
+      await expect(service.addFavorite('u-1', 'p-1', 'v-1')).rejects.toThrow(BadRequestException)
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas à l\'utilisateur', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+
+      await expect(service.addFavorite('u-2', 'p-1', 'v-1')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── removeFavorite ────────────────────────────────────────────
+
+  describe('removeFavorite', () => {
+    it('supprime le favori du profil', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoFavorite.deleteMany.mockResolvedValue({ count: 1 })
+
+      await service.removeFavorite('u-1', 'p-1', 'v-1')
+
+      expect(prisma.videoFavorite.deleteMany).toHaveBeenCalledWith({
+        where: { profileId: 'p-1', videoId: 'v-1' },
+      })
+    })
+
+    it('ne lève pas d\'erreur si le favori n\'existait pas (deleteMany = 0)', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoFavorite.deleteMany.mockResolvedValue({ count: 0 })
+
+      await expect(service.removeFavorite('u-1', 'p-1', 'v-gone')).resolves.not.toThrow()
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas à l\'utilisateur', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+
+      await expect(service.removeFavorite('u-2', 'p-1', 'v-1')).rejects.toThrow(NotFoundException)
     })
   })
 })

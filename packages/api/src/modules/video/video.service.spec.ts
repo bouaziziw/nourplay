@@ -15,6 +15,12 @@ const makePrisma = () => ({
 
 const makeQueue = () => ({ add: vi.fn().mockResolvedValue(undefined) })
 
+const makeCache = () => ({
+  get: vi.fn().mockResolvedValue(null),
+  set: vi.fn().mockResolvedValue(undefined),
+  del: vi.fn().mockResolvedValue(undefined),
+})
+
 const YOUTUBE_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 const VIMEO_URL = 'https://vimeo.com/123456789'
 
@@ -22,12 +28,15 @@ describe('VideoService', () => {
   let service: VideoService
   let prisma: ReturnType<typeof makePrisma>
   let queue: ReturnType<typeof makeQueue>
+  let cache: ReturnType<typeof makeCache>
 
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = makePrisma()
     queue = makeQueue()
-    service = new VideoService(prisma as never, queue as never)
+    cache = makeCache()
+    // Constructor order: (prisma, cache, validationQueue)
+    service = new VideoService(prisma as never, cache as never, queue as never)
   })
 
   // ── submit ────────────────────────────────────────────────────
