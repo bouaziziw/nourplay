@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { api, ProfileSummary, UserBlock, ProfileAnalytics, VideoFavorite } from '../../../../../lib/api'
+import { ScheduleEditor } from '../../../../../components/ScheduleEditor'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3 ans' },
@@ -383,22 +384,15 @@ export default function EditProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
             <div>
               <h2 className="font-semibold text-gray-900">Plages horaires autorisées</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Format : <code>08:00-12:00, 14:00-18:00</code></p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Créneaux pendant lesquels {profile.displayName} peut regarder des vidéos.
+                Sans créneau défini, la lecture est autorisée à toute heure.
+              </p>
             </div>
-            <div className="space-y-2.5">
-              {DAYS.map(d => (
-                <div key={d.key} className="flex items-center gap-3">
-                  <span className="w-8 text-xs font-medium text-gray-500">{d.label}</span>
-                  <input
-                    type="text"
-                    value={form.schedule[d.key] ?? ''}
-                    onChange={e => setForm(f => ({ ...f, schedule: { ...f.schedule, [d.key]: e.target.value } }))}
-                    placeholder="Toute la journée"
-                    className="flex-1 h-9 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                </div>
-              ))}
-            </div>
+            <ScheduleEditor
+              value={form.schedule}
+              onChange={schedule => setForm(f => ({ ...f, schedule }))}
+            />
           </div>
 
           <div className="flex items-center gap-3">
