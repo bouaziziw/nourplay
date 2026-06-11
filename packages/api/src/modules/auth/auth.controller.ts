@@ -47,6 +47,7 @@ export class AuthController {
   @Public()
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 300000 } })
   @ApiOperation({ summary: 'Vérifier l\'adresse email avec le token reçu' })
   verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto.token)
@@ -116,6 +117,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: 'Rotation du refresh token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE]
@@ -154,6 +156,7 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   @ApiOperation({ summary: 'Réinitialiser le mot de passe avec le token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password)
@@ -173,6 +176,7 @@ export class AuthController {
 
   @Public()
   @Get('magic-link/verify')
+  @Throttle({ default: { limit: 10, ttl: 300000 } })
   @ApiOperation({ summary: 'Vérifier le token magic link et créer la session' })
   async verifyMagicLink(
     @Query('token') token: string,

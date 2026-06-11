@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsJSON, IsOptional, IsString, Length, Max, Min } from 'class-validator'
+import { IsEnum, IsInt, IsObject, IsOptional, IsString, Length, Max, Min } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { AgeGroup } from '@nourplay/db'
 
@@ -33,6 +33,7 @@ export class UpdateProfileDto {
     description: 'Planning de visionnage { "mon": ["08:00-12:00"], ... }',
   })
   @IsOptional()
+  @IsObject()
   viewingSchedule?: Record<string, string[]>
 
   @ApiProperty({ required: false, description: 'Clé S3 de l\'avatar (ex: avatars/uuid.webp)' })
