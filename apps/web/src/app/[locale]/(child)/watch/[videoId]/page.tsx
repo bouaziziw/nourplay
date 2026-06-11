@@ -6,7 +6,7 @@ import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { useChildSession } from '../../../../../hooks/useChildSession'
 import { VideoPlayer } from '../../../../../components/VideoPlayer'
-import { api, PlaylistDetail, VideoSummary } from '../../../../../lib/api'
+import { api, PlaylistDetail, VideoSummary, VideoSearchResult } from '../../../../../lib/api'
 
 export default function ChildWatchPage() {
   const { videoId } = useParams<{ videoId: string }>()
@@ -17,19 +17,24 @@ export default function ChildWatchPage() {
   const { token } = useAuth()
   const { session } = useChildSession()
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
+  const [directVideo, setDirectVideo] = useState<VideoSearchResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [similarVideos, setSimilarVideos] = useState<VideoSummary[]>([])
 
   useEffect(() => {
-    if (!token || !playlistId) {
-      setLoading(false)
-      return
+    if (!token) { setLoading(false); return }
+    if (playlistId) {
+      api.playlists.getById(token, playlistId)
+        .then(setPlaylist)
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    } else {
+      api.videos.getById(token, videoId)
+        .then(setDirectVideo)
+        .catch(() => {})
+        .finally(() => setLoading(false))
     }
-    api.playlists.getById(token, playlistId)
-      .then(setPlaylist)
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [token, playlistId])
+  }, [token, playlistId, videoId])
 
   useEffect(() => {
     if (!token || !videoId) return
@@ -47,7 +52,8 @@ export default function ChildWatchPage() {
     }).catch(() => {})
   }
 
-  const video = playlist?.playlistVideos.find(pv => pv.video.id === videoId)?.video
+  const playlistVideo = playlist?.playlistVideos.find(pv => pv.video.id === videoId)?.video
+  const video = playlistVideo ?? directVideo
   const currentIndex = playlist?.playlistVideos.findIndex(pv => pv.video.id === videoId) ?? -1
   const sortedVideos = playlist
     ? [...playlist.playlistVideos].sort((a, b) => a.position - b.position)
@@ -88,7 +94,7 @@ export default function ChildWatchPage() {
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
-        Retour à la playlist
+        {playlistId ? 'Retour à la playlist' : 'Retour'}
       </button>
 
       {/* Player */}

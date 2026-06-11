@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { AuthProvider, useAuth } from '../../../hooks/useAuth'
@@ -94,6 +95,15 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
               {session.displayName.slice(0, 2).toUpperCase()}
             </div>
             <span className="font-semibold text-gray-800 text-sm">{session.displayName}</span>
+            <Link
+              href={`/${locale}/child/favorites`}
+              title="Mes favoris"
+              className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
