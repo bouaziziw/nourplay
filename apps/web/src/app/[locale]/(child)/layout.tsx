@@ -72,6 +72,16 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
         />
       )
     }
+
+    if (dailyWatchedSec !== null && isDailyLimitReached(session.dailyLimitMin, dailyWatchedSec)) {
+      return (
+        <BlockingScreen
+          title="Objectif du jour atteint 🌟"
+          message={`${session.displayName} a atteint sa limite de visionnage pour aujourd'hui. À demain !`}
+          onExit={() => { clear(); router.replace(`/${locale}/dashboard`) }}
+        />
+      )
+    }
   }
 
   return (
@@ -87,9 +97,14 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {session.dailyLimitMin && dailyWatchedSec !== null && (
+              <span className="text-xs text-gray-400">
+                {Math.max(0, session.dailyLimitMin - Math.floor(dailyWatchedSec / 60))} min / jour
+              </span>
+            )}
             {session.sessionLimitMin && (
               <span className="text-xs text-gray-400">
-                {Math.max(0, session.sessionLimitMin - sessionElapsedMin(session.activatedAt))} min restantes
+                {Math.max(0, session.sessionLimitMin - sessionElapsedMin(session.activatedAt))} min session
               </span>
             )}
             <button
