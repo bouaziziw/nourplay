@@ -71,6 +71,12 @@ export interface PlaylistSummary {
   _count: { playlistVideos: number }
 }
 
+export interface Tag {
+  id: string
+  name: string
+  locale: string
+}
+
 export interface VideoSearchResult {
   id: string
   title: string
@@ -313,11 +319,15 @@ export const api = {
   },
 
   videos: {
-    search: (token: string, params: { q?: string; language?: string; ageRating?: string; page?: number; limit?: number }) => {
+    listTags: (token: string) =>
+      request<Tag[]>('/videos/tags', bearer(token)),
+
+    search: (token: string, params: { q?: string; language?: string; ageRating?: string; tags?: string[]; page?: number; limit?: number }) => {
       const qs = new URLSearchParams()
       if (params.q) qs.set('q', params.q)
       if (params.language) qs.set('language', params.language)
       if (params.ageRating) qs.set('ageRating', params.ageRating)
+      if (params.tags?.length) qs.set('tags', params.tags.join(','))
       if (params.page) qs.set('page', String(params.page))
       if (params.limit) qs.set('limit', String(params.limit))
       return request<{ items: VideoSearchResult[]; total: number; page: number; pages: number }>(

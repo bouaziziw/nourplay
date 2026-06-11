@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../hooks/useAuth'
-import { api, VideoSearchResult, ApiError } from '../../../../lib/api'
+import { api, VideoSearchResult, Tag, ApiError } from '../../../../lib/api'
 import { AddToPlaylistModal } from '../../../../components/AddToPlaylistModal'
 import { AddToFavoritesModal } from '../../../../components/AddToFavoritesModal'
 
@@ -15,6 +15,19 @@ const AGE_RATINGS = [
   { value: 'AGE_7_PLUS', label: '7+' },
   { value: 'AGE_10_PLUS', label: '10+' },
   { value: 'AGE_13_PLUS', label: '13+' },
+]
+
+const LANGUAGES = [
+  { value: '', label: 'Toutes les langues' },
+  { value: 'fr', label: 'Français' },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Español' },
+  { value: 'ar', label: 'العربية' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'pt', label: 'Português' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'zh', label: '中文' },
+  { value: 'ja', label: '日本語' },
 ]
 
 const REPORT_REASONS = [
@@ -39,6 +52,8 @@ export default function VideosPage() {
   const [q, setQ] = useState('')
   const [lang, setLang] = useState('')
   const [ageRating, setAgeRating] = useState('')
+  const [availableTags, setAvailableTags] = useState<Tag[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [results, setResults] = useState<VideoSearchResult[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -60,11 +75,27 @@ export default function VideosPage() {
   const [reportDone, setReportDone] = useState(false)
   const [reportError, setReportError] = useState('')
 
+  useEffect(() => {
+    if (!token) return
+    api.videos.listTags(token).then(setAvailableTags).catch(() => {})
+  }, [token])
+
+  const toggleTag = (id: string) => {
+    setSelectedTags(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
+  }
+
   const search = useCallback(async (p = 1) => {
     if (!token) return
     setLoading(true)
     try {
-      const res = await api.videos.search(token, { q: q || undefined, language: lang || undefined, ageRating: ageRating || undefined, page: p, limit: 24 })
+      const res = await api.videos.search(token, {
+        q: q || undefined,
+        language: lang || undefined,
+        ageRating: ageRating || undefined,
+        tags: selectedTags.length ? selectedTags : undefined,
+        page: p,
+        limit: 24,
+      })
       setResults(res.items)
       setTotal(res.total)
       setPages(res.pages)
@@ -75,7 +106,7 @@ export default function VideosPage() {
     } finally {
       setLoading(false)
     }
-  }, [token, q, lang, ageRating])
+  }, [token, q, lang, ageRating, selectedTags])
 
   useEffect(() => { search(1) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -128,7 +159,7 @@ export default function VideosPage() {
       </div>
 
       {/* Search bar */}
-      <form onSubmit={handleSearch} className="bg-white rounded-2xl border border-gray-200 p-4">
+      <form onSubmit={handleSearch} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
         <div className="flex flex-wrap gap-3">
           <input
             type="text"
@@ -137,13 +168,13 @@ export default function VideosPage() {
             placeholder="Rechercher par titre…"
             className="flex-1 min-w-48 h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
-          <input
-            type="text"
+          <select
             value={lang}
             onChange={e => setLang(e.target.value)}
-            placeholder="Langue (fr, en…)"
-            className="w-36 h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-          />
+            className="w-44 h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
           <select
             value={ageRating}
             onChange={e => setAgeRating(e.target.value)}
@@ -159,6 +190,25 @@ export default function VideosPage() {
             {loading ? '…' : 'Rechercher'}
           </button>
         </div>
+
+        {availableTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {availableTags.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => toggleTag(t.id)}
+                className={`h-7 px-3 rounded-full text-xs font-medium border transition-colors ${
+                  selectedTags.includes(t.id)
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
 
       {/* Results */}

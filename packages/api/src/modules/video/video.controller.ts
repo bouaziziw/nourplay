@@ -27,12 +27,19 @@ export class VideoController {
     return this.videoService.submit(user.sub, dto)
   }
 
+  @Get('tags')
+  @ApiOperation({ summary: 'Liste des tags disponibles' })
+  listTags() {
+    return this.videoService.listTags()
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Rechercher des vidéos approuvées' })
   @ApiQuery({ name: 'q', required: false })
   @ApiQuery({ name: 'language', required: false })
   @ApiQuery({ name: 'ageRating', required: false })
   @ApiQuery({ name: 'source', required: false })
+  @ApiQuery({ name: 'tags', required: false, description: 'IDs séparés par virgule' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   search(
@@ -40,10 +47,15 @@ export class VideoController {
     @Query('language') language?: string,
     @Query('ageRating') ageRating?: string,
     @Query('source') sourceSlug?: string,
+    @Query('tags') tags?: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.videoService.search({ q, language, ageRating, sourceSlug, page: +page, limit: +limit })
+    return this.videoService.search({
+      q, language, ageRating, sourceSlug,
+      tags: tags ? tags.split(',').filter(Boolean) : undefined,
+      page: +page, limit: +limit,
+    })
   }
 
   @Get(':id')

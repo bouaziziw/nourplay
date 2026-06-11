@@ -93,16 +93,24 @@ export class VideoService {
     return video
   }
 
+  async listTags() {
+    return this.prisma.tag.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, locale: true },
+    })
+  }
+
   async search(params: {
     q?: string
     language?: string
     ageRating?: string
     sourceSlug?: string
+    tags?: string[]
     page?: number
     limit?: number
   }) {
-    const { q, language, ageRating, sourceSlug, page = 1, limit = 20 } = params
-    const cacheKey = `videos:search:${q ?? '_'}:${language ?? '_'}:${ageRating ?? '_'}:${sourceSlug ?? '_'}:p${page}:l${limit}`
+    const { q, language, ageRating, sourceSlug, tags, page = 1, limit = 20 } = params
+    const cacheKey = `videos:search:${q ?? '_'}:${language ?? '_'}:${ageRating ?? '_'}:${sourceSlug ?? '_'}:t${tags?.join(',') ?? '_'}:p${page}:l${limit}`
 
     type SearchResult = { items: unknown[]; total: number; page: number; limit: number; pages: number }
     const cached = await this.cache.get<SearchResult>(cacheKey)
@@ -115,6 +123,7 @@ export class VideoService {
     if (ageRating) where.ageRating = ageRating
     if (sourceSlug) where.source = { slug: sourceSlug }
     if (q) where.title = { contains: q, mode: 'insensitive' }
+    if (tags?.length) where.tags = { some: { tagId: { in: tags } } }
 
     const [items, total] = await Promise.all([
       this.prisma.video.findMany({
