@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+**/dist
+**/.next
+**/build
+
+# Prisma generated (rebuilt in Docker)
+packages/db/generated
+
+# Dev/test artefacts
+**/*.tsbuildinfo
+**/coverage
+**/.turbo
+**/.cache
+
+# Secrets & local config
+.env
+**/.env.local
+**/.env.*.local
+
+# Source control
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+**/*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+**/*.log

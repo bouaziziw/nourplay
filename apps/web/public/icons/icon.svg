@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#4f46e5"/>
+  <!-- Play triangle -->
+  <polygon points="192,160 192,352 368,256" fill="#ffffff"/>
+  <!-- Star accent -->
+  <circle cx="368" cy="144" r="40" fill="#fbbf24"/>
+  <polygon points="368,112 375,136 400,136 380,152 387,176 368,160 349,176 356,152 336,136 361,136" fill="#ffffff"/>
+</svg>

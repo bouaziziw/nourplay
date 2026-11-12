@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "NourPlay",
+    "slug": "nourplay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "../web/public/icons/icon-512.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.nourplay.mobile",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "../web/public/icons/icon-maskable-512.png",
+        "backgroundColor": "#4f46e5"
+      },
+      "package": "app.nourplay.mobile",
+      "permissions": []
+    },
+    "web": {
+      "favicon": "../web/public/icons/icon-192.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "../web/public/icons/icon-512.png",
+          "imageWidth": 200,
+          "backgroundColor": "#4f46e5"
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Allow NourPlay to use Face ID to securely store tokens."
+        }
+      ]
+    ]
+  }
+}

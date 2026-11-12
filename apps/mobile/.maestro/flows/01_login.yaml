@@ -1,0 +1,12 @@
+appId: app.nourplay.mobile
+env:
+  TEST_EMAIL: parent@example.com
+  TEST_PASSWORD: TestPassword123!
+---
+- launchApp
+- runFlow: "../helpers/_login.yaml"
+
+# Verify profile selector is fully rendered
+- assertVisible: "Qui regarde ?"
+- assertVisible: "Choisissez votre profil pour commencer"
+- assertVisible: "Se déconnecter"

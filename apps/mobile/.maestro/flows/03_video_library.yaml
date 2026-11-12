@@ -1,0 +1,28 @@
+appId: app.nourplay.mobile
+env:
+  TEST_EMAIL: parent@example.com
+  TEST_PASSWORD: TestPassword123!
+---
+- launchApp
+- runFlow: "../helpers/_login.yaml"
+- tapOn: "Tableau de bord"
+
+# Navigate to Videos tab
+- tapOn: "Vidéos"
+- assertVisible: "Vidéothèque"
+- assertVisible: "Saisissez un terme et lancez la recherche."
+
+# Perform a search
+- tapOn: "Rechercher une vidéo..."
+- inputText: "nature"
+- tapOn: "Chercher"
+
+# After search: either results list or empty state is shown
+# (both are valid outcomes depending on server state)
+- assertVisible: "Vidéothèque"
+
+# Search with an empty query (browse all)
+- tapOn: "Rechercher une vidéo..."
+- clearText
+- tapOn: "Chercher"
+- assertVisible: "Vidéothèque"

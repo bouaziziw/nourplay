@@ -1,0 +1,145 @@
+services:
+  # ── Base de données principale ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: nourplay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nourplay
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: nourplay
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nourplay']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis — Cache, sessions, queues BullMQ ──────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nourplay-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass secret
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'secret', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Adminer — Interface BDD (dev uniquement) ─────────────────
+  adminer:
+    image: adminer:4
+    container_name: nourplay-adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: pepa-linha
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Redis Commander — Interface Redis (dev uniquement) ───────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: nourplay-redis-ui
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      REDIS_HOSTS: 'local:redis:6379:0:secret'
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── MailHog — Serveur SMTP local (dev uniquement) ────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: nourplay-mail
+    restart: unless-stopped
+    ports:
+      - '1025:1025'  # SMTP
+      - '8025:8025'  # Interface web
+
+  # ── Observabilité — OpenTelemetry + Grafana stack ─────────────
+  # Loki — agrégation de logs
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: nourplay-loki
+    restart: unless-stopped
+    ports:
+      - '3100:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+
+  # Tempo — traces distribuées
+  tempo:
+    image: grafana/tempo:2.3.1
+    container_name: nourplay-tempo
+    restart: unless-stopped
+    ports:
+      - '3200:3200'   # Tempo HTTP
+      - '4317:4317'   # OTLP gRPC
+      - '4318:4318'   # OTLP HTTP
+    command: -config.file=/etc/tempo.yaml
+    volumes:
+      - ./scripts/observability/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+
+  # Prometheus — scraping de métriques
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: nourplay-prometheus
+    restart: unless-stopped
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./scripts/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+
+  # Grafana — dashboards unifiés (logs + traces + métriques)
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: nourplay-grafana
+    restart: unless-stopped
+    ports:
+      - '3002:3000'   # Évite le conflit avec apps/web :3000 et admin :3001
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./scripts/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+      - tempo
+      - prometheus
+
+volumes:
+  postgres_data:
+  redis_data:
+  loki_data:
+  tempo_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: nourplay-network

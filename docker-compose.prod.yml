@@ -1,0 +1,114 @@
+services:
+  # ── Base de données ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: nourplay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nourplay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-nourplay}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-nourplay}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: nourplay-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Migrate — run once then exit ─────────────────────────────
+  # In CI/CD, this image is pre-built and pushed to the registry.
+  # IMAGE_TAG and REGISTRY are injected by the deploy workflow.
+  migrate:
+    image: ${REGISTRY:-nourplay}/nourplay-migrate:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: packages/db/Dockerfile
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # ── API NestJS ───────────────────────────────────────────────
+  api:
+    image: ${REGISTRY:-nourplay}/nourplay-api:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: nourplay-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    ports:
+      - '4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Worker de validation IA ─────────────────────────────────
+  video-validator:
+    image: ${REGISTRY:-nourplay}/nourplay-video-validator:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: workers/video-validator/Dockerfile
+    container_name: nourplay-video-validator
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # ── Web Next.js ──────────────────────────────────────────────
+  web:
+    image: ${REGISTRY:-nourplay}/nourplay-web:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    container_name: nourplay-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: nourplay-network

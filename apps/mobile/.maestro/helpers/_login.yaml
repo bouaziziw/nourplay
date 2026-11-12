@@ -1,0 +1,11 @@
+# Reusable login steps — call via runFlow from a flow that already called launchApp.
+# Expects TEST_EMAIL and TEST_PASSWORD to be set in env.
+- assertVisible: "NourPlay"
+- tapOn: "vous@exemple.com"
+- inputText: ${TEST_EMAIL}
+- tapOn:
+    below:
+      text: "Mot de passe"
+- inputText: ${TEST_PASSWORD}
+- tapOn: "Se connecter"
+- assertVisible: "Qui regarde ?"

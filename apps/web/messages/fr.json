@@ -1,0 +1,90 @@
+{
+  "home": {
+    "nav": {
+      "login": "Connexion",
+      "register": "Créer un compte",
+      "dashboard": "Mon tableau de bord"
+    },
+    "hero": {
+      "badge": "Pour les parents et éducateurs",
+      "title": "La vidéothèque sécurisée pour vos enfants",
+      "subtitle": "Curatez, organisez et partagez des contenus vidéo adaptés à l'âge de vos enfants. Maîtrisez ce qu'ils regardent.",
+      "cta": "Commencer gratuitement",
+      "ctaSecondary": "Se connecter"
+    },
+    "features": {
+      "title": "Tout ce dont vous avez besoin",
+      "subtitle": "NourPlay réunit tous les outils pour gérer sereinement les contenus vidéo de vos enfants.",
+      "safe": {
+        "title": "Contenu validé",
+        "description": "Chaque vidéo est soumise à validation avant d'être accessible. Signalement communautaire intégré."
+      },
+      "profiles": {
+        "title": "Profils personnalisés",
+        "description": "Un profil par enfant avec limites de temps, plages horaires et filtres de contenu."
+      },
+      "playlists": {
+        "title": "Playlists thématiques",
+        "description": "Organisez les vidéos en playlists et partagez-les avec d'autres parents ou l'équipe éducative."
+      },
+      "multilang": {
+        "title": "Multi-langues",
+        "description": "Interface en français, anglais, arabe et espagnol. Contenus filtrés par langue."
+      }
+    },
+    "steps": {
+      "title": "Comment ça marche",
+      "1": { "label": "Créez votre compte", "desc": "Inscription en 30 secondes, sans carte bancaire." },
+      "2": { "label": "Configurez les profils", "desc": "Un profil par enfant avec ses limites et son âge." },
+      "3": { "label": "Ajoutez des vidéos", "desc": "Soumettez des URLs — elles sont validées automatiquement." },
+      "4": { "label": "Regardez en famille", "desc": "Vos enfants accèdent à leur espace sécurisé par PIN." }
+    },
+    "cta": {
+      "title": "Prêt à sécuriser l'expérience vidéo de vos enfants ?",
+      "subtitle": "Rejoignez NourPlay aujourd'hui. C'est gratuit.",
+      "button": "Créer mon compte"
+    },
+    "footer": {
+      "tagline": "La plateforme vidéo sécurisée pour les enfants.",
+      "copyright": "© 2025 NourPlay. Tous droits réservés."
+    }
+  },
+  "auth": {
+    "login": "Connexion",
+    "register": "Créer un compte",
+    "email": "Adresse email",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Nouveau mot de passe",
+    "verifyEmail": "Vérifier l'email",
+    "twoFactor": "Code de vérification"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bonjour !",
+    "profiles": "Profils enfants",
+    "playlists": "Mes playlists",
+    "noProfiles": "Aucun profil encore",
+    "createProfile": "Créer un profil",
+    "noPlaylists": "Aucune playlist encore",
+    "createPlaylist": "Créer une playlist"
+  },
+  "child": {
+    "whoWatching": "Qui regarde ?",
+    "chooseProfile": "Choisissez votre profil pour commencer",
+    "noProfiles": "Aucun profil enfant disponible.",
+    "backToDashboard": "Retourner au tableau de bord",
+    "pinTitle": "Code PIN",
+    "pinLabel": "Entrez votre code PIN",
+    "pinSubmit": "Confirmer",
+    "pinError": "PIN incorrect, réessayez.",
+    "leave": "Quitter",
+    "remaining": "{n} min restantes",
+    "blockedTitle": "Pas maintenant",
+    "blockedSchedule": "La lecture vidéo n'est pas disponible à cette heure.",
+    "blockedTime": "La session de {name} est terminée pour aujourd'hui.",
+    "noVideos": "Aucune vidéo disponible pour le moment.",
+    "backToPlaylist": "Retour à la playlist",
+    "next": "Suivant"
+  }
+}
