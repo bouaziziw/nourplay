@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "lint": "eslint \"src/**/*.ts\"",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
@@ -11,7 +11,7 @@
     "seed": "tsx src/seed.ts",
     "studio": "prisma studio",
     "generate": "prisma generate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "prisma generate && tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",

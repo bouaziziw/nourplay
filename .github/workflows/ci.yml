@@ -13,7 +13,7 @@ jobs:
   # ── Lint & Typecheck ────────────────────────────────────────
   lint:
     name: Lint & Typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @nourplay/db generate
 
       - name: Lint
         run: pnpm turbo run lint
@@ -36,7 +39,7 @@ jobs:
   # ── Tests unitaires ─────────────────────────────────────────
   test-unit:
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -49,6 +52,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @nourplay/db generate
 
       - name: Run unit tests with coverage
         run: pnpm --filter @nourplay/api test:coverage
@@ -62,7 +68,7 @@ jobs:
   # ── Tests d'intégration ─────────────────────────────────────
   test-integration:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine
@@ -108,6 +114,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm --filter @nourplay/db generate
+
       - name: Run DB migrations
         run: pnpm --filter @nourplay/db migrate:deploy
 
@@ -117,7 +126,7 @@ jobs:
   # ── Build ────────────────────────────────────────────────────
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [lint, test-unit]
     steps:
       - uses: actions/checkout@v7
@@ -136,7 +145,7 @@ jobs:
         run: pnpm turbo run build
 
       - name: Upload build artifacts (web)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: apps/web/.next
@@ -145,7 +154,7 @@ jobs:
   # ── Sécurité ─────────────────────────────────────────────────
   security:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -164,7 +173,7 @@ jobs:
         continue-on-error: true
 
       - name: Scan filesystem for vulnerabilities
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
