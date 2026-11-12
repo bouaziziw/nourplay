@@ -190,7 +190,7 @@ describe('Auth — integration (Supertest)', () => {
   })
 
   afterAll(async () => {
-    await app.close()
+    await app?.close()
   })
 
   beforeEach(() => {
