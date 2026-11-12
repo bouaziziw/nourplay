@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc",
+    "lint": "eslint \"src/**/*.ts\"",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:reset": "prisma migrate reset --force",
@@ -13,7 +14,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/client": "^5.19.1"
+    "@prisma/client": "^5.19.1",
+    "argon2": "^0.40.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -21,9 +23,11 @@
     "tsx": "^4.19.1",
     "typescript": "^5.5.4"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
   }

@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 import { getLocale } from 'next-intl/server'
 import Link from 'next/link'
+import { AuthenticatedHomeRedirect } from '../../components/AuthenticatedHomeRedirect'
 
 const FEATURES = ['safe', 'profiles', 'playlists', 'multilang'] as const
 
@@ -54,6 +55,7 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <AuthenticatedHomeRedirect />
       {/* ── Navigation ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -181,7 +183,7 @@ export default async function HomePage() {
 
         {/* ── How it works ────────────────────────────────────────── */}
         <section className="py-24 bg-gradient-to-b from-gray-50 to-white">
-          <div className="max-w-5xl mx-auto px-4">
+          <div className="max-w-6xl mx-auto px-4">
             <div className="text-center mb-16">
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">{t('steps.title')}</h2>
             </div>
@@ -206,7 +208,7 @@ export default async function HomePage() {
 
         {/* ── Final CTA ────────────────────────────────────────────── */}
         <section className="py-24 bg-indigo-600">
-          <div className="max-w-3xl mx-auto px-4 text-center">
+          <div className="max-w-6xl mx-auto px-4 text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-white leading-snug">
               {t('cta.title')}
             </h2>

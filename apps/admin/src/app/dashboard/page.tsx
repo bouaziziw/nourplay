@@ -73,7 +73,7 @@ export default function DashboardPage() {
   return (
     <div className="p-8 space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Vue d'ensemble</h1>
+        <h1 className="text-2xl font-bold text-white">Vue d&apos;ensemble</h1>
         <p className="text-gray-500 text-sm mt-1">Statistiques de la plateforme en temps réel</p>
       </div>
 
@@ -168,7 +168,7 @@ export default function DashboardPage() {
         </Link>
         <Link href="/dashboard/audit" className="group bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 transition-colors">
           <p className="text-2xl mb-3">≡</p>
-          <p className="font-semibold text-white text-sm group-hover:text-indigo-400 transition-colors">Journal d'audit</p>
+          <p className="font-semibold text-white text-sm group-hover:text-indigo-400 transition-colors">Journal d&apos;audit</p>
           <p className="text-xs text-gray-500 mt-1">Toutes les actions</p>
         </Link>
       </div>

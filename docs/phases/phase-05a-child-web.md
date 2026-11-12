@@ -49,7 +49,7 @@ PIN is verified server-side via `POST /users/me/profiles/:profileId/pin/verify` 
 - Vimeo: `dnt=1&byline=0&title=0&portrait=0`
 - Dailymotion: `sharing-enable=false&ui-logo=false`
 
-iframe sandbox: `allow-scripts allow-same-origin allow-presentation allow-fullscreen` — no forms, no top navigation, no popups.
+iframe sandbox: `allow-scripts allow-same-origin allow-presentation` — no forms, no top navigation, no popups. Fullscreen is granted separately through the iframe `allow` policy.
 
 ## TypeScript Fixes
 - Renamed `useAuth.ts` → `useAuth.tsx` (file contained JSX but had wrong extension)

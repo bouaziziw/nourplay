@@ -12,6 +12,7 @@ const makePrisma = () => ({
   },
   playlistVideo: {
     create: vi.fn(),
+    createMany: vi.fn(),
     findUnique: vi.fn(),
     delete: vi.fn(),
     updateMany: vi.fn(),
@@ -21,25 +22,34 @@ const makePrisma = () => ({
     upsert: vi.fn(),
     deleteMany: vi.fn(),
   },
-  video: { findFirst: vi.fn() },
+  video: { findFirst: vi.fn(), createMany: vi.fn(), findMany: vi.fn() },
+  videoSource: { findFirst: vi.fn() },
   user: { findUnique: vi.fn() },
+  childProfile: { findFirst: vi.fn() },
+  userBlock: { findMany: vi.fn() },
   $transaction: vi.fn(),
 })
 
 const makeSubscriptionService = () => ({
   getUserPlanLimits: vi.fn().mockResolvedValue({ maxProfiles: 1, maxPlaylists: 5, planSlug: 'free' }),
 })
+const makeValidationQueue = () => ({
+  add: vi.fn().mockResolvedValue(undefined),
+  getJob: vi.fn().mockResolvedValue(null),
+})
 
 describe('PlaylistService', () => {
   let service: PlaylistService
   let prisma: ReturnType<typeof makePrisma>
   let subscriptionService: ReturnType<typeof makeSubscriptionService>
+  let validationQueue: ReturnType<typeof makeValidationQueue>
 
   beforeEach(() => {
     vi.clearAllMocks()
     prisma = makePrisma()
     subscriptionService = makeSubscriptionService()
-    service = new PlaylistService(prisma as never, subscriptionService as never)
+    validationQueue = makeValidationQueue()
+    service = new PlaylistService(prisma as never, subscriptionService as never, validationQueue as never)
   })
 
   // ── findAll ───────────────────────────────────────────────────
@@ -82,6 +92,117 @@ describe('PlaylistService', () => {
         service.create('user-1', { name: 'Trop', visibility: 'PRIVATE' } as never),
       ).rejects.toThrow(BadRequestException)
     })
+
+    it('rejects non-YouTube URLs before making an external request', async () => {
+      await expect(service.create('user-1', {
+        name: 'External',
+        importExternalPlaylist: true,
+        externalPlaylistUrl: 'https://example.com/playlist?list=PLabcdefghij',
+      } as never)).rejects.toThrow(BadRequestException)
+    })
+
+    it('imports all accessible videos from a YouTube channel in one database transaction', async () => {
+      const previousApiKey = process.env.YOUTUBE_API_KEY
+      process.env.YOUTUBE_API_KEY = 'test-key'
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [{ contentDetails: { relatedPlaylists: { uploads: 'UUabcdefghij123456789012' } } }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [{
+              snippet: {
+                title: 'Nature',
+                description: 'Une vidéo',
+                resourceId: { videoId: 'abcdefghijk' },
+              },
+            }],
+            nextPageToken: 'next-page',
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [{
+              snippet: {
+                title: 'Océan',
+                resourceId: { videoId: 'abcdefghijl' },
+              },
+            }],
+          }),
+        })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const createdPlaylist = { id: 'pl-import', name: 'Imported', _count: { playlistVideos: 0 } }
+      const tx = {
+        playlist: { create: vi.fn().mockResolvedValue(createdPlaylist) },
+        video: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'vid-1',
+              externalId: 'abcdefghijk',
+              validationStatus: 'PENDING',
+              submittedById: 'user-1',
+              submitterApprovedAt: null,
+            },
+            {
+              id: 'vid-2',
+              externalId: 'abcdefghijl',
+              validationStatus: 'PENDING',
+              submittedById: 'user-1',
+              submitterApprovedAt: null,
+            },
+          ]),
+        },
+        playlistVideo: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      }
+      prisma.videoSource.findFirst.mockResolvedValue({ id: 'source-youtube' })
+      prisma.$transaction.mockImplementation(callback => callback(tx as never))
+
+      try {
+        const result = await service.create('user-1', {
+          name: 'Imported',
+          visibility: 'PRIVATE',
+          importExternalPlaylist: true,
+          externalPlaylistUrl: 'https://www.youtube.com/@playlistname',
+        } as never)
+
+        expect(fetchMock).toHaveBeenCalledTimes(3)
+        const channelRequest = new URL(fetchMock.mock.calls[0][0] as URL)
+        expect(channelRequest.pathname).toBe('/youtube/v3/channels')
+        expect(channelRequest.searchParams.get('forHandle')).toBe('playlistname')
+        expect(fetchMock.mock.calls[1][0].searchParams.get('playlistId')).toBe('UUabcdefghij123456789012')
+        expect(tx.video.createMany.mock.calls[0][0].data).toMatchObject([
+          { externalId: 'abcdefghijk', title: 'Nature', validationStatus: 'PENDING' },
+          { externalId: 'abcdefghijl', title: 'Océan', validationStatus: 'PENDING' },
+        ])
+        expect(tx.playlistVideo.createMany.mock.calls[0][0].data).toEqual([
+          { playlistId: 'pl-import', videoId: 'vid-1', position: 0, addedById: 'user-1' },
+          { playlistId: 'pl-import', videoId: 'vid-2', position: 1, addedById: 'user-1' },
+        ])
+        expect(result).toMatchObject({
+          id: 'pl-import',
+          importedVideoCount: 2,
+          pendingValidationCount: 2,
+          skippedVideoCount: 0,
+          validationQueueFailedCount: 0,
+        })
+        expect(validationQueue.add).toHaveBeenCalledTimes(2)
+        expect(validationQueue.add).toHaveBeenCalledWith('validate', { videoId: 'vid-1' }, expect.objectContaining({
+          jobId: 'video-validation-vid-1',
+          priority: 1,
+        }))
+      } finally {
+        vi.unstubAllGlobals()
+        if (previousApiKey === undefined) delete process.env.YOUTUBE_API_KEY
+        else process.env.YOUTUBE_API_KEY = previousApiKey
+      }
+    })
   })
 
   // ── findOne ───────────────────────────────────────────────────
@@ -92,6 +213,26 @@ describe('PlaylistService', () => {
       prisma.playlist.findFirst.mockResolvedValue(playlist)
 
       expect(await service.findOne('user-1', 'pl-1')).toBe(playlist)
+      expect(prisma.playlist.findFirst.mock.calls[0][0].include.playlistVideos.where.video.OR).toEqual(
+        expect.arrayContaining([
+          { validationStatus: 'APPROVED' },
+          {
+            validationStatus: { in: ['PENDING', 'NEEDS_REVIEW', 'REJECTED'] },
+            submittedById: 'user-1',
+          },
+        ]),
+      )
+    })
+
+    it('does not expose unapproved submissions to child profiles', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ ageGroup: 'AGE_7_9' })
+      prisma.userBlock.findMany.mockResolvedValue([])
+      prisma.playlist.findFirst.mockResolvedValue({ id: 'pl-1', playlistVideos: [] })
+
+      await service.findOne('user-1', 'pl-1', 'profile-1')
+
+      expect(prisma.playlist.findFirst.mock.calls[0][0].include.playlistVideos.where.video.OR)
+        .toEqual([{ validationStatus: 'APPROVED', ageRating: { in: expect.any(Array) } }])
     })
 
     it('throws NotFoundException when playlist does not exist', async () => {
@@ -224,6 +365,67 @@ describe('PlaylistService', () => {
       expect(data.visibility).toBe('SHARED_LINK')
       expect(typeof data.shareToken).toBe('string')
       expect(data.shareToken.length).toBeGreaterThan(0)
+    })
+  })
+
+  // ── schedule ──────────────────────────────────────────────────
+
+  describe('schedule', () => {
+    const futureDate = new Date(Date.now() + 86_400_000).toISOString()
+
+    it('persiste une date future', async () => {
+      prisma.playlist.findFirst.mockResolvedValue({ id: 'pl-1' })
+      const updated = { id: 'pl-1', scheduledPublishAt: futureDate }
+      prisma.playlist.update.mockResolvedValue(updated)
+
+      const result = await service.schedule('user-1', 'pl-1', { scheduledPublishAt: futureDate })
+
+      expect(result).toBe(updated)
+      const data = prisma.playlist.update.mock.calls[0][0].data
+      expect(data.scheduledPublishAt).toBeInstanceOf(Date)
+    })
+
+    it('efface la date si scheduledPublishAt est null', async () => {
+      prisma.playlist.findFirst.mockResolvedValue({ id: 'pl-1' })
+      prisma.playlist.update.mockResolvedValue({ id: 'pl-1', scheduledPublishAt: null })
+
+      await service.schedule('user-1', 'pl-1', { scheduledPublishAt: null })
+
+      expect(prisma.playlist.update.mock.calls[0][0].data.scheduledPublishAt).toBeNull()
+    })
+
+    it('lève BadRequestException si la date est dans le passé', async () => {
+      prisma.playlist.findFirst.mockResolvedValue({ id: 'pl-1' })
+      const pastDate = new Date(Date.now() - 1000).toISOString()
+
+      await expect(
+        service.schedule('user-1', 'pl-1', { scheduledPublishAt: pastDate }),
+      ).rejects.toThrow(BadRequestException)
+    })
+  })
+
+  // ── publishScheduled ──────────────────────────────────────────
+
+  describe('publishScheduled', () => {
+    it('publie les playlists dont la date est échue', async () => {
+      prisma.playlist.findMany.mockResolvedValue([{ id: 'pl-1' }, { id: 'pl-2' }])
+      prisma.playlist.update.mockResolvedValue({})
+
+      await service.publishScheduled()
+
+      expect(prisma.playlist.update).toHaveBeenCalledTimes(2)
+      const firstCall = prisma.playlist.update.mock.calls[0][0]
+      expect(firstCall.data.visibility).toBe('SHARED_LINK')
+      expect(firstCall.data.scheduledPublishAt).toBeNull()
+      expect(typeof firstCall.data.shareToken).toBe('string')
+    })
+
+    it('ne fait rien si aucune playlist n\'est échue', async () => {
+      prisma.playlist.findMany.mockResolvedValue([])
+
+      await service.publishScheduled()
+
+      expect(prisma.playlist.update).not.toHaveBeenCalled()
     })
   })
 

@@ -68,6 +68,25 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # ── Worker de validation IA ─────────────────────────────────
+  video-validator:
+    image: ${REGISTRY:-nourplay}/nourplay-video-validator:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: workers/video-validator/Dockerfile
+    container_name: nourplay-video-validator
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   # ── Web Next.js ──────────────────────────────────────────────
   web:
     image: ${REGISTRY:-nourplay}/nourplay-web:${IMAGE_TAG:-latest}

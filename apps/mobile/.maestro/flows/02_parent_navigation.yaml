@@ -1,0 +1,31 @@
+appId: app.nourplay.mobile
+env:
+  TEST_EMAIL: parent@example.com
+  TEST_PASSWORD: TestPassword123!
+---
+- launchApp
+- runFlow: "../helpers/_login.yaml"
+
+# Navigate from ProfileSelector to parent tab bar
+- tapOn: "Tableau de bord"
+- assertVisible: "Profils enfants"
+- assertVisible: "Appuyez pour lancer le mode enfant"
+
+# Playlists tab
+- tapOn: "Playlists"
+- assertVisible: "Playlists"
+
+# Videos tab
+- tapOn: "Vidéos"
+- assertVisible: "Vidéothèque"
+- assertVisible: "Saisissez un terme et lancez la recherche."
+
+# Account tab
+- tapOn: "Compte"
+- assertVisible: "Mon compte"
+- assertVisible: "Authentification à deux facteurs"
+- assertVisible: "Se déconnecter"
+
+# Back to Home
+- tapOn: "Accueil"
+- assertVisible: "Profils enfants"

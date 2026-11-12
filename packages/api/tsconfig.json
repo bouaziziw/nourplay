@@ -6,14 +6,15 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "outDir": "dist",
+    "rootDir": "src",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictNullChecks": true,
     "noImplicitAny": true,
     "strictPropertyInitialization": false,
-    "paths": {
-      "@nourplay/db": ["../../packages/db/src/index.ts"]
-    }
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]

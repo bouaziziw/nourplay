@@ -36,7 +36,7 @@ export default function TwoFactorScreen({ route }: Props) {
       <View style={styles.container}>
         <Text style={styles.title}>Vérification en 2 étapes</Text>
         <Text style={styles.desc}>
-          Entrez le code à 6 chiffres généré par votre application d'authentification.
+          Entrez le code à 6 chiffres généré par votre application d&apos;authentification.
         </Text>
 
         {error ? (

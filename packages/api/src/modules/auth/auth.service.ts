@@ -82,6 +82,49 @@ export class AuthService {
     return result
   }
 
+  private async verifyAccountPassword(userId: string, password: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { passwordHash: true },
+    })
+    return Boolean(user?.passwordHash && await argon2.verify(user.passwordHash, password))
+  }
+
+  async verifyParentPassword(userId: string, password: string): Promise<{ verified: true }> {
+    if (!(await this.verifyAccountPassword(userId, password))) {
+      throw new UnauthorizedException('Mot de passe incorrect')
+    }
+    return { verified: true }
+  }
+
+  async setParentPin(userId: string, password: string, pin: string): Promise<{ configured: true }> {
+    if (!(await this.verifyAccountPassword(userId, password))) {
+      throw new UnauthorizedException('Le mot de passe du compte est incorrect')
+    }
+    const parentPinHash = await argon2.hash(pin, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 1,
+    })
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { parentPinHash },
+    })
+    return { configured: true }
+  }
+
+  async verifyParentPin(userId: string, pin: string): Promise<{ verified: true }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { parentPinHash: true },
+    })
+    if (!user?.parentPinHash || !(await argon2.verify(user.parentPinHash, pin))) {
+      throw new UnauthorizedException('Code PIN incorrect')
+    }
+    return { verified: true }
+  }
+
   async login(userId: string, email: string, role: string, fingerprint: string) {
     const accessToken = this.jwtService.sign({ sub: userId, email, role })
     const refreshToken = await this.generateRefreshToken(userId, fingerprint)

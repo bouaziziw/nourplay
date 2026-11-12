@@ -4,13 +4,36 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "plugins": [{ "name": "next" }],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@nourplay/ui": ["../../packages/ui/src/index.ts"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "@nourplay/ui": [
+        "../../packages/ui/src/index.ts"
+      ]
+    },
+    "allowJs": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "declaration": false,
+    "declarationMap": false
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Image,
+  ActivityIndicator, Alert, Image, Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -20,13 +20,17 @@ const AGE_LABELS: Record<string, string> = {
 const AVATAR_COLORS = ['#ede9fe', '#fce7f3', '#d1fae5', '#fef3c7', '#e0f2fe', '#f3e8ff']
 const AVATAR_TEXT_COLORS = ['#7c3aed', '#be185d', '#065f46', '#92400e', '#0369a1', '#7e22ce']
 
-export default function ProfileSelectorScreen({ navigation }: Props) {
+export default function ProfileSelectorScreen({ navigation, route }: Props) {
   const auth = useContext(AuthContext)
   const childCtx = useContext(ChildSessionContext)
 
   const [profiles, setProfiles] = useState<ProfileSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ProfileSummary | null>(null)
+  const [unlockVisible, setUnlockVisible] = useState(false)
+  const [parentPassword, setParentPassword] = useState('')
+  const [unlockError, setUnlockError] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
 
   useEffect(() => {
     if (!auth?.token) return
@@ -35,6 +39,13 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [auth?.token])
+
+  useEffect(() => {
+    if (route.params?.unlockParent) {
+      setUnlockVisible(true)
+      navigation.setParams({ unlockParent: undefined })
+    }
+  }, [route.params?.unlockParent, navigation])
 
   const handlePinSubmit = async (pin: string) => {
     if (!auth?.token || !selected || !childCtx) return
@@ -56,12 +67,36 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
     ])
   }
 
+  const handleParentUnlock = async () => {
+    if (!auth || !parentPassword || unlocking) return
+    setUnlockError('')
+    setUnlocking(true)
+    try {
+      await auth.unlockParentMode(parentPassword)
+      await childCtx?.clear()
+      setUnlockVisible(false)
+      setParentPassword('')
+    } catch (error) {
+      setUnlockError(error instanceof Error ? error.message : 'Mot de passe incorrect.')
+      setParentPassword('')
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.appName}>NourPlay</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('ParentTabs')}>
-          <Text style={styles.dashboardLink}>Tableau de bord</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => {
+            setUnlockError('')
+            setUnlockVisible(true)
+          }}
+          style={styles.parentModeButton}
+        >
+          <Text style={styles.dashboardLink}>Mode Parent</Text>
         </TouchableOpacity>
       </View>
 
@@ -75,9 +110,7 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
       ) : profiles.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Aucun profil enfant disponible.</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ParentTabs')}>
-            <Text style={styles.linkText}>Créer un profil →</Text>
-          </TouchableOpacity>
+          <Text style={styles.linkText}>Le parent peut créer un profil après avoir déverrouillé le Mode Parent.</Text>
         </View>
       ) : (
         <FlatList
@@ -96,6 +129,7 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
                     <Image
                       source={{ uri: `${process.env.EXPO_PUBLIC_S3_PUBLIC_URL}/${p.avatarKey}` }}
                       style={styles.avatarImg}
+                      accessibilityLabel={p.displayName}
                     />
                   ) : (
                     <Text style={[styles.avatarText, { color: fg }]}>
@@ -121,6 +155,61 @@ export default function ProfileSelectorScreen({ navigation }: Props) {
         onSubmit={handlePinSubmit}
         onClose={() => setSelected(null)}
       />
+
+      <Modal
+        visible={unlockVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!unlocking) {
+            setUnlockVisible(false)
+            setParentPassword('')
+          }
+        }}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.unlockCard}>
+            <Text style={styles.unlockTitle}>Mode Parent</Text>
+            <Text style={styles.unlockSubtitle}>
+              Entrez le mot de passe de votre compte pour accéder aux paramètres.
+            </Text>
+            <TextInput
+              style={styles.passwordInput}
+              value={parentPassword}
+              onChangeText={setParentPassword}
+              placeholder="Mot de passe du compte"
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              accessibilityLabel="Mot de passe du compte"
+              editable={!unlocking}
+            />
+            {unlockError ? <Text accessibilityRole="alert" style={styles.unlockError}>{unlockError}</Text> : null}
+            <TouchableOpacity
+              style={[styles.unlockButton, (!parentPassword || unlocking) && styles.unlockButtonDisabled]}
+              onPress={handleParentUnlock}
+              disabled={!parentPassword || unlocking}
+            >
+              <Text style={styles.unlockButtonText}>{unlocking ? 'Vérification…' : 'Déverrouiller'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                if (!unlocking) {
+                  setUnlockVisible(false)
+                  setParentPassword('')
+                }
+              }}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -130,6 +219,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
   appName: { fontSize: 18, fontWeight: '800', color: '#4f46e5' },
   dashboardLink: { fontSize: 13, color: '#4f46e5', fontWeight: '500' },
+  parentModeButton: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#eef2ff' },
   titleBlock: { alignItems: 'center', marginTop: 32, marginBottom: 24 },
   title: { fontSize: 26, fontWeight: '800', color: '#1e1b4b' },
   subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
@@ -143,7 +233,18 @@ const styles = StyleSheet.create({
   profileAge: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
   emptyState: { alignItems: 'center', marginTop: 80 },
   emptyText: { fontSize: 15, color: '#6b7280', marginBottom: 16 },
-  linkText: { fontSize: 14, color: '#4f46e5', fontWeight: '600' },
+  linkText: { fontSize: 14, color: '#4f46e5', fontWeight: '600', textAlign: 'center', maxWidth: 280 },
   logoutBtn: { alignItems: 'center', paddingVertical: 20 },
   logoutText: { fontSize: 13, color: '#9ca3af' },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.55)' },
+  unlockCard: { width: '100%', maxWidth: 380, backgroundColor: '#fff', borderRadius: 20, padding: 24 },
+  unlockTitle: { fontSize: 22, fontWeight: '800', color: '#111827', textAlign: 'center' },
+  unlockSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8, marginBottom: 20, lineHeight: 20 },
+  passwordInput: { height: 48, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, color: '#111827', backgroundColor: '#f9fafb' },
+  unlockError: { color: '#b91c1c', fontSize: 13, textAlign: 'center', marginTop: 10 },
+  unlockButton: { height: 48, borderRadius: 11, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  unlockButtonDisabled: { opacity: 0.55 },
+  unlockButtonText: { color: '#fff', fontWeight: '700' },
+  cancelButton: { alignItems: 'center', padding: 12, marginTop: 4 },
+  cancelText: { fontSize: 14, color: '#6b7280' },
 })

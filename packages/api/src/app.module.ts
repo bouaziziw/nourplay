@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config'
@@ -21,6 +22,7 @@ import { NotificationModule } from './modules/notification/notification.module'
 import { LegalModule } from './modules/legal/legal.module'
 import { SubscriptionModule } from './modules/subscription/subscription.module'
 import { StorageModule } from './modules/storage/storage.module'
+import { WatchPartyModule } from './modules/watch-party/watch-party.module'
 import { appConfig, validateConfig } from './config/app.config'
 
 @Module({
@@ -28,6 +30,7 @@ import { appConfig, validateConfig } from './config/app.config'
     // ── Config ──────────────────────────────────────────────────
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: resolve(__dirname, '../../../.env'),
       load: [appConfig],
       validate: validateConfig,
       cache: true,
@@ -68,6 +71,7 @@ import { appConfig, validateConfig } from './config/app.config'
     LegalModule,
     SubscriptionModule,
     StorageModule,
+    WatchPartyModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

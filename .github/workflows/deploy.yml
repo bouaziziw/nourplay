@@ -79,6 +79,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # ── Video validator worker image ────────────────────────────
+      - name: Build & push video validator
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: workers/video-validator/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/nourplay-video-validator:${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/nourplay-video-validator:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       # ── Migrate image ─────────────────────────────────────────
       - name: Build & push Migrate
         uses: docker/build-push-action@v6
@@ -148,7 +161,7 @@ jobs:
             # Pull new images
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \
-              pull migrate api web
+              pull migrate api video-validator web
 
             # Restart services (migrate runs first, then api + web)
             docker compose --env-file .env --env-file .image.env \
@@ -202,7 +215,7 @@ jobs:
 
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \
-              pull migrate api web
+              pull migrate api video-validator web
 
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \

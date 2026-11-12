@@ -3,6 +3,7 @@ import {
   Modal, View, Text, TextInput, TouchableOpacity,
   StyleSheet, ActivityIndicator, TouchableWithoutFeedback,
 } from 'react-native'
+import type { TextInputInstance } from 'react-native'
 
 interface Props {
   visible: boolean
@@ -15,7 +16,7 @@ export function PinModal({ visible, profileName, onSubmit, onClose }: Props) {
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<TextInputInstance>(null)
 
   const reset = () => { setPin(''); setError(''); setLoading(false) }
 
@@ -89,9 +90,9 @@ export function PinModal({ visible, profileName, onSubmit, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   centerer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center', justifyContent: 'center', padding: 32,
   },
   card: {

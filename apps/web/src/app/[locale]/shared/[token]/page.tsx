@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { api, PlaylistDetail } from '../../../../lib/api'
+import { RemoteImage } from '../../../../components/RemoteImage'
 
 function formatDuration(sec: number | null): string {
   if (!sec) return ''
@@ -61,7 +62,7 @@ export default function SharedPlaylistPage() {
         <p className="text-5xl">🔒</p>
         <h1 className="text-2xl font-bold text-gray-900">Playlist introuvable</h1>
         <p className="text-gray-500 text-sm max-w-sm">
-          Ce lien de partage est invalide, expiré, ou la playlist n'est plus disponible.
+          Ce lien de partage est invalide, expiré, ou la playlist n&apos;est plus disponible.
         </p>
       </div>
     )
@@ -78,7 +79,7 @@ export default function SharedPlaylistPage() {
         <span className="text-xs text-gray-400">Playlist partagée</span>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         {/* Playlist info */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{playlist.name}</h1>
@@ -143,7 +144,7 @@ export default function SharedPlaylistPage() {
                       </span>
                       <div className="w-12 h-9 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
                         {pv.video.thumbnailUrl
-                          ? <img src={pv.video.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                          ? <RemoteImage src={pv.video.thumbnailUrl} alt="" width={48} height={36} className="w-full h-full object-cover" />
                           : <div className="w-full h-full flex items-center justify-center text-sm">🎥</div>
                         }
                       </div>

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { Prisma } from '@nourplay/db'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import Expo, { ExpoPushMessage } from 'expo-server-sdk'
+import webpush from 'web-push'
 
 export interface CreateNotificationParams {
   userId: string
@@ -14,7 +15,14 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name)
   private readonly expo = new Expo()
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    const publicKey = process.env.VAPID_PUBLIC_KEY
+    const privateKey = process.env.VAPID_PRIVATE_KEY
+    const subject = process.env.VAPID_SUBJECT ?? 'mailto:admin@nourplay.com'
+    if (publicKey && privateKey) {
+      webpush.setVapidDetails(subject, publicKey, privateKey)
+    }
+  }
 
   // ── In-app notifications ──────────────────────────────────────
 
@@ -81,6 +89,26 @@ export class NotificationService {
     return notification
   }
 
+  // ── Web Push subscriptions ────────────────────────────────────
+
+  getVapidPublicKey() {
+    return { publicKey: process.env.VAPID_PUBLIC_KEY ?? '' }
+  }
+
+  async registerWebPushSubscription(userId: string, endpoint: string, p256dh: string, auth: string) {
+    await this.prisma.webPushSubscription.upsert({
+      where: { endpoint },
+      create: { userId, endpoint, p256dh, auth },
+      update: { userId, p256dh, auth },
+    })
+    return { subscribed: true }
+  }
+
+  async unregisterWebPushSubscription(userId: string, endpoint: string) {
+    await this.prisma.webPushSubscription.deleteMany({ where: { userId, endpoint } })
+    return { unsubscribed: true }
+  }
+
   // ── Device tokens ─────────────────────────────────────────────
 
   async registerToken(userId: string, token: string, platform: string) {
@@ -105,44 +133,75 @@ export class NotificationService {
   // ── Push delivery ─────────────────────────────────────────────
 
   private async sendPushToUser(userId: string, type: string, payload: Record<string, unknown>) {
+    const { title, body } = this.buildPushContent(type, payload)
+
+    // Expo (mobile) push
     const tokens = await this.prisma.deviceToken.findMany({
       where: { userId },
       select: { token: true },
     })
 
-    if (tokens.length === 0) return
+    if (tokens.length > 0) {
+      const messages: ExpoPushMessage[] = tokens
+        .filter(t => Expo.isExpoPushToken(t.token))
+        .map(t => ({
+          to: t.token,
+          sound: 'default' as const,
+          title,
+          body,
+          data: { type, ...payload },
+        }))
 
-    const { title, body } = this.buildPushContent(type, payload)
-
-    const messages: ExpoPushMessage[] = tokens
-      .filter(t => Expo.isExpoPushToken(t.token))
-      .map(t => ({
-        to: t.token,
-        sound: 'default' as const,
-        title,
-        body,
-        data: { type, ...payload },
-      }))
-
-    if (messages.length === 0) return
-
-    const chunks = this.expo.chunkPushNotifications(messages)
-    for (const chunk of chunks) {
-      try {
-        const receipts = await this.expo.sendPushNotificationsAsync(chunk)
-        // Remove stale tokens (DeviceNotRegistered error)
-        for (let i = 0; i < receipts.length; i++) {
-          const receipt = receipts[i]
-          if (receipt.status === 'error' && receipt.details?.error === 'DeviceNotRegistered') {
-            const staleToken = messages[i]?.to
-            if (typeof staleToken === 'string') {
-              await this.prisma.deviceToken.deleteMany({ where: { token: staleToken } })
+      const chunks = this.expo.chunkPushNotifications(messages)
+      for (const chunk of chunks) {
+        try {
+          const receipts = await this.expo.sendPushNotificationsAsync(chunk)
+          for (let i = 0; i < receipts.length; i++) {
+            const receipt = receipts[i]
+            if (receipt.status === 'error' && receipt.details?.error === 'DeviceNotRegistered') {
+              const staleToken = messages[i]?.to
+              if (typeof staleToken === 'string') {
+                await this.prisma.deviceToken.deleteMany({ where: { token: staleToken } })
+              }
             }
           }
+        } catch (err) {
+          this.logger.error('Expo push chunk failed', err)
         }
-      } catch (err) {
-        this.logger.error('Expo push chunk failed', err)
       }
+    }
+
+    // Web push (browser)
+    if (!process.env.VAPID_PUBLIC_KEY) return
+
+    const subs = await this.prisma.webPushSubscription.findMany({
+      where: { userId },
+    })
+
+    const webPayload = JSON.stringify({ title, body, type, data: payload })
+    const staleEndpoints: string[] = []
+
+    await Promise.allSettled(
+      subs.map(sub =>
+        webpush
+          .sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            webPayload,
+          )
+          .catch((err: { statusCode?: number }) => {
+            if (err?.statusCode === 410 || err?.statusCode === 404) {
+              staleEndpoints.push(sub.endpoint)
+            } else {
+              this.logger.warn(`Web push failed for ${sub.endpoint}: ${err}`)
+            }
+          }),
+      ),
+    )
+
+    if (staleEndpoints.length > 0) {
+      await this.prisma.webPushSubscription.deleteMany({
+        where: { endpoint: { in: staleEndpoints } },
+      })
     }
   }
 
@@ -167,6 +226,18 @@ export class NotificationService {
       'subscription.expiring': () => ({
         title: 'Abonnement bientôt expiré',
         body: 'Votre abonnement Premium expire dans 7 jours.',
+      }),
+      'SCREEN_TIME_ALERT': p => ({
+        title: 'Limite de temps atteinte',
+        body: `${p.profileName} a regardé ${p.watchedMin} min aujourd'hui (limite : ${p.limitMin} min).`,
+      }),
+      'VIDEO_PUBLISHED': p => ({
+        title: 'Nouveau contenu disponible',
+        body: `"${p.videoTitle}" vient d'être ajouté à la bibliothèque.`,
+      }),
+      'APPROVAL_REQUESTED': p => ({
+        title: 'Demande d\'approbation',
+        body: `${p.profileName} demande à regarder "${p.videoTitle}".`,
       }),
     }
 

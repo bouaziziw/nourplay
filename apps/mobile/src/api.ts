@@ -1,4 +1,8 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'
+import Constants from 'expo-constants'
+
+const metroHost = Constants.expoConfig?.hostUri?.replace(/:\d+$/, '')
+const API_URL = process.env.EXPO_PUBLIC_API_URL
+  || (metroHost ? `http://${metroHost}:4000/api/v1` : 'http://localhost:4000/api/v1')
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -95,6 +99,13 @@ export interface VideoFavorite {
 
 export const api = {
   auth: {
+    verifyParentPassword: (token: string, password: string) =>
+      request<{ verified: true }>('/auth/verify-parent-password', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+        ...bearer(token),
+      }),
+
     login: (data: { email: string; password: string }) =>
       request<{ accessToken?: string; requiresTwoFactor?: boolean; userId?: string }>(
         '/auth/login', { method: 'POST', body: JSON.stringify(data) }),

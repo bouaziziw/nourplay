@@ -121,6 +121,102 @@ export class EmailService {
     })
   }
 
+  async sendScreenTimeAlertEmail(
+    to: string,
+    profileName: string,
+    limitMin: number,
+    watchedMin: number,
+    locale = 'fr',
+  ) {
+    const subjects: Record<string, string> = {
+      fr: `Limite de temps atteinte pour ${profileName} — NourPlay`,
+      en: `Screen time limit reached for ${profileName} — NourPlay`,
+    }
+    const bodies: Record<string, { title: string; body: string }> = {
+      fr: {
+        title: 'Limite de visionnage atteinte',
+        body: `Le profil <strong>${profileName}</strong> a atteint sa limite journalière de <strong>${limitMin} minutes</strong> (${watchedMin} min regardées aujourd'hui). Vous pouvez ajuster cette limite depuis les paramètres du profil.`,
+      },
+      en: {
+        title: 'Screen time limit reached',
+        body: `The profile <strong>${profileName}</strong> has reached its daily screen time limit of <strong>${limitMin} minutes</strong> (${watchedMin} min watched today). You can adjust this limit in the profile settings.`,
+      },
+    }
+    const t = bodies[locale] ?? bodies['fr']
+    await this.send({
+      to,
+      subject: subjects[locale] ?? subjects['fr'],
+      html: this.layout(t.title, `<p>${t.body}</p>`),
+      text: `${profileName} : ${watchedMin} min regardées / limite ${limitMin} min`,
+    })
+  }
+
+  async sendWeeklySummaryEmail(
+    to: string,
+    locale = 'fr',
+    profiles: Array<{
+      profileName: string
+      totalWatchedSec: number
+      videoCount: number
+      dailyLimitMin: number | null
+      topVideos: Array<{ title: string; thumbnailUrl: string | null; watchCount: number }>
+    }>,
+    weekLabel: string,
+  ) {
+    const isFr = locale !== 'en'
+    const subject = isFr
+      ? `Résumé NourPlay — ${weekLabel}`
+      : `NourPlay weekly recap — ${weekLabel}`
+
+    const fmtTime = (sec: number) => {
+      const h = Math.floor(sec / 3600)
+      const m = Math.floor((sec % 3600) / 60)
+      return h > 0 ? (isFr ? `${h}h ${m}m` : `${h}h ${m}m`) : `${m} min`
+    }
+
+    const profileBlocks = profiles.map(p => {
+      const limitLine = p.dailyLimitMin
+        ? `<p style="color:#6b7280;font-size:13px;margin:4px 0 0">${isFr ? `Limite journalière : ${p.dailyLimitMin} min/jour` : `Daily limit: ${p.dailyLimitMin} min/day`}</p>`
+        : ''
+
+      const topVideosHtml = p.topVideos.length === 0 ? '' : `
+        <p style="font-size:13px;font-weight:600;color:#374151;margin:12px 0 6px">${isFr ? 'Vidéos les plus regardées' : 'Most watched videos'}</p>
+        ${p.topVideos.map((v, i) => `
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="color:#9ca3af;font-size:12px;width:14px;flex-shrink:0">${i + 1}</span>
+            ${v.thumbnailUrl ? `<img src="${v.thumbnailUrl}" alt="" width="40" height="25" style="border-radius:4px;object-fit:cover;flex-shrink:0">` : `<div style="width:40px;height:25px;background:#e5e7eb;border-radius:4px;flex-shrink:0"></div>`}
+            <span style="font-size:13px;color:#111827;flex:1">${v.title}</span>
+            <span style="font-size:11px;color:#6b7280;white-space:nowrap">×${v.watchCount}</span>
+          </div>`).join('')}
+      `
+
+      return `
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:16px">
+          <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px">${p.profileName}</p>
+          <div style="display:flex;gap:24px;margin-bottom:4px">
+            <div>
+              <p style="font-size:22px;font-weight:700;color:#4f46e5;margin:0">${fmtTime(p.totalWatchedSec)}</p>
+              <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">${isFr ? 'regardées cette semaine' : 'watched this week'}</p>
+            </div>
+            <div>
+              <p style="font-size:22px;font-weight:700;color:#111827;margin:0">${p.videoCount}</p>
+              <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">${isFr ? 'vidéos' : 'videos'}</p>
+            </div>
+          </div>
+          ${limitLine}
+          ${topVideosHtml}
+        </div>`
+    }).join('')
+
+    const title = isFr ? `Résumé de la semaine` : `Weekly recap`
+    const intro = isFr
+      ? `Voici le résumé d'activité de vos enfants pour la semaine du <strong>${weekLabel}</strong>.`
+      : `Here is your children's activity recap for the week of <strong>${weekLabel}</strong>.`
+
+    const html = this.layout(title, `<p style="color:#374151">${intro}</p>${profileBlocks}`)
+    await this.send({ to, subject, html, text: `${intro} — ${profiles.map(p => `${p.profileName}: ${fmtTime(p.totalWatchedSec)}`).join(', ')}` })
+  }
+
   async sendVideoReviewEmail(to: string, videoTitle: string, action: 'approve' | 'reject', reason?: string, locale = 'fr') {
     const approved = action === 'approve'
     const subjects: Record<string, [string, string]> = {

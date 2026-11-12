@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: #030712;
+}
+
+body {
+  min-height: 100vh;
+}
+
+::selection {
+  color: #fff;
+  background: rgb(99 102 241 / 45%);
+}
+
+:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  main > div[class~='p-8'],
+  main > div[class~='p-6'] {
+    padding: 1rem;
+  }
+}
+
+main table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../../../hooks/useAuth'
 import { api, VideoReport } from '../../../../lib/api'
+import { RemoteImage } from '../../../../components/RemoteImage'
 
 export default function ReportsPage() {
   const { token } = useAuth()
@@ -78,7 +79,7 @@ export default function ReportsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {r.video.thumbnailUrl && (
-                        <img src={r.video.thumbnailUrl} alt="" className="w-10 h-7 rounded object-cover flex-shrink-0" />
+                        <RemoteImage src={r.video.thumbnailUrl} alt="" width={40} height={28} className="w-10 h-7 rounded object-cover flex-shrink-0" />
                       )}
                       <span className="text-gray-200 line-clamp-1">{r.video.title}</span>
                     </div>

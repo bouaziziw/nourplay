@@ -154,6 +154,78 @@ describe('AuthService', () => {
     })
   })
 
+  describe('setParentPin', () => {
+    it('vérifie le mot de passe puis enregistre uniquement le hash du PIN', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed' })
+      prisma.user.update.mockResolvedValue({})
+
+      await expect(service.setParentPin('uuid-1', 'correct', '123456')).resolves.toEqual({ configured: true })
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'uuid-1', deletedAt: null },
+        select: { passwordHash: true },
+      })
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'uuid-1' },
+        data: { parentPinHash: '$argon2id$hashed' },
+      })
+    })
+
+    it('refuse un compte sans mot de passe ou un mot de passe incorrect', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: null })
+      await expect(service.setParentPin('uuid-1', 'wrong', '123456')).rejects.toThrow(UnauthorizedException)
+
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed' })
+      const argon2 = await import('argon2')
+      vi.mocked(argon2.verify).mockResolvedValueOnce(false)
+      await expect(service.setParentPin('uuid-1', 'wrong', '123456')).rejects.toThrow(UnauthorizedException)
+      expect(prisma.user.update).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('verifyParentPassword', () => {
+    it('valide le mot de passe du compte', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed' })
+
+      await expect(service.verifyParentPassword('uuid-1', 'correct')).resolves.toEqual({ verified: true })
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'uuid-1', deletedAt: null },
+        select: { passwordHash: true },
+      })
+    })
+
+    it('refuse un compte sans mot de passe ou un mot de passe incorrect', async () => {
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: null })
+      await expect(service.verifyParentPassword('uuid-1', 'wrong')).rejects.toThrow(UnauthorizedException)
+
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed' })
+      const argon2 = await import('argon2')
+      vi.mocked(argon2.verify).mockResolvedValueOnce(false)
+      await expect(service.verifyParentPassword('uuid-1', 'wrong')).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
+  describe('verifyParentPin', () => {
+    it('valide le PIN depuis son hash', async () => {
+      prisma.user.findUnique.mockResolvedValue({ parentPinHash: '$argon2id$hashed' })
+
+      await expect(service.verifyParentPin('uuid-1', '123456')).resolves.toEqual({ verified: true })
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'uuid-1', deletedAt: null },
+        select: { parentPinHash: true },
+      })
+    })
+
+    it('refuse un PIN non configuré ou incorrect', async () => {
+      prisma.user.findUnique.mockResolvedValue({ parentPinHash: null })
+      await expect(service.verifyParentPin('uuid-1', '123456')).rejects.toThrow(UnauthorizedException)
+
+      prisma.user.findUnique.mockResolvedValue({ parentPinHash: '$argon2id$hashed' })
+      const argon2 = await import('argon2')
+      vi.mocked(argon2.verify).mockResolvedValueOnce(false)
+      await expect(service.verifyParentPin('uuid-1', '654321')).rejects.toThrow(UnauthorizedException)
+    })
+  })
+
   describe('buildFingerprint', () => {
     it('génère un hash SHA-256 de 64 caractères hex', () => {
       const fp = service.buildFingerprint('Mozilla/5.0', '192.168.1.42')

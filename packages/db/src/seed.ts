@@ -1,7 +1,24 @@
 import { PrismaClient, UserRole, PlanInterval } from '../generated/client'
-import { createHash } from 'crypto'
+import * as argon2 from 'argon2'
 
 const prisma = new PrismaClient()
+
+function hashPassword(password: string) {
+  return argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 1,
+  })
+}
+
+function hashPin(pin: string) {
+  return argon2.hash(pin, {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+  })
+}
 
 async function main() {
   console.log('Seeding database...')
@@ -44,12 +61,11 @@ async function main() {
   })
 
   // ── Utilisateur admin (dev uniquement) ───────────────────────
-  const { createHash: _hash } = await import('crypto')
-  const adminPasswordHash = _hash('sha256').update('Admin1234!').digest('hex')
+  const adminPasswordHash = await hashPassword('Admin1234!')
 
   await prisma.user.upsert({
     where: { email: 'admin@nourplay.local' },
-    update: {},
+    update: { passwordHash: adminPasswordHash },
     create: {
       email: 'admin@nourplay.local',
       passwordHash: adminPasswordHash,
@@ -60,13 +76,29 @@ async function main() {
     },
   })
 
-  // ── Utilisateur parent de test ───────────────────────────────
+  // ── Utilisateur enseignant de test ────────────────────────────
+  const teacherPasswordHash = await hashPassword('Teacher1234!')
+
+  await prisma.user.upsert({
+    where: { email: 'teacher@nourplay.local' },
+    update: { passwordHash: teacherPasswordHash },
+    create: {
+      email: 'teacher@nourplay.local',
+      passwordHash: teacherPasswordHash,
+      role: UserRole.TEACHER,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      locale: 'fr',
+    },
+  })
+
+  // ── Utilisateur parent de test ────────────────────────────────
   const parent = await prisma.user.upsert({
     where: { email: 'parent@nourplay.local' },
-    update: {},
+    update: { passwordHash: await hashPassword('Parent1234!') },
     create: {
       email: 'parent@nourplay.local',
-      passwordHash: createHash('sha256').update('Parent1234!').digest('hex'),
+      passwordHash: await hashPassword('Parent1234!'),
       role: UserRole.PARENT,
       emailVerified: true,
       emailVerifiedAt: new Date(),
@@ -75,15 +107,16 @@ async function main() {
   })
 
   // ── Profil enfant de test ────────────────────────────────────
+  const demoPinHash = await hashPin('1234')
   await prisma.childProfile.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: {},
+    update: { pinHash: demoPinHash },
     create: {
       id: '00000000-0000-0000-0000-000000000001',
       userId: parent.id,
       displayName: 'Petit Loup',
       ageGroup: 'AGE_4_6',
-      pinHash: createHash('sha256').update('1234').digest('hex'),
+      pinHash: demoPinHash,
     },
   })
 

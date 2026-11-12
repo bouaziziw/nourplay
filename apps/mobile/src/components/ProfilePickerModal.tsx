@@ -58,7 +58,7 @@ export function ProfilePickerModal({ visible, videoId, videoTitle, onClose, onAd
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
       <View style={styles.sheet}>
         <View style={styles.handle} />
-        <Text style={styles.title}>Ajouter aux favoris d'un profil</Text>
+        <Text style={styles.title}>Ajouter aux favoris d&apos;un profil</Text>
         <Text style={styles.subtitle} numberOfLines={1}>{videoTitle}</Text>
 
         {loading ? (

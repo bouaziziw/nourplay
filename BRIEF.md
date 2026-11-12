@@ -57,7 +57,7 @@ Je veux que la conformité soit pensée dès la conception (privacy by design), 
 
 ## Stack technique souhaitée
 
-- **Web** : Next.js (App Router), TypeScript, Tailwind ou solution équivalente.
+- **Web** : Next.js (App Router) / react 19, TypeScript, Tailwind ou solution équivalente.
 - **Mobile et TV** : React Native avec une base de code partagée, support TV (Android TV, Apple TV, Fire TV) via React Native TV ou équivalent.
 - **Backend** : NestJS en TypeScript, ou FastAPI en Python si l'équipe préfère. Choisis et justifie.
 - **Base de données** : PostgreSQL pour le relationnel, Redis pour le cache et les sessions.
@@ -103,3 +103,88 @@ Structure ta réponse en sections claires :
 7. Manuel d'installation local et production.
 8. Stratégie de tests et de CI/CD.
 9. Stratégie de commits et de documentation.
+
+
+
+création => Extension, Réduction et transfert: comme Remodeling 
+le champs magasin pas le champ switch
+
+
+(Optionnel) Ajout de la contrainte unique en base PostgreSQL
+Si vous préférez également ajouter la contrainte d'unicité au niveau de la base de données PostgreSQL, vous pouvez exécuter :
+
+sql
+-- Pour la table des parts de marché
+ALTER TABLE sch_geodata.ind_market_share 
+ADD CONSTRAINT ind_market_share_unique_key 
+UNIQUE (country_id, market_business_unit, market_year, market_period);
+-- Pour la table des remarques/titres
+ALTER TABLE sch_geodata.ind_market_share_remark 
+ADD CONSTRAINT ind_market_share_remark_unique_key 
+UNIQUE (country_id, market_origin);
+
+
+tu doit corriger D:\WORKSPACE\Carrefour\setex\apps\setex-front\src\components\Explore\Menu\MarketSharesMenu de mettre les 3 derniers colones dans des tableaux a par ou de mettre espacement pour avoir le même rendu comme sur la maquette D:\WORKSPACE\Carrefour\setex\apps\setex-front\public\table.png et le fichier D:\WORKSPACE\Carrefour\setex\apps\setex-front\public\Import_1_Pdm Pays tab_graph Nielsen 2026.xlsx
+
+tu doit modifier D:\WORKSPACE\Carrefour\setex\apps\setex-front\src\components\Explore\Menu\MarketSharesMenu\ImportTab.js dans la formulaire pour le champs commentaire lorsque en selectionne le pays il faut prérempli avec le dernière commentaire enregistré s'il n'y a pas laisser le champs vide
+
+Data management => 
+Stores logos =>  utiliser Marcel
+
+tous
+colone inactif / actifs => rouge et vert
+avoir logo plus grand meme taille upload
+enleve les ids
+autre colone poids logo
+régler hauteur du tableau du prendre 
+
+
+tu doit modifier tableau D:\WORKSPACE\Carrefour\setex\apps\setex-front\src\components\Admin\Menu\StoresMenu\StoresLogos\index.js:
+
+corriger la traduction ligne 471 et 428 
+dans le switch ligne 603 ajouter ALL et étre par defaut
+tu doit mettre la colone size  sort=true 
+dans la colonne appercu: avoir logo plus grand et meme taille que bouton upload
+
+
+il faut mettre toute la traduction de D:\WORKSPACE\Carrefour\setex\apps\setex-front\src\components\Admin\Menu\StoresMenu\StoresLogos dans les fichiers de D:\WORKSPACE\Carrefour\setex\packages\shared\src\i18n et utiliser import { translate, useTranslate } from 'react-polyglot' et pour l'appel const t = useTranslate();
+
+cardMenu => note génrale n'est pas correcte dans la page detail 
+MarkSudy => téléchargement => .pptx invalide jwt signature
+
+
+
+
+Carrefour Antibes
+
+Commandes disponibles
+Vous pouvez désormais lancer les commandes suivantes depuis la racine :
+
+run preview
+# ou
+pnpm run preview:front
+3. Lancer les serveurs de production construits (dist / dist-server)
+Lancer le serveur front de production :
+bash
+pnpm run start:front
+Lancer le serveur back de production :
+bash
+pnpm run start:back
+Lancer l'ensemble des services en production :
+bash
+pnpm run start
+4. Validation complète (lint + tests + build)
+Exécuter toute la chaîne de validation :
+bash
+pnpm run validate
+
+
+charte:
+enleve gaune et mettre le rouge , vert de site et les points en blanc
+
+synthése du projet: enleve le titre : projet sous réserves 
+
+en consultation :
+tout les commentaire a mettre la retour a la ligne (accepte le html) et justifier les commentaires et facteurs de risque
+
+les notes: orange va étre font blanc et bordure noir / comme facteure de risque 

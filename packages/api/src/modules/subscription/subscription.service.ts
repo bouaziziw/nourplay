@@ -1,5 +1,5 @@
 import {
-  Injectable, NotFoundException, BadRequestException, OnModuleInit,
+  Injectable, NotFoundException, BadRequestException, OnModuleInit, ServiceUnavailableException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import Stripe from 'stripe'
@@ -27,7 +27,7 @@ interface SubscriptionPayload {
 
 @Injectable()
 export class SubscriptionService implements OnModuleInit {
-  private stripe!: StripeClient
+  private stripe: StripeClient | null = null
   private webhookSecret!: string
   private appUrl!: string
 
@@ -41,7 +41,16 @@ export class SubscriptionService implements OnModuleInit {
     const secretKey = this.config.get<string>('stripe.secretKey', '')
     this.webhookSecret = this.config.get<string>('stripe.webhookSecret', '')
     this.appUrl = this.config.get<string>('appUrl', 'http://localhost:3000')
-    this.stripe = new Stripe(secretKey, { apiVersion: '2026-05-27.dahlia' })
+    if (secretKey) {
+      this.stripe = new Stripe(secretKey, { apiVersion: '2026-05-27.dahlia' })
+    }
+  }
+
+  private requireStripe(): StripeClient {
+    if (!this.stripe) {
+      throw new ServiceUnavailableException('Stripe is not configured')
+    }
+    return this.stripe
   }
 
   // ── Plans (public) ────────────────────────────────────────────
@@ -112,7 +121,7 @@ export class SubscriptionService implements OnModuleInit {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true } })
     if (!user) throw new NotFoundException('Utilisateur introuvable')
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.requireStripe().checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       ...(user.stripeCustomerId
@@ -134,7 +143,7 @@ export class SubscriptionService implements OnModuleInit {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true } })
     if (!user?.stripeCustomerId) throw new BadRequestException('Aucun compte Stripe associé à cet utilisateur')
 
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.requireStripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${this.appUrl}/fr/dashboard/subscription`,
     })
@@ -147,7 +156,7 @@ export class SubscriptionService implements OnModuleInit {
   async handleWebhook(rawBody: Buffer, signature: string) {
     let event: ReturnType<StripeClient['webhooks']['constructEvent']>
     try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret)
+      event = this.requireStripe().webhooks.constructEvent(rawBody, signature, this.webhookSecret)
     } catch {
       throw new BadRequestException('Signature webhook invalide')
     }
@@ -190,7 +199,7 @@ export class SubscriptionService implements OnModuleInit {
       await this.prisma.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId } })
     }
 
-    const stripeSubscription = await this.stripe.subscriptions.retrieve(stripeSubId, {
+    const stripeSubscription = await this.requireStripe().subscriptions.retrieve(stripeSubId, {
       expand: ['items'],
     }) as unknown as SubscriptionPayload
 

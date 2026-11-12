@@ -50,7 +50,7 @@ export default function AuditPage() {
   return (
     <div className="p-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Journal d'audit</h1>
+        <h1 className="text-2xl font-bold text-white">Journal d&apos;audit</h1>
         <p className="text-gray-500 text-sm mt-1">{total} entrée{total !== 1 ? 's' : ''}</p>
       </div>
 

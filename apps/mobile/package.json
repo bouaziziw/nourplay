@@ -2,33 +2,38 @@
   "name": "@nourplay/mobile",
   "version": "0.1.0",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "expo/AppEntry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test:e2e": "maestro test .maestro/flows"
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.0.0",
     "@react-navigation/native": "^7.0.0",
     "@react-navigation/native-stack": "^7.0.0",
-    "expo": "~53.0.0",
-    "expo-device": "^56.0.4",
-    "expo-notifications": "^56.0.14",
-    "expo-secure-store": "~14.0.0",
-    "expo-status-bar": "~2.2.0",
-    "react": "19.0.0",
-    "react-native": "0.79.2",
-    "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.10.0",
-    "react-native-webview": "~13.13.0"
+    "expo": "~58.0.23",
+    "expo-constants": "~58.0.15",
+    "expo-device": "^58.0.5",
+    "expo-notifications": "^58.1.8",
+    "expo-secure-store": "~58.0.2",
+    "expo-splash-screen": "~58.0.13",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-web": "^0.21.4",
+    "react-native-webview": "~14.0.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.0",
-    "@types/react": "~19.0.0",
-    "typescript": "~5.8.0"
+    "@babel/core": "^7.29.13",
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
   }
 }

@@ -1,0 +1,30 @@
+appId: app.nourplay.mobile
+env:
+  TEST_EMAIL: parent@example.com
+  TEST_PASSWORD: TestPassword123!
+  TEST_PROFILE_NAME: Lila
+  TEST_PROFILE_PIN: "1234"
+---
+- launchApp
+- runFlow: "../helpers/_login.yaml"
+
+# Tap on a child profile card (matches by name)
+- tapOn: ${TEST_PROFILE_NAME}
+
+# PIN modal should appear
+- assertVisible: "Code PIN"
+- assertVisible: "Confirmer"
+
+# Enter PIN and confirm
+- tapOn: "• • • •"
+- inputText: ${TEST_PROFILE_PIN}
+- tapOn: "Confirmer"
+
+# Should land on child playlists screen
+- assertVisible: "Mes playlists"
+- assertVisible: "Quitter"
+
+# Exit child mode cleanly
+- tapOn: "Quitter"
+- tapOn: "Quitter"
+- assertVisible: "Qui regarde ?"

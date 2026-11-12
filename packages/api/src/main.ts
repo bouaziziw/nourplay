@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core'
 import { ValidationPipe, VersioningType } from '@nestjs/common'
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
 import { ConfigService } from '@nestjs/config'
+import { IoAdapter } from '@nestjs/platform-socket.io'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
@@ -11,6 +12,8 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
     rawBody: true,
   })
+
+  app.useWebSocketAdapter(new IoAdapter(app))
 
   const config = app.get(ConfigService)
   const nodeEnv = config.get<string>('NODE_ENV', 'development')

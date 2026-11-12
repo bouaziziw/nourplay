@@ -23,6 +23,22 @@ class UnregisterTokenDto {
   token!: string
 }
 
+class WebPushSubscribeDto {
+  @IsString()
+  endpoint!: string
+
+  @IsString()
+  p256dh!: string
+
+  @IsString()
+  auth!: string
+}
+
+class WebPushUnsubscribeDto {
+  @IsString()
+  endpoint!: string
+}
+
 class QueryNotificationsDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)
   page = 1
@@ -85,5 +101,28 @@ export class NotificationController {
   @ApiOperation({ summary: 'Supprimer un token push Expo' })
   unregisterToken(@CurrentUser() user: JwtPayload, @Body() dto: UnregisterTokenDto) {
     return this.notificationService.unregisterToken(user.sub, dto.token)
+  }
+
+  // ── Web Push ──────────────────────────────────────────────────
+
+  @Get('web-push/vapid-key')
+  @ApiOperation({ summary: 'Clé publique VAPID pour Web Push' })
+  getVapidKey() {
+    return this.notificationService.getVapidPublicKey()
+  }
+
+  @Post('web-push/subscribe')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Enregistrer une souscription Web Push' })
+  subscribeWebPush(@CurrentUser() user: JwtPayload, @Body() dto: WebPushSubscribeDto) {
+    return this.notificationService.registerWebPushSubscription(user.sub, dto.endpoint, dto.p256dh, dto.auth)
+  }
+
+  @Delete('web-push/unsubscribe')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Supprimer une souscription Web Push' })
+  unsubscribeWebPush(@CurrentUser() user: JwtPayload, @Body() dto: WebPushUnsubscribeDto) {
+    return this.notificationService.unregisterWebPushSubscription(user.sub, dto.endpoint)
   }
 }

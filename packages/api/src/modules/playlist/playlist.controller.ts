@@ -1,7 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
-  ParseUUIDPipe, UseGuards, HttpCode, HttpStatus,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  ParseUUIDPipe, UseGuards, HttpCode, HttpStatus, Res,
 } from '@nestjs/common'
+import { Response } from 'express'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator'
@@ -11,6 +12,7 @@ import { UpdatePlaylistDto } from './dto/update-playlist.dto'
 import { AddVideoDto } from './dto/add-video.dto'
 import { ReorderVideosDto } from './dto/reorder-videos.dto'
 import { SharePlaylistDto } from './dto/share-playlist.dto'
+import { SchedulePlaylistDto } from './dto/schedule-playlist.dto'
 
 @ApiTags('Playlists')
 @ApiBearerAuth()
@@ -31,10 +33,30 @@ export class PlaylistController {
     return this.playlistService.create(user.sub, dto)
   }
 
+  @Get('scheduled')
+  @ApiOperation({ summary: 'Calendrier de publication (admin/modérateur)' })
+  findScheduled(@CurrentUser() user: JwtPayload) {
+    return this.playlistService.findScheduled(user.role)
+  }
+
+  @Patch(':id/schedule')
+  @ApiOperation({ summary: 'Planifier la publication automatique d\'une playlist' })
+  schedule(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SchedulePlaylistDto,
+  ) {
+    return this.playlistService.schedule(user.sub, id, dto)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Détail d\'une playlist avec ses vidéos' })
-  findOne(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
-    return this.playlistService.findOne(user.sub, id)
+  findOne(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('profileId') profileId?: string,
+  ) {
+    return this.playlistService.findOne(user.sub, id, profileId)
   }
 
   @Patch(':id')
@@ -83,6 +105,27 @@ export class PlaylistController {
     @Body() dto: ReorderVideosDto,
   ) {
     return this.playlistService.reorderVideos(user.sub, id, dto)
+  }
+
+  @Get(':id/export')
+  @ApiOperation({ summary: 'Exporter la playlist en CSV' })
+  async exportCsv(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.playlistService.exportCsv(user.sub, id)
+    const date = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="playlist-${id}-${date}.csv"`)
+    res.send(csv)
+  }
+
+  @Post(':id/duplicate')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Dupliquer une playlist' })
+  duplicate(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    return this.playlistService.duplicatePlaylist(user.sub, id)
   }
 
   @Post(':id/share')

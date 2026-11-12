@@ -43,7 +43,7 @@ export default function ParentPlaylistsScreen() {
       {playlists.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Aucune playlist.</Text>
-          <Text style={styles.emptyHint}>Créez des playlists depuis l'interface web.</Text>
+          <Text style={styles.emptyHint}>Créez des playlists depuis l&apos;interface web.</Text>
         </View>
       ) : (
         <FlatList
@@ -79,14 +79,14 @@ export default function ParentPlaylistsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f9fafb' },
+  safe: { flex: 1, backgroundColor: '#f5f6fb' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 4 },
-  title: { fontSize: 22, fontWeight: '800', color: '#111827' },
+  header: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 6 },
+  title: { fontSize: 25, fontWeight: '800', color: '#171a2b', letterSpacing: -0.5 },
   count: { fontSize: 13, color: '#9ca3af', marginTop: 2 },
-  list: { padding: 16, gap: 10 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, padding: 14, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  icon: { width: 46, height: 46, backgroundColor: '#eef2ff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  list: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 24, gap: 11 },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: '#eceef5', shadowColor: '#22264a', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  icon: { width: 48, height: 48, backgroundColor: '#f0efff', borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   info: { flex: 1 },
   name: { fontSize: 14, fontWeight: '700', color: '#111827' },
   desc: { fontSize: 12, color: '#6b7280', marginTop: 1 },

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # ── Base de données principale ──────────────────────────────
   postgres:
@@ -8,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: nourplay
-      POSTGRES_PASSWORD: Nousa100717
+      POSTGRES_PASSWORD: secret
       POSTGRES_DB: nourplay
     ports:
       - '5432:5432'

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { api, ApiError } from '../lib/api'
 
 interface User { id: string; email: string; role: string; locale: string }
@@ -21,6 +21,7 @@ export function useAuth(): AuthContextValue {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, token: null, loading: true })
+  const refreshInFlight = useRef<Promise<void> | null>(null)
 
   const loadUser = useCallback(async (token: string) => {
     try {
@@ -31,13 +32,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const refresh = useCallback(async () => {
-    try {
-      const { accessToken } = await api.auth.refresh()
-      await loadUser(accessToken)
-    } catch {
-      setState({ user: null, token: null, loading: false })
-    }
+  const refresh = useCallback(() => {
+    if (refreshInFlight.current) return refreshInFlight.current
+
+    const request = (async () => {
+      try {
+        const session = await api.auth.refresh()
+        if (session) {
+          await loadUser(session.accessToken)
+        } else {
+          setState({ user: null, token: null, loading: false })
+        }
+      } catch {
+        setState({ user: null, token: null, loading: false })
+      } finally {
+        refreshInFlight.current = null
+      }
+    })()
+
+    refreshInFlight.current = request
+    return request
   }, [loadUser])
 
   useEffect(() => { refresh() }, [refresh])

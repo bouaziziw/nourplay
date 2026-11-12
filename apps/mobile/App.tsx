@@ -8,11 +8,15 @@ import { ChildSessionContext, useChildSessionState } from './src/hooks/useChildS
 import AppNavigator from './src/navigation/AppNavigator'
 
 function Providers({ children }: { children: React.ReactNode }) {
-  const { state, login, loginWith2fa, logout } = useAuthState()
+  const { state, login, loginWith2fa, logout, unlockParentMode, lockParentMode } = useAuthState()
   const childSession = useChildSessionState()
+  const handleLogout = async () => {
+    await logout()
+    await childSession.clear()
+  }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, loginWith2fa, logout }}>
+    <AuthContext.Provider value={{ ...state, login, loginWith2fa, logout: handleLogout, unlockParentMode, lockParentMode }}>
       <ChildSessionContext.Provider value={childSession}>
         {children}
       </ChildSessionContext.Provider>

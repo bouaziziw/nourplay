@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
-import { Prisma } from '@nourplay/db'
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
+import { Prisma, AgeGroup } from '@nourplay/db'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { EmailService } from '../../common/email/email.service'
@@ -8,6 +8,15 @@ import { ReviewVideoDto, ReviewAction } from './dto/review-video.dto'
 import { QueryReportsDto } from './dto/query-reports.dto'
 import { ResolveReportDto } from './dto/resolve-report.dto'
 import { VideoValidationStatus } from '@nourplay/db'
+
+// Maps a video's age rating to the child profile age groups that can watch it
+const AGE_RATING_TO_GROUPS: Record<string, AgeGroup[]> = {
+  ALL: [AgeGroup.AGE_0_3, AgeGroup.AGE_4_6, AgeGroup.AGE_7_9, AgeGroup.AGE_10_12, AgeGroup.AGE_13_15],
+  AGE_4_PLUS: [AgeGroup.AGE_4_6, AgeGroup.AGE_7_9, AgeGroup.AGE_10_12, AgeGroup.AGE_13_15],
+  AGE_7_PLUS: [AgeGroup.AGE_7_9, AgeGroup.AGE_10_12, AgeGroup.AGE_13_15],
+  AGE_10_PLUS: [AgeGroup.AGE_10_12, AgeGroup.AGE_13_15],
+  AGE_13_PLUS: [AgeGroup.AGE_13_15],
+}
 
 const VIDEO_QUEUE_SELECT = {
   id: true,
@@ -27,6 +36,8 @@ const VIDEO_QUEUE_SELECT = {
 
 @Injectable()
 export class ModerationService {
+  private readonly logger = new Logger(ModerationService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -40,7 +51,7 @@ export class ModerationService {
     const skip = (page - 1) * limit
 
     const where = {
-      validationStatus: VideoValidationStatus.NEEDS_REVIEW,
+      validationStatus: { in: [VideoValidationStatus.PENDING, VideoValidationStatus.NEEDS_REVIEW] },
       ...(ageRating && { ageRating }),
     }
 
@@ -67,8 +78,11 @@ export class ModerationService {
     const video = await this.prisma.video.findUnique({ where: { id: videoId } })
     if (!video) throw new NotFoundException('Vidéo introuvable')
 
-    if (video.validationStatus !== VideoValidationStatus.NEEDS_REVIEW) {
-      throw new BadRequestException('La vidéo n\'est pas en attente de révision')
+    if (
+      video.validationStatus !== VideoValidationStatus.PENDING
+      && video.validationStatus !== VideoValidationStatus.NEEDS_REVIEW
+    ) {
+      throw new BadRequestException('La vidéo n’est plus en attente de validation ou de révision')
     }
 
     if (dto.action === ReviewAction.REJECT && !dto.reason) {
@@ -79,16 +93,19 @@ export class ModerationService {
       ? VideoValidationStatus.APPROVED
       : VideoValidationStatus.REJECTED
 
-    const updated = await this.prisma.video.update({
-      where: { id: videoId },
+    const result = await this.prisma.video.updateMany({
+      where: { id: videoId, validationStatus: video.validationStatus },
       data: {
         validationStatus: newStatus,
         ...(dto.action === ReviewAction.REJECT && {
           validationLog: { ...((video.validationLog as object) ?? {}), rejectionReason: dto.reason },
         }),
       },
-      select: { id: true, title: true, validationStatus: true, submittedById: true },
     })
+    if (result.count !== 1) {
+      throw new BadRequestException('La vidéo a été traitée entre-temps. Actualisez la file.')
+    }
+    const updated = { ...video, validationStatus: newStatus }
 
     // Notify the submitter by email + in-app notification
     if (video.submittedById) {
@@ -98,7 +115,14 @@ export class ModerationService {
       })
       if (submitter) {
         const action = dto.action === ReviewAction.APPROVE ? 'approve' : 'reject'
-        void this.email.sendVideoReviewEmail(submitter.email, video.title, action, dto.reason, submitter.locale)
+        void this.email
+          .sendVideoReviewEmail(submitter.email, video.title, action, dto.reason, submitter.locale)
+          .catch(error => {
+            this.logger.error(
+              `Failed to send video review email for video ${videoId}`,
+              error instanceof Error ? error.stack : String(error),
+            )
+          })
         void this.prisma.notification.create({
           data: {
             userId: video.submittedById,
@@ -109,8 +133,43 @@ export class ModerationService {
               ...(dto.reason && { reason: dto.reason }),
             } as Prisma.InputJsonValue,
           },
+        }).catch(error => {
+          this.logger.error(
+            `Failed to create video review notification for video ${videoId}`,
+            error instanceof Error ? error.stack : String(error),
+          )
         })
       }
+    }
+
+    // On approval, broadcast "new content" notification to relevant parents
+    if (dto.action === ReviewAction.APPROVE) {
+      const groups = AGE_RATING_TO_GROUPS[updated.ageRating] ?? Object.values(AgeGroup)
+      void this.prisma.user.findMany({
+        where: {
+          role: 'PARENT',
+          deletedAt: null,
+          childProfiles: { some: { deletedAt: null, ageGroup: { in: groups } } },
+          NOT: video.submittedById ? { id: video.submittedById } : undefined,
+        },
+        select: { id: true },
+      }).then(recipients =>
+        recipients.length > 0
+          ? this.prisma.notification.createMany({
+              data: recipients.map(u => ({
+                userId: u.id,
+                type: 'VIDEO_PUBLISHED',
+                payload: { videoId, videoTitle: video.title, ageRating: updated.ageRating } as Prisma.InputJsonValue,
+              })),
+              skipDuplicates: true,
+            })
+          : null,
+      ).catch(error => {
+        this.logger.error(
+          `Failed to broadcast publication notification for video ${videoId}`,
+          error instanceof Error ? error.stack : String(error),
+        )
+      })
     }
 
     await this.audit.log({

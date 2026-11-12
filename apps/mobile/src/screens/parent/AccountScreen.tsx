@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../../hooks/useAuth'
@@ -44,6 +44,7 @@ export default function AccountScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.header}>
         <Text style={styles.title}>Mon compte</Text>
       </View>
@@ -77,12 +78,14 @@ export default function AccountScreen() {
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
         <Text style={styles.logoutText}>Se déconnecter</Text>
       </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f9fafb' },
+  content: { paddingBottom: 24 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { fontSize: 22, fontWeight: '800', color: '#111827' },

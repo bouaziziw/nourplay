@@ -82,9 +82,17 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
           {remaining !== null && (
             <Text style={styles.remaining}>{remaining} min</Text>
           )}
-          <TouchableOpacity onPress={handleExit} style={styles.exitBtn}>
-            <Text style={styles.exitText}>Quitter</Text>
-          </TouchableOpacity>
+          <View style={styles.actions}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })}
+              style={styles.parentBtn}
+            >
+              <Text style={styles.parentText}>Parent</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleExit} style={styles.exitBtn}>
+              <Text style={styles.exitText}>Quitter</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -139,6 +147,9 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 12, fontWeight: '700', color: '#4f46e5' },
   profileName: { fontSize: 14, fontWeight: '600', color: '#1f2937' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  parentBtn: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#eef2ff' },
+  parentText: { fontSize: 12, color: '#4f46e5', fontWeight: '700' },
   remaining: { fontSize: 12, color: '#9ca3af' },
   exitBtn: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   exitText: { fontSize: 12, color: '#6b7280' },

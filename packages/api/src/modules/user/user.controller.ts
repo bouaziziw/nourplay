@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -13,7 +14,9 @@ import {
   Query,
   ParseIntPipe,
   DefaultValuePipe,
+  Res,
 } from '@nestjs/common'
+import type { Response } from 'express'
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator'
@@ -21,6 +24,7 @@ import { UserService } from './user.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { VerifyPinDto } from './dto/verify-pin.dto'
+import { ChangePinDto } from './dto/change-pin.dto'
 import { RecordWatchDto } from './dto/record-watch.dto'
 
 @ApiTags('Users & Profils')
@@ -36,6 +40,20 @@ export class UserController {
   @ApiOperation({ summary: 'Profil du compte connecté' })
   getMe(@CurrentUser() user: JwtPayload) {
     return this.userService.findById(user.sub)
+  }
+
+  // ── Langue ───────────────────────────────────────────────────
+
+  @Patch('me/locale')
+  @ApiOperation({ summary: 'Mettre à jour la langue de l\'interface' })
+  updateLocale(@CurrentUser() user: JwtPayload, @Body() body: { locale: string }) {
+    return this.userService.updateLocale(user.sub, body.locale)
+  }
+
+  @Patch('me/digest')
+  @ApiOperation({ summary: 'Activer ou désactiver le résumé hebdomadaire par email' })
+  updateDigest(@CurrentUser() user: JwtPayload, @Body() body: { enabled: boolean }) {
+    return this.userService.updateDigestPreference(user.sub, body.enabled)
   }
 
   // ── Limites du forfait ───────────────────────────────────────
@@ -101,6 +119,31 @@ export class UserController {
     return this.userService.verifyPin(user.sub, profileId, dto.pin)
   }
 
+  @Patch('me/profiles/:profileId/pin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Changer le PIN d\'un profil enfant' })
+  changePin(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() dto: ChangePinDto,
+  ) {
+    return this.userService.changePin(user.sub, profileId, dto.currentPin, dto.newPin)
+  }
+
+  @Get('me/profiles/:profileId/history/export')
+  @ApiOperation({ summary: 'Export CSV de l\'historique de visionnage' })
+  async exportHistory(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.userService.exportWatchHistoryCsv(user.sub, profileId)
+    const date = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="historique-${profileId}-${date}.csv"`)
+    res.send(csv)
+  }
+
   @Get('me/profiles/:profileId/history')
   @ApiOperation({ summary: 'Historique de visionnage d\'un profil' })
   getHistory(
@@ -151,6 +194,72 @@ export class UserController {
     return this.userService.getDailyWatchTime(user.sub, profileId)
   }
 
+  // ── Progression vidéo ────────────────────────────────────────
+
+  @Get('me/profiles/:profileId/in-progress')
+  @ApiOperation({ summary: 'Vidéos en cours pour un profil (non terminées, ≥ 10s)' })
+  getInProgress(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getInProgressVideos(user.sub, profileId)
+  }
+
+  @Get('me/profiles/:profileId/progress/:videoId')
+  @ApiOperation({ summary: 'Position de reprise d\'une vidéo' })
+  getProgress(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+  ) {
+    return this.userService.getVideoProgress(user.sub, profileId, videoId)
+  }
+
+  @Put('me/profiles/:profileId/progress/:videoId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sauvegarder la position de lecture' })
+  saveProgress(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+    @Body() body: { positionSec: number },
+  ) {
+    return this.userService.upsertVideoProgress(user.sub, profileId, videoId, body.positionSec)
+  }
+
+  // ── Évaluations vidéo ────────────────────────────────────────
+
+  @Get('me/profiles/:profileId/ratings')
+  @ApiOperation({ summary: 'Toutes les évaluations d\'un profil enfant' })
+  getProfileRatings(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getProfileRatings(user.sub, profileId)
+  }
+
+  @Get('me/profiles/:profileId/ratings/:videoId')
+  @ApiOperation({ summary: 'Évaluation d\'un profil pour une vidéo' })
+  getVideoRating(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+  ) {
+    return this.userService.getVideoRating(user.sub, profileId, videoId)
+  }
+
+  @Put('me/profiles/:profileId/ratings/:videoId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Évaluer une vidéo (pouce haut/bas, null = supprimer)' })
+  rateVideo(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+    @Body() body: { rating: 'THUMBS_UP' | 'THUMBS_DOWN' | null },
+  ) {
+    return this.userService.rateVideo(user.sub, profileId, videoId, body.rating)
+  }
+
   // ── Favoris par profil enfant ────────────────────────────────
 
   @Get('me/profiles/:profileId/favorites')
@@ -182,6 +291,83 @@ export class UserController {
     @Param('videoId', ParseUUIDPipe) videoId: string,
   ) {
     return this.userService.removeFavorite(user.sub, profileId, videoId)
+  }
+
+  // ── Limites par catégorie ────────────────────────────────────
+
+  @Get('me/profiles/:profileId/category-limits')
+  @ApiOperation({ summary: 'Liste des limites de temps par catégorie' })
+  getCategoryLimits(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.getCategoryLimits(user.sub, profileId)
+  }
+
+  @Put('me/profiles/:profileId/category-limits/:tagId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Définir ou modifier une limite journalière pour une catégorie' })
+  upsertCategoryLimit(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('tagId', ParseUUIDPipe) tagId: string,
+    @Body() body: { dailyLimitMin: number },
+  ) {
+    return this.userService.upsertCategoryLimit(user.sub, profileId, tagId, body.dailyLimitMin)
+  }
+
+  @Delete('me/profiles/:profileId/category-limits/:tagId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Supprimer la limite de temps pour une catégorie' })
+  deleteCategoryLimit(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('tagId', ParseUUIDPipe) tagId: string,
+  ) {
+    return this.userService.deleteCategoryLimit(user.sub, profileId, tagId)
+  }
+
+  // ── Approbations parentales ──────────────────────────────────
+
+  @Post('me/profiles/:profileId/approval-requests')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Demander l\'autorisation parentale pour une vidéo' })
+  requestApproval(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() body: { videoId: string },
+  ) {
+    return this.userService.requestApproval(user.sub, profileId, body.videoId)
+  }
+
+  @Get('me/approval-requests')
+  @ApiOperation({ summary: 'Demandes d\'approbation en attente pour tous les profils du compte' })
+  getApprovalRequests(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+  ) {
+    return this.userService.getApprovalRequests(user.sub, status)
+  }
+
+  @Patch('me/approval-requests/:requestId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approuver ou refuser une demande parentale' })
+  resolveApproval(
+    @CurrentUser() user: JwtPayload,
+    @Param('requestId', ParseUUIDPipe) requestId: string,
+    @Body() body: { action: 'APPROVED' | 'DENIED' },
+  ) {
+    return this.userService.resolveApproval(user.sub, requestId, body.action)
+  }
+
+  @Get('me/profiles/:profileId/approval-requests/:videoId')
+  @ApiOperation({ summary: 'Statut d\'approbation d\'une vidéo pour un profil' })
+  getVideoApprovalStatus(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Param('videoId', ParseUUIDPipe) videoId: string,
+  ) {
+    return this.userService.getVideoApprovalStatus(user.sub, profileId, videoId)
   }
 
   // ── Filtres de contenu ──────────────────────────────────────

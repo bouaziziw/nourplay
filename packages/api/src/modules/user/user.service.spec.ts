@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { UserService } from './user.service'
 
 vi.mock('argon2', () => ({
@@ -21,6 +21,10 @@ const makePrisma = () => ({
     findMany: vi.fn(),
     create: vi.fn(),
     deleteMany: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  notification: {
+    create: vi.fn().mockResolvedValue({ id: 'n1' }),
   },
   userBlock: {
     findMany: vi.fn(),
@@ -29,7 +33,18 @@ const makePrisma = () => ({
     delete: vi.fn(),
   },
   video: { findUnique: vi.fn() },
+  videoProgress: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+  },
   videoFavorite: {
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  videoRating: {
+    findUnique: vi.fn(),
     findMany: vi.fn(),
     upsert: vi.fn(),
     deleteMany: vi.fn(),
@@ -56,10 +71,15 @@ describe('UserService', () => {
 
   describe('findById', () => {
     it('returns user when found', async () => {
-      const user = { id: 'u-1', email: 'a@test.com', role: 'PARENT' }
+      const user = { id: 'u-1', email: 'a@test.com', role: 'PARENT', parentPinHash: 'secret-hash' }
       prisma.user.findUnique.mockResolvedValue(user)
 
-      expect(await service.findById('u-1')).toBe(user)
+      expect(await service.findById('u-1')).toEqual({
+        id: 'u-1',
+        email: 'a@test.com',
+        role: 'PARENT',
+        parentPinConfigured: true,
+      })
     })
 
     it('throws NotFoundException when user does not exist', async () => {
@@ -213,6 +233,140 @@ describe('UserService', () => {
         service.recordWatchEvent('u-1', 'p-1', { videoId: 'bad', durationWatchedSec: 0, completed: false }),
       ).rejects.toThrow(NotFoundException)
     })
+
+    describe('viewing schedule enforcement', () => {
+      afterEach(() => vi.useRealTimers())
+
+      it('autorise le visionnage quand aucune plage horaire n\'est configurée', async () => {
+        prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', viewingSchedule: null, dailyLimitMin: null })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+        prisma.watchHistory.create.mockResolvedValue({ id: 'wh-1' })
+
+        await expect(
+          service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 60, completed: false }),
+        ).resolves.not.toThrow()
+      })
+
+      it('autorise le visionnage quand l\'heure actuelle est dans une plage horaire', async () => {
+        // Monday 10:00
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-01-15T10:00:00')) // Monday
+
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          viewingSchedule: { mon: ['08:00-12:00'] },
+          dailyLimitMin: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+        prisma.watchHistory.create.mockResolvedValue({ id: 'wh-1' })
+
+        await expect(
+          service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 60, completed: false }),
+        ).resolves.not.toThrow()
+      })
+
+      it('bloque le visionnage quand l\'heure actuelle est hors plage horaire', async () => {
+        // Monday 20:00 — outside 08:00-12:00
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-01-15T20:00:00'))
+
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          viewingSchedule: { mon: ['08:00-12:00'] },
+          dailyLimitMin: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+
+        await expect(
+          service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 60, completed: false }),
+        ).rejects.toThrow(ForbiddenException)
+      })
+
+      it('bloque le visionnage si aucune plage n\'est définie pour le jour en cours', async () => {
+        // Monday 10:00 — schedule only has tue
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-01-15T10:00:00'))
+
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          viewingSchedule: { tue: ['08:00-20:00'] },
+          dailyLimitMin: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+
+        await expect(
+          service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 60, completed: false }),
+        ).rejects.toThrow(ForbiddenException)
+      })
+
+      it('autorise si le visionnage tombe exactement sur le début de la plage', async () => {
+        // Monday exactly 08:00
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-01-15T08:00:00'))
+
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          viewingSchedule: { mon: ['08:00-12:00'] },
+          dailyLimitMin: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+        prisma.watchHistory.create.mockResolvedValue({ id: 'wh-1' })
+
+        await expect(
+          service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 60, completed: false }),
+        ).resolves.not.toThrow()
+      })
+    })
+
+    describe('screen time in-app notification', () => {
+      it('crée une notification SCREEN_TIME_ALERT quand la limite journalière est franchie', async () => {
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          displayName: 'Emma',
+          dailyLimitMin: 30,
+          userId: 'u-1',
+          viewingSchedule: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+        prisma.watchHistory.create.mockResolvedValue({ id: 'wh-1' })
+        // Simulates: previously 29 min, now crosses 30 min limit
+        prisma.watchHistory.aggregate.mockResolvedValue({ _sum: { durationWatchedSec: 1860 } }) // 31 min total
+        prisma.user.findUnique.mockResolvedValue({ email: 'parent@test.com', locale: 'fr' })
+
+        await service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 120, completed: false })
+
+        // Give the async check time to settle
+        await new Promise(r => setImmediate(r))
+
+        expect(prisma.notification.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              userId: 'u-1',
+              type: 'SCREEN_TIME_ALERT',
+            }),
+          }),
+        )
+      })
+
+      it('ne crée pas de notification si la limite n\'est pas franchie', async () => {
+        prisma.childProfile.findFirst.mockResolvedValue({
+          id: 'p-1',
+          displayName: 'Emma',
+          dailyLimitMin: 60,
+          userId: 'u-1',
+          viewingSchedule: null,
+        })
+        prisma.video.findUnique.mockResolvedValue({ id: 'v-1', validationStatus: 'APPROVED' })
+        prisma.watchHistory.create.mockResolvedValue({ id: 'wh-1' })
+        // Total stays below 60 min
+        prisma.watchHistory.aggregate.mockResolvedValue({ _sum: { durationWatchedSec: 600 } }) // 10 min
+
+        await service.recordWatchEvent('u-1', 'p-1', { videoId: 'v-1', durationWatchedSec: 120, completed: false })
+        await new Promise(r => setImmediate(r))
+
+        expect(prisma.notification.create).not.toHaveBeenCalled()
+      })
+    })
   })
 
   // ── deleteBlock ───────────────────────────────────────────────
@@ -318,6 +472,77 @@ describe('UserService', () => {
       prisma.childProfile.findFirst.mockResolvedValue(null)
 
       await expect(service.removeFavorite('u-2', 'p-1', 'v-1')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── getVideoRating ────────────────────────────────────────────
+
+  describe('getVideoRating', () => {
+    it('returns the saved rating for an owned profile', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoRating.findUnique.mockResolvedValue({ rating: 'THUMBS_UP' })
+
+      await expect(service.getVideoRating('u-1', 'p-1', 'v-1'))
+        .resolves.toEqual({ rating: 'THUMBS_UP' })
+    })
+
+    it('returns null when the profile has not rated the video', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoRating.findUnique.mockResolvedValue(null)
+
+      await expect(service.getVideoRating('u-1', 'p-1', 'v-1'))
+        .resolves.toEqual({ rating: null })
+    })
+
+    it('does not read ratings for profiles not owned by the user', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+
+      await expect(service.getVideoRating('u-2', 'p-1', 'v-1')).rejects.toThrow(NotFoundException)
+      expect(prisma.videoRating.findUnique).not.toHaveBeenCalled()
+    })
+  })
+
+  // ── Video progress ────────────────────────────────────────────
+
+  describe('getVideoProgress', () => {
+    it('returns the saved progress for an owned profile', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoProgress.findUnique.mockResolvedValue({ positionSec: 42, completed: false })
+
+      await expect(service.getVideoProgress('u-1', 'p-1', 'v-1'))
+        .resolves.toEqual({ positionSec: 42, completed: false })
+    })
+
+    it('returns default progress when no position has been saved', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.videoProgress.findUnique.mockResolvedValue(null)
+
+      await expect(service.getVideoProgress('u-1', 'p-1', 'v-1'))
+        .resolves.toEqual({ positionSec: 0, completed: false })
+    })
+  })
+
+  describe('upsertVideoProgress', () => {
+    it('saves progress for an existing video', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.video.findUnique.mockResolvedValue({ id: 'v-1' })
+      prisma.videoProgress.upsert.mockResolvedValue({ profileId: 'p-1', videoId: 'v-1', positionSec: 42 })
+
+      await service.upsertVideoProgress('u-1', 'p-1', 'v-1', 42)
+
+      expect(prisma.videoProgress.upsert).toHaveBeenCalledWith({
+        where: { profileId_videoId: { profileId: 'p-1', videoId: 'v-1' } },
+        create: { profileId: 'p-1', videoId: 'v-1', positionSec: 42, completed: false },
+        update: { positionSec: 42 },
+      })
+    })
+
+    it('rejects attempts to save progress for a missing video', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1' })
+      prisma.video.findUnique.mockResolvedValue(null)
+
+      await expect(service.upsertVideoProgress('u-1', 'p-1', 'v-1', 42)).rejects.toThrow(NotFoundException)
+      expect(prisma.videoProgress.upsert).not.toHaveBeenCalled()
     })
   })
 })

@@ -79,7 +79,7 @@ export default function CompliancePage() {
       <div>
         <h1 className="text-2xl font-bold text-white">Conformité RGPD</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Vue d'ensemble des consentements et des demandes d'exercice des droits
+          Vue d&apos;ensemble des consentements et des demandes d&apos;exercice des droits
         </p>
       </div>
 

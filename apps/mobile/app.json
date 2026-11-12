@@ -4,13 +4,8 @@
     "slug": "nourplay",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "../web/public/icons/icon-512.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#4f46e5"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.nourplay.mobile",
@@ -22,16 +17,24 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "../web/public/icons/icon-maskable-512.png",
         "backgroundColor": "#4f46e5"
       },
       "package": "app.nourplay.mobile",
       "permissions": []
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "../web/public/icons/icon-192.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "../web/public/icons/icon-512.png",
+          "imageWidth": 200,
+          "backgroundColor": "#4f46e5"
+        }
+      ],
       [
         "expo-secure-store",
         {

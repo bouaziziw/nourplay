@@ -70,7 +70,7 @@ NourPlay est une plateforme web, mobile et TV permettant aux parents et enseigna
 ┌──────────────────────────────┐
 │      Services externes       │
 │  YouTube API  •  Vimeo API   │
-│  OpenAI (gpt-4o-mini)        │
+│  OpenAI (modération vidéo)     │
 │  Resend (email)              │
 │  S3 / Cloudflare R2          │
 └──────────────────────────────┘
@@ -110,7 +110,7 @@ graph TB
   subgraph External
     YT[YouTube Data API]
     VM[Vimeo API]
-    AI[OpenAI gpt-4o-mini]
+    AI[OpenAI]
     EM[Resend Email]
     S3[S3 / R2 Storage]
   end
@@ -163,7 +163,7 @@ graph TB
 | **File de jobs** | BullMQ | Validation IA, envoi emails, export RGPD |
 | **Email** | Resend | API REST simple, templates réactifs |
 | **Stockage objets** | S3 / Cloudflare R2 | Avatars, thumbnails — jamais les vidéos |
-| **Validation IA** | OpenAI gpt-4o-mini | Rapport coût/précision optimal pour classification contenu |
+| **Validation IA** | OpenAI `gpt-4o-mini` | Sortie contrôlée; preuve média incomplète = revue humaine |
 | **Auth** | Argon2id · JWT · TOTP · OAuth Google | Argon2id = winner PHC, résistant GPU |
 | **I18n** | next-intl | fr · en · ar · es, RTL natif pour l'arabe |
 | **Tests** | Vitest · Playwright · Supertest | Unit, E2E web, intégration API |
@@ -182,7 +182,7 @@ graph TB
 | **Docker Desktop** | 4.x | [docker.com](https://www.docker.com/products/docker-desktop/) |
 | **Git** | 2.40+ | [git-scm.com](https://git-scm.com) |
 
-> Les clés API externes (YouTube, Vimeo, OpenAI, Resend) sont **optionnelles** pour le démarrage local — voir la section [Variables d'environnement](#6-variables-denvironnement).
+> Les clés API externes (YouTube, Vimeo, OpenAI, Resend) sont **optionnelles** pour le démarrage local — sans clé OpenAI, la validation bascule en revue humaine.
 
 ---
 
@@ -207,7 +207,7 @@ Seules les valeurs suivantes sont **obligatoires** pour démarrer :
 # Générés automatiquement par Docker Compose
 DATABASE_URL=postgresql://nourplay:secret@localhost:5432/nourplay
 DATABASE_URL_TEST=postgresql://nourplay:secret@localhost:5432/nourplay_test
-REDIS_URL=redis://localhost:6379
+REDIS_URL=redis://:secret@localhost:6379
 
 # À changer dès la première utilisation (min 32 caractères)
 JWT_ACCESS_SECRET=changeme-dev-access-secret-min-32-chars
@@ -276,11 +276,14 @@ pnpm dev
 
 ### Étape 7 — Démarrer le worker de validation IA
 
+Le worker doit rester lancé en parallèle de l'API pour traiter immédiatement les vidéos approuvées.
+La commande `pnpm dev` le lance automatiquement avec les autres applications. Pour le lancer seul :
+
 ```bash
-pnpm --filter video-validator dev
+pnpm --filter @nourplay/video-validator dev
 ```
 
-> Sans clé `OPENAI_API_KEY`, le worker passe les vidéos en `NEEDS_REVIEW` (score de fallback à 0.65).
+> Sans clé `OPENAI_API_KEY`, ou si l’analyse est invalide/incomplète, le worker passe la vidéo en `NEEDS_REVIEW`. Les métadonnées et une miniature ne suffisent jamais à approuver une vidéo sans échantillonnage vidéo et transcription audio fiables.
 
 ---
 
@@ -382,7 +385,7 @@ Copier `.env.example` → `.env` et renseigner les valeurs. Les colonnes **Requi
 
 | Variable | Exemple | Requis | Description |
 |---|---|---|---|
-| `REDIS_URL` | `redis://localhost:6379` | ✅ | URL Redis (sessions + BullMQ) |
+| `REDIS_URL` | `redis://:secret@localhost:6379` | ✅ | URL Redis (sessions + BullMQ) |
 
 ### Authentification — JWT
 
@@ -445,9 +448,8 @@ Copier `.env.example` → `.env` et renseigner les valeurs. Les colonnes **Requi
 | Variable | Défaut | Description |
 |---|---|---|
 | `OPENAI_API_KEY` | — | Clé API OpenAI |
-| `AI_MODERATION_MODEL` | `gpt-4o-mini` | Modèle de classification |
-| `AI_MODERATION_THRESHOLD_APPROVE` | `0.85` | Score ≥ 0.85 → APPROVED |
-| `AI_MODERATION_THRESHOLD_REVIEW` | `0.60` | Score 0.60–0.85 → NEEDS_REVIEW, < 0.60 → REJECTED |
+| `AI_MODERATION_MODEL` | `gpt-4o-mini` | Modèle de modération |
+| `OPENAI_TIMEOUT_MS` | `45000` | Timeout de l'analyse |
 
 ### Observabilité (OpenTelemetry)
 
@@ -954,10 +956,13 @@ NourPlay a été conçu avec le principe de **Privacy by Design** conformément 
 ### Validation du contenu
 
 Pipeline de validation IA avant publication :
-1. Score ≥ 0.85 → `APPROVED` (publication automatique)
-2. Score 0.60–0.85 → `NEEDS_REVIEW` (file modération humaine)
-3. Score < 0.60 → `REJECTED`
-4. Erreur API → `NEEDS_REVIEW` (fallback gracieux, pas de rejet automatique)
+1. Chaque vidéo soumise, y compris depuis une playlist, est envoyée automatiquement dans BullMQ.
+2. OpenAI renvoie une décision, une confiance, des violations horodatées et son analyse audio.
+3. Approbation seulement avec une confiance élevée, un âge compatible et des preuves vidéo/audio complètes.
+4. Rejet seulement si une violation grave avec preuve est suffisamment certaine; les cas ambigus vont en `NEEDS_REVIEW`.
+5. Erreur fournisseur, sortie invalide ou analyse média incomplète → `NEEDS_REVIEW`.
+
+Le worker actuel ne reçoit qu'une miniature et les métadonnées; il n'extrait pas encore de frames ni de transcript. Il ne peut donc pas approuver automatiquement une vidéo sur ces seules preuves. Chaque vidéo d'une playlist est évaluée séparément.
 
 Seules les vidéos avec statut `APPROVED` sont visibles dans les playlists partagées.
 

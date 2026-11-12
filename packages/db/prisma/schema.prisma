@@ -69,6 +69,17 @@ enum BlockType {
   KEYWORD_WHITELIST
 }
 
+enum VideoRatingValue {
+  THUMBS_UP
+  THUMBS_DOWN
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 enum GdprRequestType {
   EXPORT
   DELETE
@@ -103,6 +114,7 @@ model User {
   id              String    @id @default(uuid()) @db.Uuid
   email           String    @unique
   passwordHash    String?
+  parentPinHash   String?   @map("parent_pin_hash")
   role            UserRole  @default(PARENT)
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
@@ -115,28 +127,32 @@ model User {
   googleId String? @unique
 
   // Méta
-  locale    String   @default("fr")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime? // soft delete RGPD
+  locale              String    @default("fr")
+  weeklyDigestEnabled Boolean   @default(true) @map("weekly_digest_enabled")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime? // soft delete RGPD
 
   // Relations
-  childProfiles    ChildProfile[]
-  playlists        Playlist[]
-  playlistAccesses PlaylistAccess[]
-  refreshTokens    RefreshToken[]
-  consentRecords   ConsentRecord[]
-  auditLogs        AuditLog[]       @relation("ActorAuditLogs")
-  blocks           UserBlock[]
-  notifications    Notification[]
-  gdprRequests     GdprRequest[]
-  reportedVideos   VideoReport[]
-  subscription     Subscription?
-  legalDocuments   LegalDocument[]
-  deviceTokens     DeviceToken[]
+  childProfiles        ChildProfile[]
+  playlists            Playlist[]
+  playlistAccesses     PlaylistAccess[]
+  refreshTokens        RefreshToken[]
+  consentRecords       ConsentRecord[]
+  auditLogs            AuditLog[]            @relation("ActorAuditLogs")
+  blocks               UserBlock[]
+  notifications        Notification[]
+  gdprRequests         GdprRequest[]
+  reportedVideos       VideoReport[]
+  subscription         Subscription?
+  legalDocuments       LegalDocument[]
+  deviceTokens         DeviceToken[]
+  webPushSubscriptions WebPushSubscription[]
 
   // Stripe
   stripeCustomerId String? @unique
+
+  watchParties WatchParty[]
 
   @@index([email])
   @@index([deletedAt])
@@ -144,13 +160,13 @@ model User {
 }
 
 model ChildProfile {
-  id           String   @id @default(uuid()) @db.Uuid
-  userId       String   @db.Uuid
-  displayName  String
-  birthYear    Int? // jamais la date exacte
-  ageGroup     AgeGroup
-  avatarKey    String? // clé S3 — jamais URL complète
-  pinHash      String // PIN de déverrouillage
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  displayName String
+  birthYear   Int? // jamais la date exacte
+  ageGroup    AgeGroup
+  avatarKey   String? // clé S3 — jamais URL complète
+  pinHash     String // PIN de déverrouillage
 
   // Contrôle parental
   viewingSchedule Json? // { "mon": ["08:00-12:00"], ... }
@@ -162,9 +178,13 @@ model ChildProfile {
   deletedAt DateTime?
 
   // Relations
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  watchHistory WatchHistory[]
-  favorites    VideoFavorite[]
+  user             User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  watchHistory     WatchHistory[]
+  favorites        VideoFavorite[]
+  videoProgress    VideoProgress[]
+  videoRatings     VideoRating[]
+  categoryLimits   ProfileCategoryLimit[]
+  approvalRequests ParentalApprovalRequest[]
 
   @@index([userId])
   @@map("child_profiles")
@@ -175,13 +195,13 @@ model ChildProfile {
 // ─────────────────────────────────────────────────────────────
 
 model RefreshToken {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @db.Uuid
-  tokenHash   String   @unique // hash SHA-256 du token
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  tokenHash   String    @unique // hash SHA-256 du token
   fingerprint String // hash user-agent + IP subnet
   expiresAt   DateTime
   revokedAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -195,17 +215,17 @@ model RefreshToken {
 // ─────────────────────────────────────────────────────────────
 
 model VideoSource {
-  id            String   @id @default(uuid()) @db.Uuid
-  name          String   @unique // "YouTube", "Vimeo", "Dailymotion"
-  slug          String   @unique // "youtube", "vimeo"
-  baseUrl       String
-  embedAllowed  Boolean  @default(false)
-  cguVersion    String?
-  cguCheckedAt  DateTime?
-  embedPolicy   Json? // règles parsées
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String    @unique // "YouTube", "Vimeo", "Dailymotion"
+  slug         String    @unique // "youtube", "vimeo"
+  baseUrl      String
+  embedAllowed Boolean   @default(false)
+  cguVersion   String?
+  cguCheckedAt DateTime?
+  embedPolicy  Json? // règles parsées
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   videos Video[]
 
@@ -217,31 +237,35 @@ model VideoSource {
 // ─────────────────────────────────────────────────────────────
 
 model Video {
-  id               String                @id @default(uuid()) @db.Uuid
-  sourceId         String                @db.Uuid
-  externalId       String // ID sur la plateforme source
-  embedUrl         String
-  title            String
-  description      String?
-  durationSec      Int?
-  thumbnailUrl     String?
-  language         String?
-  ageRating        AgeRating             @default(ALL)
-  validationStatus VideoValidationStatus @default(PENDING)
-  validationScore  Float? // 0.0 → 1.0
-  validationLog    Json? // détail de l'analyse IA
-  publishedAt      DateTime? // date de publication sur la source
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  submittedById    String?               @db.Uuid
+  id                  String                @id @default(uuid()) @db.Uuid
+  sourceId            String                @db.Uuid
+  externalId          String // ID sur la plateforme source
+  embedUrl            String
+  title               String
+  description         String?
+  durationSec         Int?
+  thumbnailUrl        String?
+  language            String?
+  ageRating           AgeRating             @default(ALL)
+  validationStatus    VideoValidationStatus @default(PENDING)
+  validationScore     Float? // 0.0 → 1.0
+  validationLog       Json? // détail de l'analyse IA
+  publishedAt         DateTime? // date de publication sur la source
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  submittedById       String?               @db.Uuid
+  submitterApprovedAt DateTime?
 
   // Relations
-  source         VideoSource      @relation(fields: [sourceId], references: [id])
-  playlistVideos PlaylistVideo[]
-  tags           VideoTag[]
-  watchHistory   WatchHistory[]
-  reports        VideoReport[]
-  favorites      VideoFavorite[]
+  source           VideoSource               @relation(fields: [sourceId], references: [id])
+  playlistVideos   PlaylistVideo[]
+  tags             VideoTag[]
+  watchHistory     WatchHistory[]
+  reports          VideoReport[]
+  favorites        VideoFavorite[]
+  videoProgress    VideoProgress[]
+  ratings          VideoRating[]
+  approvalRequests ParentalApprovalRequest[]
 
   @@unique([sourceId, externalId]) // pas de doublon par plateforme
   @@index([validationStatus])
@@ -255,7 +279,8 @@ model Tag {
   name   String
   locale String @default("fr")
 
-  videoTags VideoTag[]
+  videoTags     VideoTag[]
+  profileLimits ProfileCategoryLimit[]
 
   @@unique([name, locale])
   @@map("tags")
@@ -273,27 +298,66 @@ model VideoTag {
 }
 
 // ─────────────────────────────────────────────────────────────
+//  Limites par catégorie (par profil enfant + tag)
+// ─────────────────────────────────────────────────────────────
+
+model ProfileCategoryLimit {
+  id            String @id @default(uuid()) @db.Uuid
+  profileId     String @db.Uuid
+  tagId         String @db.Uuid
+  dailyLimitMin Int
+
+  profile ChildProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tag     Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, tagId])
+  @@map("profile_category_limits")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  File d'approbation parentale
+// ─────────────────────────────────────────────────────────────
+
+model ParentalApprovalRequest {
+  id          String         @id @default(uuid()) @db.Uuid
+  profileId   String         @db.Uuid
+  videoId     String         @db.Uuid
+  status      ApprovalStatus @default(PENDING)
+  requestedAt DateTime       @default(now())
+  resolvedAt  DateTime?
+
+  profile ChildProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  video   Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, videoId])
+  @@index([profileId, status])
+  @@map("parental_approval_requests")
+}
+
+// ─────────────────────────────────────────────────────────────
 //  Playlists
 // ─────────────────────────────────────────────────────────────
 
 model Playlist {
-  id             String             @id @default(uuid()) @db.Uuid
-  ownerId        String             @db.Uuid
-  name           String
-  description    String?
-  visibility     PlaylistVisibility @default(PRIVATE)
-  targetAgeGroup AgeGroup[]
-  languages      String[]
-  shareToken     String?            @unique // token pour partage par lien
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  deletedAt      DateTime?
+  id                 String             @id @default(uuid()) @db.Uuid
+  ownerId            String             @db.Uuid
+  name               String
+  description        String?
+  visibility         PlaylistVisibility @default(PRIVATE)
+  targetAgeGroup     AgeGroup[]
+  languages          String[]
+  shareToken         String?            @unique // token pour partage par lien
+  scheduledPublishAt DateTime? // auto-publishes at this time
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
 
   // Relations
   owner          User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   playlistVideos PlaylistVideo[]
   categories     Category[]
   accesses       PlaylistAccess[]
+  watchParties   WatchParty[]
 
   @@index([ownerId])
   @@index([visibility])
@@ -366,6 +430,42 @@ model WatchHistory {
 
   @@index([profileId, watchedAt])
   @@map("watch_history")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Progression vidéo (position de reprise)
+// ─────────────────────────────────────────────────────────────
+
+model VideoProgress {
+  profileId   String   @db.Uuid
+  videoId     String   @db.Uuid
+  positionSec Int      @default(0)
+  completed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  profile ChildProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  video   Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, videoId])
+  @@map("video_progress")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Évaluations vidéo par profil enfant (pouce haut/bas)
+// ─────────────────────────────────────────────────────────────
+
+model VideoRating {
+  profileId String           @db.Uuid
+  videoId   String           @db.Uuid
+  rating    VideoRatingValue
+  ratedAt   DateTime         @default(now())
+
+  profile ChildProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  video   Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, videoId])
+  @@index([videoId])
+  @@map("video_ratings")
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -446,14 +546,14 @@ model GdprRequest {
 // ─────────────────────────────────────────────────────────────
 
 model VideoReport {
-  id          String   @id @default(uuid()) @db.Uuid
-  videoId     String   @db.Uuid
-  reportedBy  String   @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  videoId     String    @db.Uuid
+  reportedBy  String    @db.Uuid
   reason      String
   description String?
-  resolved    Boolean  @default(false)
+  resolved    Boolean   @default(false)
   resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   video    Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
   reporter User  @relation(fields: [reportedBy], references: [id], onDelete: Cascade)
@@ -514,9 +614,9 @@ model SubscriptionPlan {
   slug          String       @unique
   priceEur      Int          @default(0) // centimes — 0 = gratuit
   interval      PlanInterval @default(MONTHLY)
-  features      Json         // liste des fonctionnalités incluses
+  features      Json // liste des fonctionnalités incluses
   isActive      Boolean      @default(true)
-  stripePriceId String?      // Stripe Price ID (null pour le plan gratuit)
+  stripePriceId String? // Stripe Price ID (null pour le plan gratuit)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -526,15 +626,15 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  id         String             @id @default(uuid()) @db.Uuid
-  userId     String             @unique @db.Uuid
-  planId     String             @db.Uuid
-  status     SubscriptionStatus @default(TRIALING)
-  startedAt  DateTime           @default(now())
-  expiresAt  DateTime?
+  id          String             @id @default(uuid()) @db.Uuid
+  userId      String             @unique @db.Uuid
+  planId      String             @db.Uuid
+  status      SubscriptionStatus @default(TRIALING)
+  startedAt   DateTime           @default(now())
+  expiresAt   DateTime?
   cancelledAt DateTime?
   // Référence Stripe (ou autre PSP) — null pour le plan gratuit
-  externalId String?
+  externalId  String?
 
   user User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan SubscriptionPlan @relation(fields: [planId], references: [id])
@@ -550,9 +650,9 @@ model Subscription {
 model LegalDocument {
   id          String      @id @default(uuid()) @db.Uuid
   type        ConsentType
-  version     String      // ex: "2026-01-01" — date ISO utilisée comme identifiant de version
-  content     String      // Contenu Markdown
-  publishedAt DateTime?   // null = brouillon
+  version     String // ex: "2026-01-01" — date ISO utilisée comme identifiant de version
+  content     String // Contenu Markdown
+  publishedAt DateTime? // null = brouillon
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   createdById String?     @db.Uuid
@@ -572,7 +672,7 @@ model DeviceToken {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
   token     String   @unique // Expo push token (ExponentPushToken[…])
-  platform  String   // "ios" | "android"
+  platform  String // "ios" | "android"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -580,4 +680,37 @@ model DeviceToken {
 
   @@index([userId])
   @@map("device_tokens")
+}
+
+model WebPushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("web_push_subscriptions")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Watch Party (co-visionnage)
+// ─────────────────────────────────────────────────────────────
+
+model WatchParty {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique // code de rejoindre à 6 caractères
+  hostId     String   @map("host_id") @db.Uuid
+  playlistId String   @map("playlist_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at") // expire après 24h
+
+  host     User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@index([hostId])
+  @@map("watch_parties")
 }

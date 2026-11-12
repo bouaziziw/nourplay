@@ -291,7 +291,7 @@ export default function SubscriptionsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Date d'expiration (optionnel)</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Date d&apos;expiration (optionnel)</label>
                 <input
                   type="date"
                   value={grantExpiry}

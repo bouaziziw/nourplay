@@ -23,6 +23,10 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
 
   const [videos, setVideos] = useState<PlaylistVideo[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
+  const pageSize = 6
+  const pageCount = Math.ceil(videos.length / pageSize)
+  const visibleVideos = videos.slice((page - 1) * pageSize, page * pageSize)
 
   useEffect(() => {
     navigation.setOptions({ title: playlistName })
@@ -53,11 +57,34 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
         </View>
       ) : (
         <FlatList
-          data={videos}
+          data={visibleVideos}
           keyExtractor={pv => pv.video.id}
           contentContainerStyle={styles.list}
           numColumns={2}
           columnWrapperStyle={styles.row}
+          ListFooterComponent={pageCount > 1 ? (
+            <View style={styles.pagination}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityState={{ disabled: page === 1 }}
+                disabled={page === 1}
+                onPress={() => setPage(current => Math.max(1, current - 1))}
+                style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
+              >
+                <Text style={styles.pageButtonText}>Précédent</Text>
+              </TouchableOpacity>
+              <Text style={styles.pageLabel}>Page {page} / {pageCount}</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityState={{ disabled: page === pageCount }}
+                disabled={page === pageCount}
+                onPress={() => setPage(current => Math.min(pageCount, current + 1))}
+                style={[styles.pageButton, page === pageCount && styles.pageButtonDisabled]}
+              >
+                <Text style={styles.pageButtonText}>Suivant</Text>
+              </TouchableOpacity>
+            </View>
+          ) : undefined}
           renderItem={({ item: pv }) => (
             <TouchableOpacity
               style={styles.card}
@@ -67,7 +94,7 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
               {/* Thumbnail */}
               <View style={styles.thumbWrapper}>
                 {pv.video.thumbnailUrl ? (
-                  <Image source={{ uri: pv.video.thumbnailUrl }} style={styles.thumb} resizeMode="cover" />
+                  <Image source={{ uri: pv.video.thumbnailUrl }} style={styles.thumb} resizeMode="cover" accessibilityLabel={pv.video.title} />
                 ) : (
                   <View style={[styles.thumb, styles.thumbPlaceholder]}>
                     <Text style={{ fontSize: 28 }}>🎥</Text>
@@ -103,13 +130,13 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 15, color: '#6b7280' },
-  list: { padding: 12, paddingBottom: 32 },
-  row: { justifyContent: 'space-between', marginBottom: 12 },
-  card: { width: '48%', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  list: { paddingHorizontal: 12, paddingVertical: 12, paddingBottom: 32 },
+  row: { gap: 12 },
+  card: { flex: 1, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   thumbWrapper: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
   thumb: { width: '100%', height: '100%' },
   thumbPlaceholder: { backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' },
-  playOverlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
+  playOverlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
   playBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
   playBtnIcon: { fontSize: 14, color: '#4f46e5', marginLeft: 2 },
   positionBadge: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center' },
@@ -118,4 +145,9 @@ const styles = StyleSheet.create({
   durationText: { fontSize: 10, color: '#fff', fontWeight: '600' },
   info: { padding: 10 },
   videoTitle: { fontSize: 12, fontWeight: '600', color: '#111827', lineHeight: 16 },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 12 },
+  pageButton: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 9, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonText: { color: '#4f46e5', fontSize: 12, fontWeight: '700' },
+  pageLabel: { color: '#6b7280', fontSize: 12 },
 })

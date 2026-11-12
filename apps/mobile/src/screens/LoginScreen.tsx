@@ -28,7 +28,13 @@ export default function LoginScreen({ navigation }: Props) {
         navigation.replace('TwoFactor', { userId: result.userId })
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Identifiants incorrects.')
+      if (e instanceof ApiError) {
+        setError(e.message)
+      } else if (e instanceof TypeError) {
+        setError('Serveur inaccessible. Vérifiez que le téléphone et l’ordinateur sont sur le même Wi-Fi et que l’API est démarrée.')
+      } else {
+        setError('Une erreur est survenue. Veuillez réessayer.')
+      }
     } finally {
       setLoading(false)
     }

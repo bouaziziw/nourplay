@@ -6,6 +6,10 @@ async function loginAs(page: Parameters<typeof test.fn>[0]['page'], email: strin
   await page.fill('input[type=email]', email)
   await page.fill('input[type=password]', password)
   await page.click('button[type=submit]')
+  await page.waitForURL(/\/child$/, { timeout: 10_000 })
+  await page.getByRole('button', { name: 'Mode Parent' }).click()
+  await page.getByLabel('Mot de passe du compte').fill(password)
+  await page.getByRole('button', { name: 'Déverrouiller' }).click()
   await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
 }
 

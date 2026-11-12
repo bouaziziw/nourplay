@@ -1,4 +1,4 @@
-import { IsArray, IsEnum, IsOptional, IsString, Length } from 'class-validator'
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, Length } from 'class-validator'
 import { ApiProperty } from '@nestjs/swagger'
 import { AgeGroup, PlaylistVisibility } from '@nourplay/db'
 
@@ -30,4 +30,15 @@ export class CreatePlaylistDto {
   @IsArray()
   @IsString({ each: true })
   languages?: string[]
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  importExternalPlaylist?: boolean
+
+  @ApiProperty({ required: false, description: 'URL d’une playlist ou chaîne YouTube publique' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 2048)
+  externalPlaylistUrl?: string
 }

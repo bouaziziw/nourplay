@@ -44,6 +44,8 @@ export interface VideoSummary {
   durationSec: number | null
   language: string | null
   ageRating: string
+  validationStatus?: string
+  submitterApprovedAt?: string | null
 }
 
 export interface PlaylistVideo {
@@ -59,6 +61,7 @@ export interface PlaylistDetail {
   visibility: string
   targetAgeGroup: string[]
   languages: string[]
+  scheduledPublishAt: string | null
   createdAt: string
   playlistVideos: PlaylistVideo[]
 }
@@ -68,7 +71,22 @@ export interface PlaylistSummary {
   name: string
   description: string | null
   visibility: string
+  scheduledPublishAt: string | null
   _count: { playlistVideos: number }
+  importedVideoCount?: number
+  pendingValidationCount?: number
+  skippedVideoCount?: number
+  validationQueueFailedCount?: number
+}
+
+export interface ScheduledPlaylist {
+  id: string
+  name: string
+  visibility: string
+  scheduledPublishAt: string
+  targetAgeGroup: string[]
+  _count: { playlistVideos: number }
+  owner: { id: string; email: string }
 }
 
 export interface Tag {
@@ -80,13 +98,24 @@ export interface Tag {
 export interface VideoSearchResult {
   id: string
   title: string
+  description?: string | null
   thumbnailUrl: string | null
   embedUrl: string
   durationSec: number | null
   language: string | null
   ageRating: string
   validationStatus: string
+  submitterApprovedAt?: string | null
   source?: { name: string; slug: string }
+}
+
+export interface VideoSubmission {
+  id: string
+  title: string
+  thumbnailUrl: string | null
+  validationStatus: string
+  submitterApprovedAt: string | null
+  createdAt: string
 }
 
 export interface PlaylistAccess {
@@ -109,11 +138,20 @@ export interface ProfileAnalytics {
   week: { watchedSec: number; count: number }
   month: { watchedSec: number; count: number; completionRate: number }
   watchTimeByDay: Array<{ date: string; watchedSec: number }>
+  watchTimeByMonth: Array<{ date: string; watchedSec: number }>
   topVideos: Array<{
     video: { id: string; title: string; thumbnailUrl: string | null; durationSec: number | null }
     watchCount: number
     totalWatchedSec: number
   }>
+}
+
+export interface VideoRating {
+  profileId: string
+  videoId: string
+  rating: 'THUMBS_UP' | 'THUMBS_DOWN'
+  ratedAt: string
+  video: { id: string; title: string; thumbnailUrl: string | null }
 }
 
 export interface UserBlock {
@@ -125,12 +163,74 @@ export interface UserBlock {
   createdAt: string
 }
 
+export interface ProfileCategoryLimit {
+  id: string
+  profileId: string
+  tagId: string
+  dailyLimitMin: number
+  tag: { id: string; name: string; locale: string }
+}
+
+export interface VideoSource {
+  id: string
+  name: string
+  slug: string
+  baseUrl: string
+  embedAllowed: boolean
+  isActive: boolean
+  cguVersion: string | null
+  cguCheckedAt: string | null
+  embedPolicy: Record<string, unknown> | null
+  createdAt: string
+  updatedAt: string
+  _count: { videos: number }
+}
+
 export interface GdprRequest {
   id: string
-  type: 'EXPORT' | 'DELETION'
-  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
-  createdAt: string
-  completedAt: string | null
+  type: 'EXPORT' | 'DELETE' | 'RECTIFICATION'
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'REJECTED'
+  requestedAt: string
+  processedAt: string | null
+  exportUrl: string | null
+  notes: string | null
+}
+
+export interface GdprAdminRequest extends GdprRequest {
+  user: { id: string; email: string }
+}
+
+export interface GdprAdminStats {
+  totalUsers: number
+  pendingTotal: number
+  requests: Record<string, Record<string, number>>
+  consentCoverage: Record<string, { active: number; total: number; pct: number }>
+}
+
+export interface ApprovalVideoInfo {
+  id: string
+  title: string
+  thumbnailUrl: string | null
+  ageRating: string
+}
+
+export interface ParentalApprovalRequest {
+  id: string
+  profileId: string
+  videoId: string
+  status: 'PENDING' | 'APPROVED' | 'DENIED'
+  requestedAt: string
+  resolvedAt: string | null
+  video: ApprovalVideoInfo
+  profile: { id: string; displayName: string; ageGroup?: string }
+}
+
+export interface ConsentRecord {
+  id: string
+  type: string
+  version: string
+  consentedAt: string
+  revokedAt: string | null
 }
 
 export interface VideoFavorite {
@@ -150,6 +250,20 @@ export interface SubscriptionPlan {
   features: string[]
 }
 
+export interface AuditLogEntry {
+  id: string
+  actorId: string | null
+  actorRole: string | null
+  action: string
+  resourceType: string
+  resourceId: string | null
+  metadata: Record<string, unknown> | null
+  ip: string | null
+  userAgent: string | null
+  occurredAt: string
+  actor: { id: string; email: string; role: string } | null
+}
+
 export interface UserSubscription {
   id: string
   status: 'ACTIVE' | 'CANCELLED' | 'PAST_DUE' | 'TRIALING' | 'EXPIRED'
@@ -159,10 +273,35 @@ export interface UserSubscription {
   plan: { id: string; name: string; slug: string; priceEur: number; interval: string }
 }
 
+export interface WatchPartyCreated {
+  id: string
+  code: string
+  hostId: string
+  playlistId: string
+  expiresAt: string
+}
+
+export interface WatchPartyInfo {
+  id: string
+  code: string
+  hostId: string
+  expiresAt: string
+  playlist: { id: string; name: string; _count: { playlistVideos: number } }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function bearer(token: string): { headers: Record<string, string> } {
   return { headers: { Authorization: `Bearer ${token}` } }
+}
+
+async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+  const res = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string }
+    throw new ApiError(res.status, body.message ?? res.statusText)
+  }
+  return res.blob()
 }
 
 // ── API client ────────────────────────────────────────────────────────────────
@@ -171,6 +310,13 @@ export const api = {
   auth: {
     register: (data: { email: string; password: string; role?: string; locale?: string }) =>
       request<{ id: string; email: string }>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+
+    verifyParentPassword: (token: string, password: string) =>
+      request<{ verified: true }>('/auth/verify-parent-password', {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+        ...bearer(token),
+      }),
 
     login: (data: { email: string; password: string }) =>
       request<{ accessToken?: string; requiresTwoFactor?: boolean; userId?: string }>(
@@ -181,7 +327,7 @@ export const api = {
 
     logout: () => request<void>('/auth/logout', { method: 'POST' }),
 
-    refresh: () => request<{ accessToken: string }>('/auth/refresh', { method: 'POST' }),
+    refresh: () => request<{ accessToken: string } | undefined>('/auth/refresh', { method: 'POST' }),
 
     verifyEmail: (token: string) =>
       request<{ verified: boolean }>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
@@ -210,7 +356,13 @@ export const api = {
 
   users: {
     me: (token: string) =>
-      request<{ id: string; email: string; role: string; locale: string; twoFactorEnabled: boolean }>('/users/me', bearer(token)),
+      request<{ id: string; email: string; role: string; locale: string; weeklyDigestEnabled: boolean; twoFactorEnabled: boolean }>('/users/me', bearer(token)),
+
+    updateLocale: (token: string, locale: string) =>
+      request<{ id: string; locale: string }>('/users/me/locale', { method: 'PATCH', body: JSON.stringify({ locale }), ...bearer(token) }),
+
+    setDigestPreference: (token: string, enabled: boolean) =>
+      request<{ id: string; weeklyDigestEnabled: boolean }>('/users/me/digest', { method: 'PATCH', body: JSON.stringify({ enabled }), ...bearer(token) }),
 
     profiles: (token: string) =>
       request<ProfileSummary[]>('/users/me/profiles', bearer(token)),
@@ -231,6 +383,13 @@ export const api = {
 
     deleteProfile: (token: string, profileId: string) =>
       request<void>(`/users/me/profiles/${profileId}`, { method: 'DELETE', ...bearer(token) }),
+
+    changePin: (token: string, profileId: string, currentPin: string, newPin: string) =>
+      request<{ changed: boolean }>(`/users/me/profiles/${profileId}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ currentPin, newPin }),
+        ...bearer(token),
+      }),
 
     verifyPin: (token: string, profileId: string, pin: string) =>
       request<boolean>(`/users/me/profiles/${profileId}/pin/verify`, {
@@ -259,20 +418,69 @@ export const api = {
         ...bearer(token),
       }),
 
+    clearHistory: (token: string, profileId: string) =>
+      request<void>(`/users/me/profiles/${profileId}/history`, {
+        method: 'DELETE',
+        ...bearer(token),
+      }),
+
+    getInProgress: (token: string, profileId: string) =>
+      request<Array<{ positionSec: number; updatedAt: string; video: { id: string; title: string; thumbnailUrl: string | null; durationSec: number | null; embedUrl: string } }>>(
+        `/users/me/profiles/${profileId}/in-progress`,
+        bearer(token),
+      ),
+
+    getProgress: (token: string, profileId: string, videoId: string) =>
+      request<{ positionSec: number; completed: boolean }>(
+        `/users/me/profiles/${profileId}/progress/${videoId}`,
+        bearer(token),
+      ),
+
+    saveProgress: (token: string, profileId: string, videoId: string, positionSec: number) =>
+      request<void>(`/users/me/profiles/${profileId}/progress/${videoId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ positionSec }),
+        ...bearer(token),
+      }),
+
     getDailyWatchTime: (token: string, profileId: string) =>
       request<{ watchedSec: number }>(`/users/me/profiles/${profileId}/daily-watch-time`, bearer(token)),
+
+    exportHistory: (token: string, profileId: string) =>
+      requestBlob(`/users/me/profiles/${profileId}/history/export`, bearer(token)),
+
+    getProfileRatings: (token: string, profileId: string) =>
+      request<VideoRating[]>(`/users/me/profiles/${profileId}/ratings`, bearer(token)),
+
+    getVideoRating: (token: string, profileId: string, videoId: string) =>
+      request<{ rating: 'THUMBS_UP' | 'THUMBS_DOWN' | null }>(`/users/me/profiles/${profileId}/ratings/${videoId}`, bearer(token)),
+
+    rateVideo: (token: string, profileId: string, videoId: string, rating: 'THUMBS_UP' | 'THUMBS_DOWN' | null) =>
+      request<{ rating: string | null }>(`/users/me/profiles/${profileId}/ratings/${videoId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ rating }),
+        ...bearer(token),
+      }),
   },
 
   playlists: {
     list: (token: string) =>
       request<PlaylistSummary[]>('/playlists', bearer(token)),
 
-    getById: (token: string, id: string) =>
-      request<PlaylistDetail>(`/playlists/${id}`, bearer(token)),
+    getById: (token: string, id: string, profileId?: string) =>
+      request<PlaylistDetail>(`/playlists/${id}${profileId ? `?profileId=${profileId}` : ''}`, bearer(token)),
 
     create: (
       token: string,
-      data: { name: string; description?: string; visibility?: string; targetAgeGroup?: string[]; languages?: string[] },
+      data: {
+        name: string
+        description?: string
+        visibility?: string
+        targetAgeGroup?: string[]
+        languages?: string[]
+        importExternalPlaylist?: boolean
+        externalPlaylistUrl?: string
+      },
     ) => request<PlaylistSummary>('/playlists', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
 
     update: (
@@ -316,9 +524,31 @@ export const api = {
 
     getShared: (shareToken: string) =>
       request<PlaylistDetail>(`/playlists/shared/${shareToken}`),
+
+    schedule: (token: string, id: string, scheduledPublishAt: string | null) =>
+      request<{ id: string; scheduledPublishAt: string | null }>(`/playlists/${id}/schedule`, {
+        method: 'PATCH',
+        body: JSON.stringify({ scheduledPublishAt }),
+        ...bearer(token),
+      }),
+
+    listScheduled: (token: string) =>
+      request<ScheduledPlaylist[]>('/playlists/scheduled', bearer(token)),
+
+    duplicate: (token: string, id: string) =>
+      request<PlaylistSummary>(`/playlists/${id}/duplicate`, { method: 'POST', ...bearer(token) }),
+
+    exportCsv: (token: string, id: string) =>
+      requestBlob(`/playlists/${id}/export`, bearer(token)),
   },
 
   videos: {
+    autocomplete: (token: string, q: string) =>
+      request<Array<{ id: string; title: string; thumbnailUrl?: string | null }>>(
+        `/videos/autocomplete?q=${encodeURIComponent(q)}`,
+        bearer(token),
+      ),
+
     listTags: (token: string) =>
       request<Tag[]>('/videos/tags', bearer(token)),
 
@@ -342,11 +572,77 @@ export const api = {
     getSimilar: (token: string, id: string, limit = 4) =>
       request<VideoSummary[]>(`/videos/${id}/similar?limit=${limit}`, bearer(token)),
 
+    getRatings: (token: string, id: string) =>
+      request<{ thumbsUp: number; thumbsDown: number; total: number }>(`/videos/${id}/ratings`, bearer(token)),
+
     submit: (token: string, data: { url: string; ageRating?: string; language?: string }) =>
       request<VideoSearchResult>('/videos', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
 
+    mySubmissions: (token: string) =>
+      request<VideoSubmission[]>('/videos/submissions', bearer(token)),
+
+    approveSubmission: (token: string, id: string) =>
+      request<Pick<VideoSubmission, 'id' | 'title' | 'validationStatus' | 'submitterApprovedAt'>>(
+        `/videos/${id}/submitter-approval`,
+        { method: 'PATCH', ...bearer(token) },
+      ),
+
+    approvePlaylistSubmissions: (token: string, playlistId: string) =>
+      request<{ queued: number }>(`/videos/playlists/${playlistId}/submissions/approve`, {
+        method: 'PATCH',
+        ...bearer(token),
+      }),
+
+    updateSubmission: (token: string, id: string, data: { title: string }) =>
+      request<{ id: string; title: string }>(`/videos/submissions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
     report: (token: string, id: string, data: { reason: string; description?: string }) =>
       request<{ id: string }>(`/videos/${id}/report`, { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    adminQueue: (token: string, params?: { status?: string; q?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams()
+      if (params?.status) qs.set('status', params.status)
+      if (params?.q) qs.set('q', params.q)
+      if (params?.page) qs.set('page', String(params.page))
+      if (params?.limit) qs.set('limit', String(params.limit))
+      return request<{
+        items: Array<{
+          id: string; title: string; thumbnailUrl: string | null
+          validationStatus: string; ageRating: string; language: string | null
+          createdAt: string; submittedById: string | null
+          source: { name: string; slug: string } | null
+        }>
+        total: number; page: number; pages: number
+      }>(`/videos/admin/queue?${qs}`, bearer(token))
+    },
+
+    bulkUpdateStatus: (token: string, ids: string[], action: 'APPROVE' | 'REJECT') =>
+      request<{ updated: number }>('/videos/admin/bulk', {
+        method: 'PATCH',
+        body: JSON.stringify({ ids, action }),
+        ...bearer(token),
+      }),
+
+    listSources: (token: string) =>
+      request<VideoSource[]>('/videos/sources', bearer(token)),
+
+    createSource: (
+      token: string,
+      data: { name: string; slug: string; baseUrl: string; embedAllowed?: boolean; cguVersion?: string; embedPolicy?: Record<string, unknown> },
+    ) => request<VideoSource>('/videos/sources', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    updateSource: (
+      token: string,
+      id: string,
+      data: { embedAllowed?: boolean; isActive?: boolean; cguVersion?: string; baseUrl?: string; embedPolicy?: Record<string, unknown> | null },
+    ) => request<VideoSource>(`/videos/sources/${id}`, { method: 'PATCH', body: JSON.stringify(data), ...bearer(token) }),
+
+    verifySource: (token: string, id: string) =>
+      request<VideoSource>(`/videos/sources/${id}/verify`, { method: 'POST', ...bearer(token) }),
   },
 
   blocks: {
@@ -358,6 +654,24 @@ export const api = {
 
     delete: (token: string, blockId: string) =>
       request<void>(`/users/me/blocks/${blockId}`, { method: 'DELETE', ...bearer(token) }),
+  },
+
+  categoryLimits: {
+    list: (token: string, profileId: string) =>
+      request<ProfileCategoryLimit[]>(`/users/me/profiles/${profileId}/category-limits`, bearer(token)),
+
+    upsert: (token: string, profileId: string, tagId: string, dailyLimitMin: number) =>
+      request<ProfileCategoryLimit>(`/users/me/profiles/${profileId}/category-limits/${tagId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ dailyLimitMin }),
+        ...bearer(token),
+      }),
+
+    delete: (token: string, profileId: string, tagId: string) =>
+      request<void>(`/users/me/profiles/${profileId}/category-limits/${tagId}`, {
+        method: 'DELETE',
+        ...bearer(token),
+      }),
   },
 
   notifications: {
@@ -378,6 +692,23 @@ export const api = {
 
     delete: (token: string, id: string) =>
       request<void>(`/notifications/${id}`, { method: 'DELETE', ...bearer(token) }),
+
+    getVapidKey: () =>
+      request<{ publicKey: string }>('/notifications/web-push/vapid-key'),
+
+    subscribeWebPush: (token: string, sub: { endpoint: string; p256dh: string; auth: string }) =>
+      request<{ subscribed: boolean }>('/notifications/web-push/subscribe', {
+        method: 'POST',
+        body: JSON.stringify(sub),
+        ...bearer(token),
+      }),
+
+    unsubscribeWebPush: (token: string, endpoint: string) =>
+      request<{ unsubscribed: boolean }>('/notifications/web-push/unsubscribe', {
+        method: 'DELETE',
+        body: JSON.stringify({ endpoint }),
+        ...bearer(token),
+      }),
   },
 
   gdpr: {
@@ -387,11 +718,48 @@ export const api = {
     requestDeletion: (token: string) =>
       request<GdprRequest>('/gdpr/delete', { method: 'POST', ...bearer(token) }),
 
+    myRequests: (token: string) =>
+      request<GdprRequest[]>('/gdpr/my-requests', bearer(token)),
+
     getRequest: (token: string, id: string) =>
       request<GdprRequest>(`/gdpr/requests/${id}`, bearer(token)),
 
     getMyData: (token: string) =>
       request<Record<string, unknown>>('/gdpr/my-data', bearer(token)),
+
+    adminStats: (token: string) =>
+      request<GdprAdminStats>('/gdpr/admin/stats', bearer(token)),
+
+    adminListRequests: (token: string, params?: { status?: string; type?: string; page?: number; limit?: number }) => {
+      const qs = new URLSearchParams()
+      if (params?.status) qs.set('status', params.status)
+      if (params?.type) qs.set('type', params.type)
+      if (params?.page) qs.set('page', String(params.page))
+      if (params?.limit) qs.set('limit', String(params.limit))
+      return request<{ items: GdprAdminRequest[]; total: number; page: number; pages: number }>(
+        `/gdpr/admin/requests?${qs}`, bearer(token))
+    },
+
+    adminUpdateRequest: (token: string, id: string, data: { status: string; notes?: string }) =>
+      request<GdprRequest>(`/gdpr/admin/requests/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+  },
+
+  consent: {
+    current: (token: string) =>
+      request<ConsentRecord[]>('/consent/current', bearer(token)),
+
+    history: (token: string) =>
+      request<ConsentRecord[]>('/consent/history', bearer(token)),
+
+    record: (token: string, data: { type: string; version: string }) =>
+      request<ConsentRecord>('/consent', { method: 'POST', body: JSON.stringify(data), ...bearer(token) }),
+
+    revoke: (token: string, type: string) =>
+      request<void>(`/consent/${type}`, { method: 'DELETE', ...bearer(token) }),
   },
 
   favorites: {
@@ -420,6 +788,56 @@ export const api = {
       }),
   },
 
+  admin: {
+    getAuditLogs: (
+      token: string,
+      params?: { page?: number; limit?: number; actorId?: string; action?: string; resourceType?: string; dateFrom?: string; dateTo?: string },
+    ) => {
+      const qs = new URLSearchParams()
+      if (params?.page) qs.set('page', String(params.page))
+      if (params?.limit) qs.set('limit', String(params.limit))
+      if (params?.actorId) qs.set('actorId', params.actorId)
+      if (params?.action) qs.set('action', params.action)
+      if (params?.resourceType) qs.set('resourceType', params.resourceType)
+      if (params?.dateFrom) qs.set('dateFrom', params.dateFrom)
+      if (params?.dateTo) qs.set('dateTo', params.dateTo)
+      return request<{
+        items: AuditLogEntry[]
+        total: number
+        page: number
+        limit: number
+      }>(`/admin/audit-logs?${qs}`, bearer(token))
+    },
+  },
+
+  approvals: {
+    request: (token: string, profileId: string, videoId: string) =>
+      request<ParentalApprovalRequest>(`/users/me/profiles/${profileId}/approval-requests`, {
+        method: 'POST',
+        body: JSON.stringify({ videoId }),
+        ...bearer(token),
+      }),
+
+    list: (token: string, status?: string) =>
+      request<ParentalApprovalRequest[]>(
+        `/users/me/approval-requests${status ? `?status=${status}` : ''}`,
+        bearer(token),
+      ),
+
+    resolve: (token: string, requestId: string, action: 'APPROVED' | 'DENIED') =>
+      request<ParentalApprovalRequest>(`/users/me/approval-requests/${requestId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action }),
+        ...bearer(token),
+      }),
+
+    getStatus: (token: string, profileId: string, videoId: string) =>
+      request<{ status: 'PENDING' | 'APPROVED' | 'DENIED' | null; requestId: string | null; requestedAt: string | null }>(
+        `/users/me/profiles/${profileId}/approval-requests/${videoId}`,
+        bearer(token),
+      ),
+  },
+
   subscriptions: {
     getPlans: () =>
       request<SubscriptionPlan[]>('/subscriptions/plans'),
@@ -439,5 +857,17 @@ export const api = {
         method: 'POST',
         ...bearer(token),
       }),
+  },
+
+  watchParties: {
+    create: (token: string, playlistId: string) =>
+      request<WatchPartyCreated>('/watch-parties', {
+        method: 'POST',
+        body: JSON.stringify({ playlistId }),
+        ...bearer(token),
+      }),
+
+    getByCode: (code: string) =>
+      request<WatchPartyInfo>(`/watch-parties/code/${encodeURIComponent(code)}`),
   },
 }

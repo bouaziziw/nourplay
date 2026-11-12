@@ -240,6 +240,15 @@ export const api = {
         method: 'PATCH', body: JSON.stringify(data), ...bearer(token),
       }),
 
+    deleteVideo: (token: string, videoId: string) =>
+      request<{ id: string }>(`/videos/admin/${videoId}`, { method: 'DELETE', ...bearer(token) }),
+
+    revalidateAllPending: (token: string) =>
+      request<{ queued: number }>('/videos/admin/revalidate-pending', {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
     getReports: (token: string, params: { page?: number; limit?: number; resolved?: boolean }) => {
       const qs = new URLSearchParams()
       Object.entries(params).forEach(([k, v]) => { if (v !== undefined) qs.set(k, String(v)) })

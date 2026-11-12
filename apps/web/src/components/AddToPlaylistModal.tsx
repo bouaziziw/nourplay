@@ -63,7 +63,7 @@ export function AddToPlaylistModal({ videoId, videoTitle, token, onClose }: Prop
             <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
           </div>
         ) : playlists.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">Aucune playlist. Créez-en une d'abord.</p>
+          <p className="text-sm text-gray-400 text-center py-4">Aucune playlist. Créez-en une d&apos;abord.</p>
         ) : (
           <ul className="space-y-1 max-h-64 overflow-y-auto">
             {playlists.map(pl => (

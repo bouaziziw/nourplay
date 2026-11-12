@@ -5,25 +5,25 @@ async function loginAs(page: Parameters<typeof test.fn>[0]['page'], email: strin
   await page.fill('input[type=email]', email)
   await page.fill('input[type=password]', password)
   await page.click('button[type=submit]')
-  await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
+  await page.waitForURL(/\/child$/, { timeout: 10_000 })
 }
 
-// ── Child interface without a session ─────────────────────────────────────────
+// ── Child interface without an authenticated account ─────────────────────────
 
-test.describe('Child interface (no session)', () => {
+test.describe('Child interface (unauthenticated)', () => {
   test('/child/favorites redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/favorites')
-    await expect(page).toHaveURL(/\/child$/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
   })
 
   test('/child/playlists redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/playlists')
-    await expect(page).toHaveURL(/\/child$/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
   })
 
   test('/child/watch/some-id redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/watch/00000000-0000-0000-0000-000000000000')
-    await expect(page).toHaveURL(/\/child$/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
   })
 })
 
@@ -38,12 +38,24 @@ test.describe('Child profile selector (authenticated)', () => {
     await expect(page.locator('h1:has-text("Qui regarde")')).toBeVisible({ timeout: 8_000 })
   })
 
-  test('back-to-dashboard button is present', async ({ page }) => {
+  test('parent mode requires a deliberate unlock action', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
     await page.goto('/child')
-    await expect(
-      page.locator('button:has-text("tableau de bord"), a:has-text("tableau de bord")')
-    ).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('button:has-text("Mode Parent")')).toBeVisible({ timeout: 8_000 })
+  })
+
+  test('parent mode unlocks only after the account password is verified', async ({ page }) => {
+    await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
+    await page.goto('/child')
+    await page.getByRole('button', { name: 'Mode Parent' }).click()
+    await page.getByLabel('Mot de passe du compte').fill('incorrect-password')
+    await page.getByRole('button', { name: 'Déverrouiller' }).click()
+    await expect(page.getByRole('alert')).toContainText('incorrect')
+    await expect(page).toHaveURL(/\/child/)
+
+    await page.getByLabel('Mot de passe du compte').fill(process.env.TEST_PASSWORD!)
+    await page.getByRole('button', { name: 'Déverrouiller' }).click()
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 8_000 })
   })
 
   test('profile cards or empty state renders', async ({ page }) => {

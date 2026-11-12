@@ -1,9 +1,10 @@
 import {
   Controller, Post, Body, Req, Res, Get,
-  HttpCode, HttpStatus, UseGuards, Query,
+  HttpCode, HttpStatus, UseGuards, Query, UnauthorizedException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'
 import { Request, Response } from 'express'
+import { createHash } from 'crypto'
 import { Throttle } from '@nestjs/throttler'
 import { AuthGuard } from '@nestjs/passport'
 import { AuthService } from './auth.service'
@@ -15,6 +16,9 @@ import { ResetPasswordDto } from './dto/reset-password.dto'
 import { SetupTotpDto } from './dto/setup-totp.dto'
 import { VerifyTotpDto } from './dto/verify-totp.dto'
 import { MagicLinkDto } from './dto/magic-link.dto'
+import { SetParentPinDto } from './dto/set-parent-pin.dto'
+import { VerifyParentPinDto } from './dto/verify-parent-pin.dto'
+import { VerifyParentPasswordDto } from './dto/verify-parent-password.dto'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { Public } from '../../common/decorators/public.decorator'
@@ -88,6 +92,33 @@ export class AuthController {
     return { accessToken }
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('verify-parent-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Vérifier le mot de passe avant de déverrouiller le mode parent' })
+  verifyParentPassword(@CurrentUser() user: JwtPayload, @Body() dto: VerifyParentPasswordDto) {
+    return this.authService.verifyParentPassword(user.sub, dto.password)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('parent-pin')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Créer ou remplacer le code PIN de déverrouillage parent' })
+  setParentPin(@CurrentUser() user: JwtPayload, @Body() dto: SetParentPinDto) {
+    return this.authService.setParentPin(user.sub, dto.password, dto.pin)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('verify-parent-pin')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Vérifier le code PIN avant de déverrouiller le mode parent' })
+  verifyParentPin(@CurrentUser() user: JwtPayload, @Body() dto: VerifyParentPinDto) {
+    return this.authService.verifyParentPin(user.sub, dto.pin)
+  }
+
   @Public()
   @Post('login/2fa')
   @HttpCode(HttpStatus.OK)
@@ -119,13 +150,28 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiOperation({ summary: 'Rotation du refresh token' })
+  @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Aucun refresh token présent' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE]
+    if (!token) {
+      res.status(HttpStatus.NO_CONTENT)
+      return
+    }
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.ip || ''
     const fingerprint = this.authService.buildFingerprint(req.headers['user-agent'] || '', ip)
-    const { accessToken, refreshToken } = await this.authService.refreshTokens(token, fingerprint)
-    res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-    return { accessToken }
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    try {
+      const { accessToken, refreshToken } = await this.authService.refreshTokens(tokenHash, fingerprint)
+      res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
+      return { accessToken }
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        res.clearCookie(REFRESH_COOKIE, { path: COOKIE_OPTIONS.path })
+        res.status(HttpStatus.NO_CONTENT)
+        return
+      }
+      throw error
+    }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -135,7 +181,6 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_COOKIE]
     if (token) {
-      const { createHash } = await import('crypto')
       const tokenHash = createHash('sha256').update(token).digest('hex')
       await this.authService.revokeRefreshToken(tokenHash)
     }

@@ -142,7 +142,7 @@ export default function VideoLibraryScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionItem} onPress={pickProfile} activeOpacity={0.7}>
             <Text style={styles.actionIcon}>♥</Text>
-            <Text style={styles.actionLabel}>Ajouter aux favoris d'un profil</Text>
+            <Text style={styles.actionLabel}>Ajouter aux favoris d&apos;un profil</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionCancel} onPress={() => setShowActionModal(false)} activeOpacity={0.7}>
             <Text style={styles.actionCancelText}>Annuler</Text>

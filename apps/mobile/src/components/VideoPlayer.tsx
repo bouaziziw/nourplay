@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
 
+const APP_ORIGIN = process.env.EXPO_PUBLIC_APP_URL ?? 'https://nourplay.app'
+
 interface Props {
   embedUrl: string
   title: string
@@ -23,7 +25,14 @@ function buildSafeEmbedUrl(raw: string): string {
         videoId = u.pathname.slice(1)
       }
       if (!videoId) return raw
-      return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&enablejsapi=0&playsinline=1`
+      const params = new URLSearchParams({
+        rel: '0',
+        modestbranding: '1',
+        enablejsapi: '0',
+        playsinline: '1',
+        origin: APP_ORIGIN,
+      })
+      return `https://www.youtube.com/embed/${videoId}?${params}`
     }
 
     if (u.hostname.includes('vimeo.com')) {
@@ -41,6 +50,18 @@ function buildSafeEmbedUrl(raw: string): string {
     return raw
   } catch {
     return raw
+  }
+}
+
+function shouldAllowNavigation(request: { isTopFrame: boolean; url: string }, playerUrl: string): boolean {
+  if (!request.isTopFrame) return true
+
+  try {
+    const destination = new URL(request.url)
+    const player = new URL(playerUrl)
+    return destination.origin === player.origin && destination.pathname === player.pathname
+  } catch {
+    return false
   }
 }
 
@@ -72,11 +93,15 @@ export function VideoPlayer({ embedUrl, title, onWatched, autoMarkCompleteAfterS
   }, [embedUrl, autoMarkCompleteAfterSec, fireWatched])
 
   const safeUrl = buildSafeEmbedUrl(embedUrl)
+  const isYouTube = safeUrl.includes('youtube.com/embed/')
 
   return (
     <View style={styles.wrapper}>
       <WebView
-        source={{ uri: safeUrl }}
+        source={{
+          uri: safeUrl,
+          headers: isYouTube ? { Referer: `${APP_ORIGIN}/` } : undefined,
+        }}
         style={styles.webview}
         allowsFullscreenVideo
         allowsInlineMediaPlayback
@@ -85,6 +110,8 @@ export function VideoPlayer({ embedUrl, title, onWatched, autoMarkCompleteAfterS
         domStorageEnabled={false}
         thirdPartyCookiesEnabled={false}
         originWhitelist={['https://*']}
+        onShouldStartLoadWithRequest={request => shouldAllowNavigation(request, safeUrl)}
+        onOpenWindow={() => {}}
         contentMode="mobile"
       />
     </View>

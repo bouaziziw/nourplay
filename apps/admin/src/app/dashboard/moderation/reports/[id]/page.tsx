@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { api, VideoReport } from '../../../../../lib/api'
+import { RemoteImage } from '../../../../../components/RemoteImage'
 
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -65,7 +66,7 @@ export default function ReportDetailPage() {
         <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">Vidéo signalée</h2>
         <div className="flex gap-4">
           {report.video.thumbnailUrl && (
-            <img src={report.video.thumbnailUrl} alt="" className="w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
+            <RemoteImage src={report.video.thumbnailUrl} alt="" width={128} height={72} className="w-32 aspect-video object-cover rounded-lg flex-shrink-0" />
           )}
           <div>
             <p className="font-semibold text-white">{report.video.title}</p>

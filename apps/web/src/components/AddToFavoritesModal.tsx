@@ -43,7 +43,7 @@ export function AddToFavoritesModal({ videoId, videoTitle, token, onClose }: Pro
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-gray-900 text-sm">Ajouter aux favoris d'un profil</h2>
+            <h2 className="font-semibold text-gray-900 text-sm">Ajouter aux favoris d&apos;un profil</h2>
             <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{videoTitle}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 mt-0.5 shrink-0">

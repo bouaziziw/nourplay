@@ -155,7 +155,7 @@ export default function UserDetailPage() {
             {user.role}
           </span>
           {isSelf && (
-            <span className="text-xs text-gray-500">(c'est vous — rôle non modifiable)</span>
+            <span className="text-xs text-gray-500">(c&apos;est vous — rôle non modifiable)</span>
           )}
         </div>
         {!isSelf && (

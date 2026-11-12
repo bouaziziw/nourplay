@@ -105,7 +105,7 @@ function LoginForm() {
           ) : (
             <form onSubmit={handle2fa} className="space-y-4">
               <p className="text-sm text-gray-300 text-center">
-                Code à 6 chiffres de votre application d'authentification
+                Code à 6 chiffres de votre application d&apos;authentification
               </p>
               <input
                 type="text"
