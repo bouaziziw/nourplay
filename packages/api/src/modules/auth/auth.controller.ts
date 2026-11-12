@@ -3,7 +3,7 @@ import {
   HttpCode, HttpStatus, UseGuards, Query, UnauthorizedException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'
-import { Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { createHash } from 'crypto'
 import { Throttle } from '@nestjs/throttler'
 import { AuthGuard } from '@nestjs/passport'

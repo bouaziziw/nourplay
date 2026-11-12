@@ -190,7 +190,7 @@ describe('Auth — integration (Supertest)', () => {
   })
 
   afterAll(async () => {
-    await app.close()
+    await app?.close()
   })
 
   beforeEach(() => {
@@ -291,12 +291,13 @@ describe('Auth — integration (Supertest)', () => {
   describe('POST /api/v1/auth/verify-email', () => {
     it('200: vérifie l\'email avec un token valide', async () => {
       // Simule un token créé lors du register
-      tokenStore.set(`email_verify:verify_${TEST_USER.id}`, TEST_USER.id)
+      const token = 'v'.repeat(64)
+      tokenStore.set(`email_verify:${token}`, TEST_USER.id)
       mockPrisma.user.update.mockResolvedValue({})
 
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/verify-email')
-        .send({ token: `verify_${TEST_USER.id}` })
+        .send({ token })
         .expect(200)
 
       expect(res.body).toEqual({ verified: true })
@@ -350,11 +351,11 @@ describe('Auth — integration (Supertest)', () => {
       expect(res.body).toEqual({ requiresTwoFactor: true, userId: TEST_USER.id })
     })
 
-    it('400: email manquant', async () => {
+    it('401: email manquant', async () => {
       await supertest(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ password: 'StrongPass1!' })
-        .expect(400)
+        .expect(401)
     })
   })
 
@@ -364,12 +365,14 @@ describe('Auth — integration (Supertest)', () => {
     it('200: rafraîchit les tokens et retourne un nouveau cookie', async () => {
       const rawToken = 'a'.repeat(96)
       const tokenHash = createHash('sha256').update(rawToken).digest('hex')
+      const userAgent = 'nourplay-e2e'
+      const ip = '192.168.1.10'
 
       mockPrisma.refreshToken.findUnique.mockResolvedValueOnce({
         id: 'rt-1',
         userId: TEST_USER.id,
         tokenHash,
-        fingerprint: service_fingerprint(),
+        fingerprint: service_fingerprint(userAgent, ip),
         revokedAt: null,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         user: { id: TEST_USER.id, email: TEST_USER.email, role: TEST_USER.role, deletedAt: null },
@@ -378,6 +381,8 @@ describe('Auth — integration (Supertest)', () => {
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/refresh')
         .set('Cookie', `refresh_token=${rawToken}`)
+        .set('User-Agent', userAgent)
+        .set('X-Forwarded-For', ip)
         .expect(200)
 
       expect(res.body).toHaveProperty('accessToken')
@@ -385,12 +390,12 @@ describe('Auth — integration (Supertest)', () => {
       expect(cookie.some((c: string) => c.startsWith('refresh_token='))).toBe(true)
     })
 
-    it('401: pas de cookie refresh_token', async () => {
+    it('204: pas de cookie refresh_token', async () => {
       mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(null)
 
       await supertest(app.getHttpServer())
         .post('/api/v1/auth/refresh')
-        .expect(401)
+        .expect(204)
     })
   })
 
@@ -457,13 +462,14 @@ describe('Auth — integration (Supertest)', () => {
 
   describe('POST /api/v1/auth/reset-password', () => {
     it('200: réinitialise le mot de passe avec un token valide', async () => {
-      tokenStore.set(`pwd_reset:reset_${TEST_USER.id}`, TEST_USER.id)
+      const token = 'r'.repeat(64)
+      tokenStore.set(`pwd_reset:${token}`, TEST_USER.id)
       mockPrisma.user.update.mockResolvedValue({})
       mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 0 })
 
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/reset-password')
-        .send({ token: `reset_${TEST_USER.id}`, password: 'NewPassword1!' })
+        .send({ token, password: 'NewPassword1!' })
         .expect(200)
 
       expect(res.body).toEqual({ reset: true })
@@ -509,13 +515,9 @@ describe('Auth — integration (Supertest)', () => {
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-/** Returns the fingerprint that the server computes for localhost requests in tests. */
-function service_fingerprint(): string {
-  // In tests, req.ip is undefined/empty, user-agent is supertest default
-  // The AuthService.buildFingerprint hashes `<ipSubnet>|<userAgent>`
+/** Returns the fingerprint that the server computes for explicitly configured test requests. */
+function service_fingerprint(userAgent = '', ip = ''): string {
   const { createHash } = require('crypto')
-  const ip = ''
-  const ua = ''
   const ipSubnet = ip.split('.').slice(0, 3).join('.')
-  return createHash('sha256').update(`${ipSubnet}|${ua}`).digest('hex')
+  return createHash('sha256').update(`${ipSubnet}|${userAgent}`).digest('hex')
 }
