@@ -11,7 +11,7 @@
     "seed": "tsx src/seed.ts",
     "studio": "prisma studio",
     "generate": "prisma generate",
-    "typecheck": "prisma generate && tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
