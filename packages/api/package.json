@@ -28,7 +28,7 @@
     "@nestjs/throttler": "^6.2.1",
     "@nestjs/websockets": "^10.4.1",
     "@nourplay/db": "workspace:*",
-    "@prisma/client": "^5.19.1",
+    "@prisma/client": "^7.10.1",
     "argon2": "^0.40.3",
     "bullmq": "^5.13.2",
     "class-transformer": "^0.5.1",
