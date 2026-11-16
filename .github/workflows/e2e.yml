@@ -73,8 +73,8 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @nourplay/web exec playwright install --with-deps chromium
 
-      - name: Generate Prisma client
-        run: pnpm --filter @nourplay/db generate
+      - name: Build database package
+        run: pnpm --filter @nourplay/db build
 
       - name: Run DB migrations
         run: pnpm --filter @nourplay/db migrate:deploy
