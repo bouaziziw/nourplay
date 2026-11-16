@@ -145,7 +145,7 @@ app.enableCors({
 })
 ```
 
-En production : `CORS_ORIGINS=https://nourplay.app,https://admin.nourplay.app`
+En production : `CORS_ORIGINS=https://nour-play.app,https://www.nour-play.app` (origines sans chemin).
 
 ### 3.3. Headers de sécurité (Helmet)
 

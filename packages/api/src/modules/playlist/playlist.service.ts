@@ -22,6 +22,7 @@ import { ReorderVideosDto } from './dto/reorder-videos.dto'
 import { SharePlaylistDto } from './dto/share-playlist.dto'
 import { SchedulePlaylistDto } from './dto/schedule-playlist.dto'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
+import { safeFetch, type FetchResult } from '../../common/http/safe-fetch'
 
 const PLAYLIST_SELECT = {
   id: true,
@@ -239,9 +240,9 @@ export class PlaylistService {
       apiUrl.searchParams.set('key', apiKey)
       if (pageToken) apiUrl.searchParams.set('pageToken', pageToken)
 
-      let response: Response
+      let response: FetchResult
       try {
-        response = await fetch(apiUrl)
+        response = await safeFetch(apiUrl)
       } catch {
         throw new BadGatewayException('Impossible de joindre l’API YouTube pour importer cette playlist')
       }
@@ -308,9 +309,9 @@ export class PlaylistService {
     if (handle) apiUrl.searchParams.set('forHandle', handle)
     else apiUrl.searchParams.set('id', channelId!)
 
-    let response: Response
+    let response: FetchResult
     try {
-      response = await fetch(apiUrl)
+      response = await safeFetch(apiUrl)
     } catch {
       throw new BadGatewayException('Impossible de joindre l’API YouTube pour récupérer la chaîne')
     }
@@ -561,19 +562,25 @@ export class PlaylistService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async publishScheduled() {
+    const now = new Date()
     const due = await this.prisma.playlist.findMany({
       where: {
-        scheduledPublishAt: { lte: new Date() },
+        scheduledPublishAt: { lte: now },
         visibility: 'PRIVATE' as never,
         deletedAt: null,
       },
       select: { id: true },
     })
     if (due.length === 0) return
-    await Promise.allSettled(
+    await Promise.all(
       due.map(({ id }) =>
-        this.prisma.playlist.update({
-          where: { id },
+        this.prisma.playlist.updateMany({
+          where: {
+            id,
+            scheduledPublishAt: { lte: now },
+            visibility: 'PRIVATE' as never,
+            deletedAt: null,
+          },
           data: {
             visibility: 'SHARED_LINK' as never,
             shareToken: randomBytes(24).toString('hex'),

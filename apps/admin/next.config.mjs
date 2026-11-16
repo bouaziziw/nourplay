@@ -14,8 +14,17 @@ const securityHeaders = [
   },
 ]
 
+const basePath = process.env.ADMIN_BASE_PATH || ''
+if (basePath !== '' && basePath !== '/admin') {
+  throw new Error('ADMIN_BASE_PATH must be empty or /admin')
+}
+
 const nextConfig = {
+  basePath,
   reactStrictMode: true,
+  async redirects() {
+    return [{ source: '/', destination: '/dashboard', permanent: false }]
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'assets.nourplay.app' },

@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await api.auth.logout().catch(() => {})
+    if (state.token) await api.auth.logout(state.token).catch(() => {})
     setState({ user: null, token: null, loading: false, parentModeUnlocked: false })
   }
 

@@ -14,6 +14,7 @@ import { CacheService } from '../../common/cache/cache.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
 import { allowedAgeRatings } from '../../common/age-utils'
+import { safeFetch } from '../../common/http/safe-fetch'
 import { SubmitVideoDto } from './dto/submit-video.dto'
 
 const VIDEO_SEARCH_TTL = 120
@@ -604,7 +605,7 @@ export class VideoService {
   private async fetchYouTubeMetadata(videoId: string, sourceSlug: string) {
     if (sourceSlug !== 'youtube' || !process.env.YOUTUBE_API_KEY) return {}
     try {
-      const res = await fetch(
+      const res = await safeFetch(
         `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${process.env.YOUTUBE_API_KEY}`,
       )
       const data = await res.json() as { items?: Array<{ snippet: { title: string; description: string; defaultAudioLanguage?: string; thumbnails: { high: { url: string } } }; contentDetails: { duration: string } }> }

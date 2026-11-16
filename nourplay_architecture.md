@@ -900,9 +900,9 @@ pnpm start    # Lance Expo dev server
 
 ```env
 NODE_ENV=production
-APP_URL=https://nourplay.app
-API_URL=https://api.nourplay.app
-ADMIN_URL=https://admin.nourplay.app
+APP_URL=https://nour-play.app
+API_URL=https://nour-play.app
+ADMIN_URL=https://nour-play.app/admin
 
 DATABASE_URL=postgresql://nourplay:<PASSWORD>@<DB_HOST>:5432/nourplay
 REDIS_URL=redis://:<PASSWORD>@<REDIS_HOST>:6379
@@ -921,7 +921,7 @@ STRIPE_SECRET_KEY=<production-key>
 STRIPE_WEBHOOK_SECRET=<production-key>
 
 # CORS restreint
-CORS_ORIGINS=https://nourplay.app,https://admin.nourplay.app
+CORS_ORIGINS=https://nour-play.app,https://www.nour-play.app
 ```
 
 > [!CAUTION]
@@ -953,20 +953,24 @@ Services Docker en production :
 #### Étape 3 — Reverse proxy (Caddy)
 
 ```caddyfile
-nourplay.app {
-  reverse_proxy web:3000
-}
-
-api.nourplay.app {
-  reverse_proxy api:4000
-}
-
-admin.nourplay.app {
-  reverse_proxy admin:3001
+nour-play.app {
+  handle /api/* {
+    reverse_proxy api:4000
+  }
+  @admin path /admin /admin/*
+  handle @admin {
+    reverse_proxy admin:3001
+  }
+  handle {
+    reverse_proxy web:3000
+  }
 }
 ```
 
-> Caddy gère automatiquement les certificats TLS via Let's Encrypt.
+> Caddy gère automatiquement les certificats TLS via Let's Encrypt. Le service
+> admin n'existe pas dans le compose fourni : il faut l'ajouter avec
+> `ADMIN_BASE_PATH=/admin` au build et à l'exécution. Cet exemple ne route pas
+> les WebSockets.
 
 #### Étape 4 — Surveillance et maintenance
 

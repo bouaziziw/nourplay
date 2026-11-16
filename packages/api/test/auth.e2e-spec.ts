@@ -44,6 +44,9 @@ vi.mock('qrcode', () => ({
 // ── Shared state ──────────────────────────────────────────────────────────────
 
 const TEST_JWT_SECRET = 'e2e-test-jwt-secret-32-chars-ok!!'
+const VALID_TOKEN = 'a'.repeat(64)
+const FINGERPRINT_IP = '203.0.113.7'
+const FINGERPRINT_UA = 'e2e-agent'
 
 /** Simulates Redis for token operations */
 const tokenStore = new Map<string, string>()
@@ -291,13 +294,12 @@ describe('Auth — integration (Supertest)', () => {
   describe('POST /api/v1/auth/verify-email', () => {
     it('200: vérifie l\'email avec un token valide', async () => {
       // Simule un token créé lors du register
-      const token = 'v'.repeat(64)
-      tokenStore.set(`email_verify:${token}`, TEST_USER.id)
+      tokenStore.set(`email_verify:${VALID_TOKEN}`, TEST_USER.id)
       mockPrisma.user.update.mockResolvedValue({})
 
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/verify-email')
-        .send({ token })
+        .send({ token: VALID_TOKEN })
         .expect(200)
 
       expect(res.body).toEqual({ verified: true })
@@ -351,10 +353,11 @@ describe('Auth — integration (Supertest)', () => {
       expect(res.body).toEqual({ requiresTwoFactor: true, userId: TEST_USER.id })
     })
 
-    it('401: email manquant', async () => {
+    it('401: email manquant (rejeté par la stratégie locale)', async () => {
       await supertest(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ password: 'StrongPass1!' })
+        .expect(401)
         .expect(401)
     })
   })
@@ -381,8 +384,8 @@ describe('Auth — integration (Supertest)', () => {
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/refresh')
         .set('Cookie', `refresh_token=${rawToken}`)
-        .set('User-Agent', userAgent)
-        .set('X-Forwarded-For', ip)
+        .set('User-Agent', FINGERPRINT_UA)
+        .set('X-Forwarded-For', FINGERPRINT_IP)
         .expect(200)
 
       expect(res.body).toHaveProperty('accessToken')
@@ -391,10 +394,9 @@ describe('Auth — integration (Supertest)', () => {
     })
 
     it('204: pas de cookie refresh_token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValueOnce(null)
-
       await supertest(app.getHttpServer())
         .post('/api/v1/auth/refresh')
+        .expect(204)
         .expect(204)
     })
   })
@@ -462,14 +464,13 @@ describe('Auth — integration (Supertest)', () => {
 
   describe('POST /api/v1/auth/reset-password', () => {
     it('200: réinitialise le mot de passe avec un token valide', async () => {
-      const token = 'r'.repeat(64)
-      tokenStore.set(`pwd_reset:${token}`, TEST_USER.id)
+      tokenStore.set(`pwd_reset:${VALID_TOKEN}`, TEST_USER.id)
       mockPrisma.user.update.mockResolvedValue({})
       mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 0 })
 
       const res = await supertest(app.getHttpServer())
         .post('/api/v1/auth/reset-password')
-        .send({ token, password: 'NewPassword1!' })
+        .send({ token: VALID_TOKEN, password: 'NewPassword1!' })
         .expect(200)
 
       expect(res.body).toEqual({ reset: true })
@@ -515,9 +516,9 @@ describe('Auth — integration (Supertest)', () => {
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-/** Returns the fingerprint that the server computes for explicitly configured test requests. */
-function service_fingerprint(userAgent = '', ip = ''): string {
-  const { createHash } = require('crypto')
-  const ipSubnet = ip.split('.').slice(0, 3).join('.')
-  return createHash('sha256').update(`${ipSubnet}|${userAgent}`).digest('hex')
+/** Returns the fingerprint that the server computes for localhost requests in tests. */
+function service_fingerprint(): string {
+  // AuthService.buildFingerprint hashes `<ipSubnet>|<userAgent>`
+  const ipSubnet = FINGERPRINT_IP.split('.').slice(0, 3).join('.')
+  return createHash('sha256').update(`${ipSubnet}|${FINGERPRINT_UA}`).digest('hex')
 }

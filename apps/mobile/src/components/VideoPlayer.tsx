@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react'
 import { View, StyleSheet } from 'react-native'
 import { WebView } from 'react-native-webview'
 
-const APP_ORIGIN = process.env.EXPO_PUBLIC_APP_URL ?? 'https://nourplay.app'
+const APP_ORIGIN = process.env.EXPO_PUBLIC_APP_URL ?? 'https://nour-play.app'
 
 interface Props {
   embedUrl: string

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-
+import { safeFetch } from '../http/safe-fetch'
 interface SendOptions {
   to: string
   subject: string
@@ -15,7 +15,7 @@ export class EmailService {
   private readonly provider: string
 
   constructor(private readonly config: ConfigService) {
-    this.from = config.get<string>('EMAIL_FROM', 'noreply@nourplay.app')
+    this.from = config.get<string>('EMAIL_FROM', 'noreply@nour-play.app')
     this.provider = config.get<string>('EMAIL_PROVIDER', 'console')
   }
 
@@ -239,7 +239,7 @@ export class EmailService {
     const apiKey = this.config.get<string>('RESEND_API_KEY')
     if (!apiKey) throw new Error('RESEND_API_KEY manquant')
 
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await safeFetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from: this.from, to: options.to, subject: options.subject, html: options.html }),
@@ -268,6 +268,6 @@ export class EmailService {
   }
 
   private layout(title: string, content: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nourplay.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nour-play.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
   }
 }

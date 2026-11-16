@@ -9,6 +9,6 @@ import { SubscriptionTasksService } from './subscription.tasks'
   imports: [PrismaModule, NotificationModule],
   controllers: [SubscriptionController],
   providers: [SubscriptionService, SubscriptionTasksService],
-  exports: [SubscriptionService],
+  exports: [SubscriptionService, SubscriptionTasksService],
 })
 export class SubscriptionModule {}

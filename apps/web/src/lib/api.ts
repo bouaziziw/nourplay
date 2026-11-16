@@ -325,7 +325,8 @@ export const api = {
     loginWith2fa: (data: { userId: string; code: string }) =>
       request<{ accessToken: string }>('/auth/login/2fa', { method: 'POST', body: JSON.stringify(data) }),
 
-    logout: () => request<void>('/auth/logout', { method: 'POST' }),
+    logout: (token?: string | null) =>
+      request<void>('/auth/logout', { method: 'POST', ...(token ? bearer(token) : {}) }),
 
     refresh: () => request<{ accessToken: string } | undefined>('/auth/refresh', { method: 'POST' }),
 

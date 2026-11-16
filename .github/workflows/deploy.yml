@@ -23,7 +23,7 @@ env:
 jobs:
   # ── Guard: skip if CI failed ──────────────────────────────────
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
     steps:
@@ -40,7 +40,7 @@ jobs:
   # ── Build & push Docker images ────────────────────────────────
   build-push:
     name: Build & Push images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: check
     if: needs.check.outputs.should_run == 'true'
     permissions:
@@ -79,18 +79,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ── Video validator worker image ────────────────────────────
-      - name: Build & push video validator
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: workers/video-validator/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/nourplay-video-validator:${{ steps.sha.outputs.short }}
-            ${{ env.REGISTRY }}/nourplay-video-validator:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Le worker video-validator (BullMQ) est désactivé en production :
+      # pas de build d'image ici, et profil "worker" dans docker-compose.prod.yml.
 
       # ── Migrate image ─────────────────────────────────────────
       - name: Build & push Migrate
@@ -126,14 +116,14 @@ jobs:
   # ── Deploy to Staging ─────────────────────────────────────────
   deploy-staging:
     name: Deploy → Staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build-push
     if: |
       needs.build-push.result == 'success' &&
       (github.event_name == 'workflow_run' ||
        (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging'))
     environment:
-      name: staging
+      name: ${{ inputs.environment || 'staging' }}
       url: https://staging.nourplay.app
 
     steps:
@@ -158,10 +148,15 @@ jobs:
             # Write image coordinates for docker compose
             printf "REGISTRY=%s\nIMAGE_TAG=%s\n" "$REGISTRY" "$IMAGE_TAG" > .image.env
 
-            # Pull new images
+            # Pull new images (le worker video-validator est désactivé en production)
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \
-              pull migrate api video-validator web
+              pull migrate api web
+
+            # Arrêter/supprimer un éventuel worker déjà en cours d'exécution
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml --profile worker \
+              rm -sf video-validator || true
 
             # Restart services (migrate runs first, then api + web)
             docker compose --env-file .env --env-file .image.env \
@@ -183,15 +178,15 @@ jobs:
   # ── Deploy to Production ──────────────────────────────────────
   deploy-production:
     name: Deploy → Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build-push
     if: |
       needs.build-push.result == 'success' &&
       github.event_name == 'workflow_dispatch' &&
       inputs.environment == 'production'
     environment:
-      name: production
-      url: https://nourplay.app
+      name: ${{ inputs.environment || 'production' }}
+      url: https://nour-play.app
 
     steps:
       - name: Extract short SHA
@@ -215,7 +210,11 @@ jobs:
 
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \
-              pull migrate api video-validator web
+              pull migrate api web
+
+            docker compose --env-file .env --env-file .image.env \
+              -f docker-compose.prod.yml --profile worker \
+              rm -sf video-validator || true
 
             docker compose --env-file .env --env-file .image.env \
               -f docker-compose.prod.yml \

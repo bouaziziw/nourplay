@@ -28,6 +28,7 @@ test-results/
 
 # Turbo
 .turbo/
+.vercel
 
 # OS
 .DS_Store

@@ -23,6 +23,8 @@ import { LegalModule } from './modules/legal/legal.module'
 import { SubscriptionModule } from './modules/subscription/subscription.module'
 import { StorageModule } from './modules/storage/storage.module'
 import { WatchPartyModule } from './modules/watch-party/watch-party.module'
+import { CronModule } from './modules/cron/cron.module'
+import { HealthModule } from './modules/health/health.module'
 import { appConfig, validateConfig } from './config/app.config'
 
 @Module({
@@ -48,7 +50,7 @@ import { appConfig, validateConfig } from './config/app.config'
     }),
 
     // ── Tâches planifiées ────────────────────────────────────────
-    ScheduleModule.forRoot(),
+    ...(process.env.VERCEL ? [] : [ScheduleModule.forRoot()]),
 
     // ── Infra partagée ───────────────────────────────────────────
     PrismaModule,
@@ -72,6 +74,8 @@ import { appConfig, validateConfig } from './config/app.config'
     SubscriptionModule,
     StorageModule,
     WatchPartyModule,
+    CronModule,
+    HealthModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
