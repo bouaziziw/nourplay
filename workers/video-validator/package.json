@@ -18,8 +18,8 @@
     "openai": "^4.63.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.6",
     "tsx": "^4.19.1",
-    "typescript": "^5.5.4"
+    "typescript": "^7.0.2"
   }
 }
