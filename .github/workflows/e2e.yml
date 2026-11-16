@@ -95,6 +95,8 @@ jobs:
 
       - name: Start web server
         run: pnpm --filter @nourplay/web start &
+        env:
+          PORT: 3000
 
       - name: Wait for servers to be ready
         run: |
