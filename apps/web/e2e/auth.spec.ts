@@ -2,15 +2,15 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Authentication', () => {
   test('login page renders with form', async ({ page }) => {
-    await page.goto('/login')
-    await expect(page).toHaveURL(/\/login/)
+    await page.goto('/auth/login')
+    await expect(page).toHaveURL(/\/auth\/login/)
     await expect(page.locator('input[type=email]')).toBeVisible()
     await expect(page.locator('input[type=password]')).toBeVisible()
     await expect(page.locator('button[type=submit]')).toBeVisible()
   })
 
   test('login shows error on invalid credentials', async ({ page }) => {
-    await page.goto('/login')
+    await page.goto('/auth/login')
     await page.fill('input[type=email]', 'nonexistent@nourplay.test')
     await page.fill('input[type=password]', 'wrongpassword123')
     await page.click('button[type=submit]')
@@ -19,7 +19,7 @@ test.describe('Authentication', () => {
   })
 
   test('register page renders', async ({ page }) => {
-    await page.goto('/register')
+    await page.goto('/auth/register')
     await expect(page.locator('input[type=email]')).toBeVisible()
     await expect(page.locator('input[type=password]')).toBeVisible()
     await expect(page.locator('button[type=submit]')).toBeVisible()
@@ -27,6 +27,6 @@ test.describe('Authentication', () => {
 
   test('dashboard redirects unauthenticated users to login', async ({ page }) => {
     await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 8_000 })
   })
 })

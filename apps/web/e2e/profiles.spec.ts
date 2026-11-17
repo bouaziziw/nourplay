@@ -1,23 +1,12 @@
 import { test, expect } from '@playwright/test'
-
-async function loginAs(page: Parameters<typeof test.fn>[0]['page'], email: string, password: string) {
-  await page.goto('/login')
-  await page.fill('input[type=email]', email)
-  await page.fill('input[type=password]', password)
-  await page.click('button[type=submit]')
-  await page.waitForURL(/\/child$/, { timeout: 10_000 })
-  await page.getByRole('button', { name: 'Mode Parent' }).click()
-  await page.getByLabel('Mot de passe du compte').fill(password)
-  await page.getByRole('button', { name: 'Déverrouiller' }).click()
-  await page.waitForURL(/\/dashboard/, { timeout: 10_000 })
-}
+import { loginAsParent as loginAs } from './auth-helper'
 
 // ── Unauthenticated ───────────────────────────────────────────────────────────
 
 test.describe('Profiles (unauthenticated)', () => {
-  test('profiles list redirects to login', async ({ page }) => {
-    await page.goto('/dashboard/profiles')
-    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
+  test('profile creation redirects to login', async ({ page }) => {
+    await page.goto('/dashboard/profiles/new')
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 8_000 })
   })
 })
 
@@ -26,16 +15,9 @@ test.describe('Profiles (unauthenticated)', () => {
 test.describe('Profiles list (authenticated)', () => {
   test.skip(!process.env.TEST_EMAIL, 'TEST_EMAIL not set')
 
-  test('profiles page renders with create-profile option', async ({ page }) => {
+  test('dashboard renders with create-profile option', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.goto('/dashboard/profiles')
-    await expect(page).toHaveURL(/\/dashboard\/profiles/)
-    // Either shows a "create profile" link/button or existing profiles
-    await expect(
-      page.locator('a:has-text("Créer"), button:has-text("Créer"), a:has-text("Nouveau")')
-        .or(page.locator('[href*="/profiles/new"]'))
-        .or(page.locator('text=/profil/i'))
-    ).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('a[href$="/dashboard/profiles/new"]').first()).toBeVisible({ timeout: 8_000 })
   })
 })
 
@@ -46,15 +28,7 @@ test.describe('Profile analytics (authenticated)', () => {
 
   test('profile detail page has Statistiques tab', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.goto('/dashboard/profiles')
-
-    const profileLink = page.locator('a[href*="/dashboard/profiles/"]').first()
-    const count = await profileLink.count()
-    if (count === 0) {
-      // No profiles exist — skip the rest gracefully
-      return
-    }
-
+    const profileLink = page.locator('a[title="Modifier"][href*="/dashboard/profiles/"]').first()
     await profileLink.click()
     await expect(page).toHaveURL(/\/dashboard\/profiles\//)
 
@@ -66,26 +40,18 @@ test.describe('Profile analytics (authenticated)', () => {
 
   test('Statistiques tab shows today/week/month cards', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.goto('/dashboard/profiles')
-
-    const profileLink = page.locator('a[href*="/dashboard/profiles/"]').first()
-    if (await profileLink.count() === 0) return
-
+    const profileLink = page.locator('a[title="Modifier"][href*="/dashboard/profiles/"]').first()
     await profileLink.click()
     await page.locator('button:has-text("Statistiques")').click()
 
     await expect(page.locator('text=Aujourd\'hui')).toBeVisible({ timeout: 8_000 })
-    await expect(page.locator('text=Cette semaine')).toBeVisible()
-    await expect(page.locator('text=Ce mois')).toBeVisible()
+    await expect(page.getByText('7 derniers jours', { exact: true })).toBeVisible()
+    await expect(page.getByText('30 derniers jours', { exact: true })).toBeVisible()
   })
 
   test('Statistiques tab shows 7-day bar chart section', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.goto('/dashboard/profiles')
-
-    const profileLink = page.locator('a[href*="/dashboard/profiles/"]').first()
-    if (await profileLink.count() === 0) return
-
+    const profileLink = page.locator('a[title="Modifier"][href*="/dashboard/profiles/"]').first()
     await profileLink.click()
     await page.locator('button:has-text("Statistiques")').click()
 
@@ -97,11 +63,7 @@ test.describe('Profile analytics (authenticated)', () => {
 
   test('Statistiques tab shows top videos section', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.goto('/dashboard/profiles')
-
-    const profileLink = page.locator('a[href*="/dashboard/profiles/"]').first()
-    if (await profileLink.count() === 0) return
-
+    const profileLink = page.locator('a[title="Modifier"][href*="/dashboard/profiles/"]').first()
     await profileLink.click()
     await page.locator('button:has-text("Statistiques")').click()
 
