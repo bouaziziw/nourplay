@@ -28,6 +28,6 @@ test.describe('Shared playlist viewer', () => {
       },
     }))
     await page.goto('/shared/validtoken')
-    await expect(page.getByText('NourPlay', { exact: true })).toBeVisible()
+    await expect(page.locator('body').getByText('NourPlay', { exact: true })).toBeVisible()
   })
 })
