@@ -39,11 +39,12 @@ const locales = ['fr', 'en', 'ar', 'es']
 
 export default async function RootLayout({
   children,
-  params: { locale },
+  params,
 }: {
   children: React.ReactNode
-  params: { locale: string }
+  params: Promise<{ locale: string }>
 }) {
+  const { locale } = await params
   if (!locales.includes(locale)) notFound()
   const messages = await getMessages()
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
