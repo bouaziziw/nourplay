@@ -43,3 +43,26 @@ test('admin base path is opt-in and rejects unsupported values', async () => {
   await assert.rejects(import('../../admin/next.config.mjs?invalid'), /ADMIN_BASE_PATH/)
   delete process.env.ADMIN_BASE_PATH
 })
+
+test('admin API proxy is opt-in and keeps the cookie path outside the admin base path', async () => {
+  delete process.env.API_PROXY_ORIGIN
+  const direct = await import('../../admin/next.config.mjs?direct-api')
+  assert.deepEqual(await direct.default.rewrites(), [])
+
+  process.env.API_PROXY_ORIGIN = 'https://api-origin.example'
+  process.env.ADMIN_BASE_PATH = '/admin'
+  const proxied = await import('../../admin/next.config.mjs?proxy-api')
+  assert.deepEqual(await proxied.default.rewrites(), [
+    { source: '/api/:path*', destination: 'https://api-origin.example/api/:path*', basePath: false },
+  ])
+  delete process.env.API_PROXY_ORIGIN
+  delete process.env.ADMIN_BASE_PATH
+})
+
+test('admin API proxy rejects destinations that are not HTTP(S) origins', async () => {
+  for (const [index, origin] of ['https://api-origin.example/api', 'https://user@api-origin.example', 'ftp://api-origin.example'].entries()) {
+    process.env.API_PROXY_ORIGIN = origin
+    await assert.rejects(import(`../../admin/next.config.mjs?invalid-api-${index}`), /API_PROXY_ORIGIN/)
+  }
+  delete process.env.API_PROXY_ORIGIN
+})

@@ -19,9 +19,23 @@ if (basePath !== '' && basePath !== '/admin') {
   throw new Error('ADMIN_BASE_PATH must be empty or /admin')
 }
 
+const apiOrigin = process.env.API_PROXY_ORIGIN
+if (apiOrigin) {
+  const url = new URL(apiOrigin)
+  if (!['http:', 'https:'].includes(url.protocol) || url.origin !== apiOrigin) {
+    throw new Error('API_PROXY_ORIGIN must be an HTTP(S) origin without credentials, paths, or trailing slashes')
+  }
+}
+
 const nextConfig = {
   basePath,
   reactStrictMode: true,
+  async rewrites() {
+    if (!apiOrigin) return []
+    return [
+      { source: '/api/:path*', destination: `${apiOrigin}/api/:path*`, basePath: false },
+    ]
+  },
   async redirects() {
     return [{ source: '/', destination: '/dashboard', permanent: false }]
   },

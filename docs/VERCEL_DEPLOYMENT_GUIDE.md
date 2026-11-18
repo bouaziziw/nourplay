@@ -377,6 +377,15 @@ vercel env ls
 | `NEXT_PUBLIC_API_URL` | `https://nour-play.app/api/v1` |
 | `ADMIN_BASE_PATH` | `/admin` (au build et à l'exécution) |
 
+Pour tester directement l'Admin sur son domaine Preview Vercel, configurez
+uniquement pour ce Preview `API_PROXY_ORIGIN` avec l'origine de l'API Preview
+(sans chemin ni slash final), et `NEXT_PUBLIC_API_URL` avec `/api/v1`.
+Redéployez ensuite l'Admin : les requêtes et le cookie de renouvellement
+passent par son origine, sans dépendre des cookies intersites. L'API Preview
+doit être accessible au serveur Vercel qui exécute le proxy. Sans
+`API_PROXY_ORIGIN`, aucun rewrite Admin n'est activé ; la configuration
+Production existante reste inchangée.
+
 Les deux origines de proxy doivent être configurées ensemble au build du web.
 Utilisez des origines de preview isolées pour les previews, vérifiez leur
 protection Vercel et redéployez après modification. Détails et vérifications :
