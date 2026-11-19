@@ -79,7 +79,7 @@ for (const origin of [apiOrigin, adminOrigin].filter(Boolean)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  output: process.platform === 'win32' ? undefined : 'standalone',
   reactStrictMode: true,
   async rewrites() {
     if (!apiOrigin || !adminOrigin) return []
