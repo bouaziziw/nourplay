@@ -20,10 +20,41 @@ async function bootstrap() {
   const config = app.get(ConfigService)
   const nodeEnv = config.get<string>('NODE_ENV', 'development')
   const port = config.get<number>('PORT', 4000)
-  const corsOrigins = config
-    .get<string>('CORS_ORIGINS', 'http://localhost:3000')
+  const rawCorsOrigins = config.get<string>('CORS_ORIGINS', 'http://localhost:3000')
+  const configuredOrigins = rawCorsOrigins
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+
+  const isAllowedOrigin = (origin: string): boolean => {
+    const cleanOrigin = origin.replace(/\/$/, '')
+
+    // 1. Exact match in configured CORS_ORIGINS
+    if (configuredOrigins.includes(cleanOrigin)) return true
+
+    // 2. Localhost for dev / staging
+    if (/^https?:\/\/localhost(:\d+)?$/.test(cleanOrigin)) return true
+
+    // 3. Known production & staging domains
+    if (
+      cleanOrigin === 'https://nour-play.app' ||
+      cleanOrigin === 'https://www.nour-play.app' ||
+      cleanOrigin === 'https://nourplay.vercel.app'
+    ) {
+      return true
+    }
+
+    // 4. Any Vercel deployment for Nourplay (preview branches, PRs, hashes)
+    if (
+      /^https:\/\/nourplay(-[a-zA-Z0-9_-]+)?\.vercel\.app$/.test(cleanOrigin) ||
+      /^https:\/\/nourplay-admin(-[a-zA-Z0-9_-]+)?\.vercel\.app$/.test(cleanOrigin) ||
+      /^https:\/\/[a-zA-Z0-9_-]+-bouaziziws-projects\.vercel\.app$/.test(cleanOrigin)
+    ) {
+      return true
+    }
+
+    return false
+  }
 
   // ── Vercel Info ───────────────────────────────────────────────
   if (process.env.VERCEL) {
@@ -56,12 +87,22 @@ async function bootstrap() {
 
   // ── CORS ──────────────────────────────────────────────────────
   app.enableCors({
-    origin: corsOrigins,
+    origin: (origin, callback) => {
+      // Allow non-browser requests (server-to-server, curl, mobile native app)
+      if (!origin) {
+        return callback(null, true)
+      }
+      if (isAllowedOrigin(origin)) {
+        return callback(null, true)
+      }
+      logger.warn(`CORS blocked for origin: ${origin}`)
+      return callback(null, false)
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
   })
-  logger.debug(`CORS configured for origins: ${corsOrigins.join(', ')}`)
+  logger.log(`CORS configured for: ${configuredOrigins.join(', ')} and *.vercel.app`)
 
   // ── Validation globale ────────────────────────────────────────
   app.useGlobalPipes(

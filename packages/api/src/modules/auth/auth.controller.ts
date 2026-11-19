@@ -25,10 +25,12 @@ import { Public } from '../../common/decorators/public.decorator'
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator'
 
 const REFRESH_COOKIE = 'refresh_token'
+const isPreview = process.env.VERCEL_ENV === 'preview'
+const isProd = process.env.NODE_ENV === 'production'
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  secure: isProd || process.env.VERCEL === '1',
+  sameSite: (isPreview ? 'none' : isProd ? 'strict' : 'lax') as 'none' | 'strict' | 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/api/v1/auth',
 }
