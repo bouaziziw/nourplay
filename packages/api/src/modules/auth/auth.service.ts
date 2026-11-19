@@ -47,7 +47,11 @@ export class AuthService {
       select: { id: true, email: true, role: true, locale: true, createdAt: true },
     })
 
-    await this.sendVerificationEmail(user.id, dto.email, dto.locale)
+    try {
+      await this.sendVerificationEmail(user.id, dto.email, dto.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send verification email to ${dto.email}: ${err instanceof Error ? err.message : err}`)
+    }
     this.logger.log(`New user registered: ${user.email} (${user.role})`)
     return user
   }
@@ -174,7 +178,11 @@ export class AuthService {
     if (!user) return
 
     const token = await this.tokenService.createPasswordResetToken(user.id)
-    await this.emailService.sendPasswordResetEmail(email, token, user.locale)
+    try {
+      await this.emailService.sendPasswordResetEmail(email, token, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email to ${email}: ${err instanceof Error ? err.message : err}`)
+    }
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -266,7 +274,11 @@ export class AuthService {
     if (!user) return
 
     const token = await this.tokenService.createMagicLinkToken(email)
-    await this.emailService.sendMagicLinkEmail(email, token, user.locale)
+    try {
+      await this.emailService.sendMagicLinkEmail(email, token, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send magic link email to ${email}: ${err instanceof Error ? err.message : err}`)
+    }
   }
 
   async loginWithMagicLink(token: string, fingerprint: string) {
