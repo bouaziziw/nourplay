@@ -15,7 +15,7 @@ test.describe('Authentication', () => {
     await page.fill('input[type=password]', 'wrongpassword123')
     await page.click('button[type=submit]')
     // API returns 401; the form should show an error message
-    await expect(page.locator('[role=alert], .text-red-600, .text-red-700')).toBeVisible({ timeout: 8_000 })
+    await expect(page.locator('form [role=alert], form .text-red-600, form .text-red-700')).toBeVisible({ timeout: 8_000 })
   })
 
   test('register page renders', async ({ page }) => {
