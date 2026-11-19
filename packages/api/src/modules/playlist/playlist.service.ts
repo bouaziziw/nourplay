@@ -101,11 +101,30 @@ export class PlaylistService {
 
   private async createWithYouTubePlaylist(userId: string, dto: CreatePlaylistDto, externalPlaylistUrl: string) {
     const playlistItems = await this.fetchYouTubePlaylist(externalPlaylistUrl)
-    const source = await this.prisma.videoSource.findFirst({
+    let source = await this.prisma.videoSource.findFirst({
       where: { slug: 'youtube', embedAllowed: true, isActive: true },
       select: { id: true },
     })
-    if (!source) throw new BadRequestException('La source YouTube n’est pas autorisée')
+    if (!source) {
+      source = await this.prisma.videoSource.upsert({
+        where: { slug: 'youtube' },
+        update: { embedAllowed: true, isActive: true },
+        create: {
+          name: 'YouTube',
+          slug: 'youtube',
+          baseUrl: 'https://www.youtube.com',
+          embedAllowed: true,
+          cguVersion: '2024-01',
+          cguCheckedAt: new Date(),
+          embedPolicy: {
+            embedUrl: 'https://www.youtube.com/embed/{id}',
+            allowFullscreen: true,
+            requiresConsent: false,
+          },
+        },
+        select: { id: true },
+      })
+    }
 
     const result = await this.prisma.$transaction(async tx => {
       const playlist = await tx.playlist.create({

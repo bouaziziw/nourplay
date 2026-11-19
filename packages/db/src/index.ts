@@ -12,6 +12,7 @@ export {
   BlockType,
   GdprRequestType,
   GdprRequestStatus,
+  PlanInterval,
 } from '../generated/client'
 
 // Types Prisma (models)

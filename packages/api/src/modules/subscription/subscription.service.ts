@@ -60,14 +60,61 @@ export class SubscriptionService implements OnModuleInit {
     const cached = await this.cache.get<PlanRow[]>('sub:plans')
     if (cached) return cached
 
-    const plans = await this.prisma.subscriptionPlan.findMany({
+    let plans = await this.prisma.subscriptionPlan.findMany({
       where: { isActive: true },
       orderBy: { priceEur: 'asc' },
       select: { id: true, name: true, slug: true, priceEur: true, interval: true, features: true },
     })
 
+    if (plans.length === 0) {
+      await this.ensureDefaultPlans()
+      plans = await this.prisma.subscriptionPlan.findMany({
+        where: { isActive: true },
+        orderBy: { priceEur: 'asc' },
+        select: { id: true, name: true, slug: true, priceEur: true, interval: true, features: true },
+      })
+    }
+
     await this.cache.set('sub:plans', plans, TTL.PLANS_LIST)
     return plans
+  }
+
+  private async ensureDefaultPlans() {
+    try {
+      const defaultPlans = [
+        {
+          slug: 'free',
+          name: 'Gratuit',
+          priceEur: 0,
+          interval: 'MONTHLY' as const,
+          features: ['1 profil enfant', '5 playlists', 'Vidéothèque complète', 'Support par email'],
+        },
+        {
+          slug: 'premium-monthly',
+          name: 'Premium Mensuel',
+          priceEur: 999,
+          interval: 'MONTHLY' as const,
+          features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire'],
+        },
+        {
+          slug: 'premium-yearly',
+          name: 'Premium Annuel',
+          priceEur: 7999,
+          interval: 'YEARLY' as const,
+          features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire', '2 mois offerts'],
+        },
+      ]
+
+      for (const plan of defaultPlans) {
+        await this.prisma.subscriptionPlan.upsert({
+          where: { slug: plan.slug },
+          update: { features: plan.features },
+          create: plan,
+        })
+      }
+    } catch {
+      // Ignoré en cas d'erreur concurrente
+    }
   }
 
   // ── Plan limits ───────────────────────────────────────────────

@@ -3,7 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common'
 import { VideoService } from './video.service'
 
 const makePrisma = () => ({
-  videoSource: { findFirst: vi.fn() },
+  videoSource: { findFirst: vi.fn(), upsert: vi.fn() },
   video: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
