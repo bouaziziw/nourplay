@@ -15,7 +15,7 @@ async function run() {
 
   try {
     const res = await openai.chat.completions.create({
-      model: 'gemini-2.0-flash',
+      model: process.env.AI_MODERATION_MODEL || 'gemini-3-flash-preview',
       messages: [{ role: 'user', content: 'Say hello in one word' }],
     })
     console.log('Response choice:', res.choices[0]?.message?.content)

@@ -125,11 +125,15 @@ export function resolveAIConfig(): AIConfig {
         'GEMINI_API_KEY (ou GOOGLE_AI_API_KEY) est requis pour Gemini. Obtenez une clé gratuite sur https://aistudio.google.com/',
       )
     }
+    let model = process.env.AI_MODERATION_MODEL || 'gemini-3-flash-preview'
+    if (model === 'gemini-2.0-flash' || model === 'gemini-1.5-flash') {
+      model = 'gemini-3-flash-preview'
+    }
     return {
       provider: 'gemini',
       apiKey: geminiKey,
       baseURL: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      model: process.env.AI_MODERATION_MODEL || 'gemini-2.0-flash',
+      model,
       timeoutMs,
     }
   }

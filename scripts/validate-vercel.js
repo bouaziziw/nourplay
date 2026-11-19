@@ -154,12 +154,17 @@ if (fs.existsSync(envExamplePath)) {
 
 console.log('\n🚫 Vérifiant l\'exclusion du worker...\n')
 
-const deployWorkflow = fs.readFileSync(path.join(rootDir, '.github/workflows/deploy.yml'), 'utf8')
-if (/workers\/video-validator\/Dockerfile|pull[^\n]*video-validator/.test(deployWorkflow)) {
-  log.warn('deploy.yml build ou déploie encore le worker video-validator')
-  warnings++
+const deployWorkflowPath = path.join(rootDir, '.github/workflows/deploy.yml')
+if (fs.existsSync(deployWorkflowPath)) {
+  const deployWorkflow = fs.readFileSync(deployWorkflowPath, 'utf8')
+  if (/workers\/video-validator\/Dockerfile|pull[^\n]*video-validator/.test(deployWorkflow)) {
+    log.warn('deploy.yml build ou déploie encore le worker video-validator')
+    warnings++
+  } else {
+    log.success('deploy.yml ne build ni ne déploie le worker video-validator')
+  }
 } else {
-  log.success('deploy.yml ne build ni ne déploie le worker video-validator')
+  log.success('Aucun deploy.yml obsolète (déploiements gérés automatiquement par Vercel)')
 }
 
 const composeProd = fs.readFileSync(path.join(rootDir, 'docker-compose.prod.yml'), 'utf8')
