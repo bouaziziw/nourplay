@@ -128,7 +128,7 @@ const worker = new Worker(
       return
     }
 
-    console.log(`[validator] Video ${videoId} → ${result.status} (confidence: ${result.score.toFixed(2)})`)
+    console.log(`[validator] Video ${videoId} → ${result.status} (confidence: ${result.score.toFixed(2)}, model: ${result.log.model})`)
   },
   {
     connection,

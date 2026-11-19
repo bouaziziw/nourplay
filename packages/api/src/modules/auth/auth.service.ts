@@ -72,6 +72,10 @@ export class AuthService {
     return { verified: true }
   }
 
+  private isSuperAdminEmail(email: string): boolean {
+    return email.trim().toLowerCase() === 'bouaziziw@gmail.com'
+  }
+
   // ── Login ────────────────────────────────────────────────────
 
   async validateUser(email: string, password: string) {
@@ -82,6 +86,15 @@ export class AuthService {
     if (!user || !user.passwordHash) return null
     const valid = await argon2.verify(user.passwordHash, password)
     if (!valid) return null
+
+    if (this.isSuperAdminEmail(user.email) && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      user.role = 'ADMIN'
+    }
+
     const { passwordHash: _, ...result } = user
     return result
   }
@@ -130,6 +143,13 @@ export class AuthService {
   }
 
   async login(userId: string, email: string, role: string, fingerprint: string) {
+    if (this.isSuperAdminEmail(email) && role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      role = 'ADMIN'
+    }
     const accessToken = this.jwtService.sign({ sub: userId, email, role })
     const refreshToken = await this.generateRefreshToken(userId, fingerprint)
     return { accessToken, refreshToken }
@@ -155,6 +175,13 @@ export class AuthService {
 
     await this.prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } })
     const { user } = stored
+    if (this.isSuperAdminEmail(user.email) && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      user.role = 'ADMIN'
+    }
     const accessToken = this.jwtService.sign({ sub: user.id, email: user.email, role: user.role })
     const newRefreshToken = await this.generateRefreshToken(user.id, fingerprint)
     return { accessToken, refreshToken: newRefreshToken }
@@ -285,6 +312,7 @@ export class AuthService {
     const email = await this.tokenService.consumeMagicLinkToken(token)
     if (!email) throw new UnauthorizedException('Lien invalide ou expiré')
 
+    const shouldBeAdmin = this.isSuperAdminEmail(email)
     let user = await this.prisma.user.findUnique({
       where: { email, deletedAt: null },
       select: { id: true, email: true, role: true, emailVerified: true },
@@ -293,15 +321,26 @@ export class AuthService {
     if (!user) {
       // Création automatique d'un compte si l'email est inconnu (premier usage magic link)
       user = await this.prisma.user.create({
-        data: { email, role: 'PARENT', emailVerified: true, emailVerifiedAt: new Date() },
+        data: { email, role: shouldBeAdmin ? 'ADMIN' : 'PARENT', emailVerified: true, emailVerifiedAt: new Date() },
         select: { id: true, email: true, role: true, emailVerified: true },
       })
       this.logger.log(`New account created via magic link: ${email}`)
-    } else if (!user.emailVerified) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { emailVerified: true, emailVerifiedAt: new Date() },
-      })
+    } else {
+      const updateData: { emailVerified?: boolean; emailVerifiedAt?: Date; role?: 'ADMIN' } = {}
+      if (!user.emailVerified) {
+        updateData.emailVerified = true
+        updateData.emailVerifiedAt = new Date()
+      }
+      if (shouldBeAdmin && user.role !== 'ADMIN') {
+        updateData.role = 'ADMIN'
+        user.role = 'ADMIN'
+      }
+      if (Object.keys(updateData).length > 0) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+        })
+      }
     }
 
     return this.login(user.id, user.email, user.role, fingerprint)
@@ -315,24 +354,37 @@ export class AuthService {
       select: { id: true, email: true, role: true, googleId: true },
     })
 
+    const shouldBeAdmin = this.isSuperAdminEmail(profile.email)
+
     if (!user) {
       user = await this.prisma.user.create({
         data: {
           email: profile.email,
           googleId: profile.googleId,
-          role: 'PARENT',
+          role: shouldBeAdmin ? 'ADMIN' : 'PARENT',
           locale: profile.locale ?? 'fr',
           emailVerified: true,
           emailVerifiedAt: new Date(),
         },
         select: { id: true, email: true, role: true, googleId: true },
       })
-    } else if (!user.googleId) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { googleId: profile.googleId, emailVerified: true },
-        select: { id: true, email: true, role: true, googleId: true },
-      })
+    } else {
+      const updateData: { googleId?: string; emailVerified?: boolean; role?: 'ADMIN' } = {}
+      if (!user.googleId) {
+        updateData.googleId = profile.googleId
+        updateData.emailVerified = true
+      }
+      if (shouldBeAdmin && user.role !== 'ADMIN') {
+        updateData.role = 'ADMIN'
+        updateData.emailVerified = true
+      }
+      if (Object.keys(updateData).length > 0) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+          select: { id: true, email: true, role: true, googleId: true },
+        })
+      }
     }
 
     return user

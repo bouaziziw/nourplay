@@ -19,12 +19,62 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+let activeRefreshPromise: Promise<string | null> | null = null
+let onTokenUpdateCallback: ((token: string) => void) | null = null
+
+export function setOnTokenUpdate(callback: ((token: string) => void) | null) {
+  onTokenUpdateCallback = callback
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (activeRefreshPromise) return activeRefreshPromise
+  activeRefreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) return null
+      const data = await res.json().catch(() => null) as { accessToken?: string } | null
+      if (data?.accessToken) {
+        onTokenUpdateCallback?.(data.accessToken)
+        return data.accessToken
+      }
+      return null
+    } catch {
+      return null
+    } finally {
+      activeRefreshPromise = null
+    }
+  })()
+  return activeRefreshPromise
+}
+
+async function request<T>(path: string, init: RequestInit = {}, isRetry = false): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init.headers },
   })
+
+  // En cas de 401 Unauthorized sur une requête authentifiée, tenter un rafraîchissement transparent du token
+  if (
+    res.status === 401
+    && !isRetry
+    && !path.startsWith('/auth/login')
+    && !path.startsWith('/auth/refresh')
+  ) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      const newHeaders: Record<string, string> = {
+        ...(init.headers as Record<string, string>),
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${newToken}`,
+      }
+      return request<T>(path, { ...init, headers: newHeaders }, true)
+    }
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string }
@@ -308,8 +358,25 @@ function bearer(token: string): { headers: Record<string, string> } {
   return { headers: { Authorization: `Bearer ${token}` } }
 }
 
-async function requestBlob(path: string, init: RequestInit = {}): Promise<Blob> {
+async function requestBlob(path: string, init: RequestInit = {}, isRetry = false): Promise<Blob> {
   const res = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include' })
+
+  if (
+    res.status === 401
+    && !isRetry
+    && !path.startsWith('/auth/login')
+    && !path.startsWith('/auth/refresh')
+  ) {
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      const newHeaders: Record<string, string> = {
+        ...(init.headers as Record<string, string>),
+        Authorization: `Bearer ${newToken}`,
+      }
+      return requestBlob(path, { ...init, headers: newHeaders }, true)
+    }
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { message?: string }
     throw new ApiError(res.status, body.message ?? res.statusText)

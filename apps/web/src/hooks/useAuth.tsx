@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, setOnTokenUpdate } from '../lib/api'
 
 interface User {
   id: string
@@ -68,6 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser])
 
   useEffect(() => { refreshToken() }, [refreshToken])
+
+  useEffect(() => {
+    setOnTokenUpdate((newToken: string) => {
+      setState(current => current.token === newToken ? current : { ...current, token: newToken })
+    })
+    return () => setOnTokenUpdate(null)
+  }, [])
+
+  useEffect(() => {
+    if (!state.token) return
+    // Rafraîchir automatiquement le token après 10 minutes (durée de validité : 15 min)
+    const timer = setTimeout(() => {
+      void refreshToken()
+    }, 10 * 60 * 1000)
+    return () => clearTimeout(timer)
+  }, [state.token, refreshToken])
 
   const login = async (email: string, password: string) => {
     const result = await api.auth.login({ email, password })

@@ -76,6 +76,20 @@ async function main() {
     },
   })
 
+  // ── Utilisateur super-admin ──────────────────────────────────
+  await prisma.user.upsert({
+    where: { email: 'bouaziziw@gmail.com' },
+    update: { role: UserRole.ADMIN, emailVerified: true },
+    create: {
+      email: 'bouaziziw@gmail.com',
+      passwordHash: adminPasswordHash,
+      role: UserRole.ADMIN,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
+      locale: 'fr',
+    },
+  })
+
   // ── Utilisateur enseignant de test ────────────────────────────
   const teacherPasswordHash = await hashPassword('Teacher1234!')
 
