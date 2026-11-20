@@ -530,6 +530,12 @@ export const api = {
     getDailyWatchTime: (token: string, profileId: string) =>
       request<{ watchedSec: number }>(`/users/me/profiles/${profileId}/daily-watch-time`, bearer(token)),
 
+    notifySessionExpired: (token: string, profileId: string) =>
+      request<{ notified: boolean }>(`/users/me/profiles/${profileId}/session-expired`, {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
     exportHistory: (token: string, profileId: string) =>
       requestBlob(`/users/me/profiles/${profileId}/history/export`, bearer(token)),
 

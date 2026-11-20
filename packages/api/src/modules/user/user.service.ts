@@ -273,13 +273,21 @@ export class UserService {
     if (prevSec < limitSec && totalSec >= limitSec) {
       const watchedMin = Math.round(totalSec / 60)
 
-      void this.prisma.notification.create({
-        data: {
+      if (this.notificationService) {
+        void this.notificationService.create({
           userId,
           type: 'SCREEN_TIME_ALERT',
           payload: { profileName, limitMin, watchedMin },
-        },
-      })
+        })
+      } else {
+        void this.prisma.notification.create({
+          data: {
+            userId,
+            type: 'SCREEN_TIME_ALERT',
+            payload: { profileName, limitMin, watchedMin },
+          },
+        })
+      }
 
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -539,6 +547,42 @@ export class UserService {
       _sum: { durationWatchedSec: true },
     })
     return { watchedSec: agg._sum.durationWatchedSec ?? 0 }
+  }
+
+  async notifySessionExpired(userId: string, profileId: string): Promise<{ notified: boolean }> {
+    const profile = await this.prisma.childProfile.findFirst({
+      where: { id: profileId, userId },
+      select: { displayName: true, sessionLimitMin: true, dailyLimitMin: true },
+    })
+    if (!profile) throw new NotFoundException('Profil enfant introuvable')
+
+    const limitMin = profile.sessionLimitMin ?? profile.dailyLimitMin ?? 0
+
+    if (this.notificationService) {
+      void this.notificationService.create({
+        userId,
+        type: 'SCREEN_TIME_ALERT',
+        payload: {
+          profileName: profile.displayName,
+          limitMin,
+          watchedMin: limitMin,
+        },
+      })
+    } else {
+      void this.prisma.notification.create({
+        data: {
+          userId,
+          type: 'SCREEN_TIME_ALERT',
+          payload: {
+            profileName: profile.displayName,
+            limitMin,
+            watchedMin: limitMin,
+          },
+        },
+      })
+    }
+
+    return { notified: true }
   }
 
   // ── Limites par catégorie ────────────────────────────────────

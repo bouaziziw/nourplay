@@ -194,6 +194,16 @@ export class UserController {
     return this.userService.getDailyWatchTime(user.sub, profileId)
   }
 
+  @Post('me/profiles/:profileId/session-expired')
+  @ApiOperation({ summary: 'Alerter le parent de la fin du temps de visionnage de la session enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  notifySessionExpired(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.notifySessionExpired(user.sub, profileId)
+  }
+
   // ── Progression vidéo ────────────────────────────────────────
 
   @Get('me/profiles/:profileId/in-progress')

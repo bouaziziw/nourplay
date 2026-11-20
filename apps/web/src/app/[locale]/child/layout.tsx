@@ -162,6 +162,9 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
                 activatedAt={session.activatedAt}
                 dailyWatchedSec={dailyWatchedSec}
                 onExpire={() => {
+                  if (token && session.profileId) {
+                    void api.users.notifySessionExpired(token, session.profileId).catch(() => {})
+                  }
                   // Force re-render to trigger blocking screen
                   setDailyWatchedSec(prev => (prev ?? 0) + 1)
                 }}

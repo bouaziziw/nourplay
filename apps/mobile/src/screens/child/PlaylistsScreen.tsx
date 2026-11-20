@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthContext } from '../../hooks/useAuth'
 import { ChildSessionContext, isWithinSchedule } from '../../hooks/useChildSession'
+import { sendLocalScreenTimeNotification } from '../../hooks/usePushNotifications'
 import { api, PlaylistSummary } from '../../api'
 import { ChildCountdownTimer } from '../../components/ChildCountdownTimer'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
@@ -36,11 +37,15 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
     const interval = setInterval(() => {
       if (!session || !childCtx) return
       if (!isWithinSchedule(session.viewingSchedule) || childCtx.isSessionExpired()) {
+        void sendLocalScreenTimeNotification(session.displayName)
+        if (auth?.token && session.profileId) {
+          void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+        }
         childCtx.clear()
       }
     }, 60_000)
     return () => clearInterval(interval)
-  }, [session, childCtx])
+  }, [session, childCtx, auth?.token])
 
   // Enforce schedule on mount
   useEffect(() => {
@@ -52,6 +57,10 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
       return
     }
     if (childCtx.isSessionExpired()) {
+      void sendLocalScreenTimeNotification(session.displayName)
+      if (auth?.token && session.profileId) {
+        void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+      }
       Alert.alert('Temps écoulé ⏰', `La session de ${session.displayName} est terminée pour aujourd'hui.`, [
         { text: 'OK', onPress: () => childCtx.clear() },
       ])
@@ -82,7 +91,11 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
               dailyLimitMin={session.dailyLimitMin}
               activatedAt={session.activatedAt}
               onExpire={() => {
-                Alert.alert('Temps écoulé', "La session est terminée pour aujourd'hui.", [
+                void sendLocalScreenTimeNotification(session.displayName)
+                if (auth?.token && session.profileId) {
+                  void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+                }
+                Alert.alert('Temps écoulé ⏰', `La session de ${session.displayName} est terminée pour aujourd'hui.`, [
                   { text: 'OK', onPress: () => childCtx?.clear() },
                 ])
               }}

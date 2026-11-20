@@ -152,6 +152,12 @@ export const api = {
         body: JSON.stringify(data),
         ...bearer(token),
       }),
+
+    notifySessionExpired: (token: string, profileId: string) =>
+      request<{ notified: boolean }>(`/users/me/profiles/${profileId}/session-expired`, {
+        method: 'POST',
+        ...bearer(token),
+      }),
   },
 
   playlists: {
