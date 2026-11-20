@@ -28,7 +28,7 @@ export default function ParentPlaylistsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#1c90d8" />
       </View>
     )
   }

@@ -11,7 +11,7 @@ const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-red-500/20 text-red-400',
   MODERATOR: 'bg-amber-500/20 text-amber-400',
   TEACHER: 'bg-sky-500/20 text-sky-400',
-  PARENT: 'bg-indigo-500/20 text-indigo-400',
+  PARENT: 'bg-primary/20 text-sky-400',
 }
 
 export default function UserDetailPage() {
@@ -68,7 +68,7 @@ export default function UserDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -163,14 +163,14 @@ export default function UserDetailPage() {
             <select
               value={selectedRole}
               onChange={e => setSelectedRole(e.target.value)}
-              className="h-9 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="h-9 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
             >
               {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
             <button
               onClick={handleRoleChange}
               disabled={saving || selectedRole === user.role}
-              className="h-9 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors"
+              className="h-9 px-4 bg-primary hover:bg-primary-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm"
             >
               {saving ? 'Mise à jour…' : roleSaved ? '✓ Sauvegardé' : 'Changer le rôle'}
             </button>

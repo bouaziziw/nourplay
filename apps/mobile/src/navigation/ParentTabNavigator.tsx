@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { AuthContext } from '../hooks/useAuth'
 import { ChildSessionContext } from '../hooks/useChildSession'
+import { Logo } from '../components/Logo'
 
 import DashboardScreen from '../screens/parent/DashboardScreen'
 import ParentPlaylistsScreen from '../screens/parent/ParentPlaylistsScreen'
@@ -29,24 +30,24 @@ export default function ParentTabNavigator() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top']}>
-      <View style={{ height: 46, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#eef0f5' }}>
-        <Text style={{ color: '#5145cd', fontWeight: '800', fontSize: 15 }}>Mode Parent</Text>
+      <View style={{ height: 52, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+        <Logo size="sm" subtitle="Parent" />
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
             auth?.lockParentMode()
             void childSession?.clear()
           }}
-          style={{ borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6 }}
+          style={{ borderWidth: 1, borderColor: '#bae6fd', backgroundColor: '#f0f9ff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 }}
         >
-          <Text style={{ color: '#4f46e5', fontWeight: '700', fontSize: 12 }}>Mode enfant</Text>
+          <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 12 }}>Mode enfant</Text>
         </TouchableOpacity>
       </View>
       <Tab.Navigator
         screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#5145cd',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: '#1c90d8',
+        tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
           height: 68,
           paddingTop: 8,

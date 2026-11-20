@@ -73,18 +73,18 @@ export default function TwoFactorScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#eef2ff' },
+  safe: { flex: 1, backgroundColor: '#f0f8fd' },
   container: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '700', color: '#1e1b4b', textAlign: 'center', marginBottom: 10 },
+  title: { fontSize: 22, fontWeight: '700', color: '#0f172a', textAlign: 'center', marginBottom: 10 },
   desc: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginBottom: 16 },
   errorText: { color: '#b91c1c', fontSize: 13, textAlign: 'center' },
   codeInput: {
-    height: 64, borderWidth: 2, borderColor: '#4f46e5', borderRadius: 14,
-    fontSize: 28, fontWeight: '700', color: '#1e1b4b', marginBottom: 24, letterSpacing: 8,
+    height: 64, borderWidth: 2, borderColor: '#1c90d8', borderRadius: 14,
+    fontSize: 28, fontWeight: '700', color: '#0f172a', marginBottom: 24, letterSpacing: 8,
   },
   btn: {
-    height: 48, backgroundColor: '#4f46e5', borderRadius: 12,
+    height: 48, backgroundColor: '#1c90d8', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

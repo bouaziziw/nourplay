@@ -74,7 +74,7 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-2">
             {(['PARENT', 'TEACHER'] as const).map(r => (
               <button key={r} type="button" onClick={() => setRole(r)}
-                className={`h-10 rounded-lg border text-sm font-medium transition-colors ${role === r ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                className={`h-10 rounded-xl border text-sm font-semibold transition-all ${role === r ? 'border-primary bg-sky-50 text-sky-800 shadow-sm' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
               >
                 {r === 'PARENT' ? 'Un parent' : 'Un enseignant'}
               </button>
@@ -86,7 +86,7 @@ export default function RegisterPage() {
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">{t('email')}</label>
           <input id="email" type="email" autoComplete="email" required
             value={email} onChange={e => setEmail(e.target.value)}
-            className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full h-10 rounded-xl border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
@@ -94,7 +94,7 @@ export default function RegisterPage() {
           <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">{t('password')}</label>
           <input id="password" type="password" autoComplete="new-password" required minLength={12}
             value={password} onChange={e => setPassword(e.target.value)}
-            className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full h-10 rounded-xl border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
           {password.length > 0 && (
             <div className="mt-2">
@@ -111,19 +111,19 @@ export default function RegisterPage() {
 
       <p className="mt-4 text-xs text-gray-400">
         En créant un compte, vous acceptez nos{' '}
-        <Link href={`/${locale}/legal/cgu`} className="underline">CGU</Link> et notre{' '}
-        <Link href={`/${locale}/legal/privacy`} className="underline">politique de confidentialité</Link>.
+        <Link href={`/${locale}/legal/cgu`} className="underline hover:text-gray-600">CGU</Link> et notre{' '}
+        <Link href={`/${locale}/legal/privacy`} className="underline hover:text-gray-600">politique de confidentialité</Link>.
       </p>
 
       <button type="submit" disabled={loading}
-        className="mt-4 w-full h-11 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        className="mt-4 w-full h-11 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-600 disabled:opacity-50 transition-all shadow-md shadow-sky-950/10 active:scale-[0.99]"
       >
         {loading ? 'Création…' : t('register')}
       </button>
 
       <p className="mt-4 text-center text-sm text-gray-500">
         Déjà un compte ?{' '}
-        <Link href={`/${locale}/auth/login`} className="text-indigo-600 font-medium hover:underline">{t('login')}</Link>
+        <Link href={`/${locale}/auth/login`} className="text-primary font-semibold hover:underline">{t('login')}</Link>
       </p>
     </form>
   )

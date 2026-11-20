@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useLocale } from 'next-intl'
+import { Logo } from '@nourplay/ui'
 import { useAuth } from '../../../hooks/useAuth'
 import { useChildSession, isWithinSchedule, sessionElapsedMin, isDailyLimitReached } from '../../../hooks/useChildSession'
 import { api } from '../../../lib/api'
 import { ParentUnlockModal } from '../../../components/ParentUnlockModal'
+import { ChildCountdownTimer } from '../../../components/ChildCountdownTimer'
 
 function ChildGuard({ children }: { children: React.ReactNode }) {
   const { session, hydrated, clear, isSessionExpired } = useChildSession()
@@ -119,13 +121,14 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {session ? (
               <>
-                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600">
+                <Logo size="xs" showText={false} />
+                <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sm font-bold text-primary">
                   {session.displayName.slice(0, 2).toUpperCase()}
                 </div>
                 <span className="font-semibold text-gray-800 text-sm">{session.displayName}</span>
               </>
             ) : (
-              <span className="font-bold text-indigo-600">NourPlay — Mode enfant</span>
+              <Logo size="sm" subtitle="Enfant" />
             )}
             {session && <>
             <Link
@@ -150,28 +153,32 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            {session?.dailyLimitMin && dailyWatchedSec !== null && (
-              <span className="text-xs text-gray-400">
-                {Math.max(0, session.dailyLimitMin - Math.floor(dailyWatchedSec / 60))} min / jour
-              </span>
-            )}
-            {session?.sessionLimitMin && (
-              <span className="text-xs text-gray-400">
-                {Math.max(0, session.sessionLimitMin - sessionElapsedMin(session.activatedAt))} min session
-              </span>
+            {session && (
+              <ChildCountdownTimer
+                sessionLimitMin={session.sessionLimitMin}
+                dailyLimitMin={session.dailyLimitMin}
+                activatedAt={session.activatedAt}
+                dailyWatchedSec={dailyWatchedSec}
+                onExpire={() => {
+                  // Force re-render to trigger blocking screen
+                  setDailyWatchedSec(prev => (prev ?? 0) + 1)
+                }}
+              />
             )}
             <button
               onClick={() => setUnlockOpen(true)}
-              className="text-xs font-medium text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg px-2.5 py-1 transition-colors"
+              className="text-xs font-semibold text-[#1c90d8] hover:bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-sm"
             >
               Mode Parent
             </button>
-            {session && <button
-              onClick={() => { clear(); router.replace(`/${locale}/child`) }}
-              className="text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg px-2.5 py-1 transition-colors"
-            >
-              Changer de profil
-            </button>}
+            {session && (
+              <button
+                onClick={() => { clear(); router.replace(`/${locale}/child`) }}
+                className="text-xs font-medium text-gray-500 hover:text-red-500 border border-gray-200 rounded-xl px-2.5 py-1.5 transition-colors"
+              >
+                Changer de profil
+              </button>
+            )}
           </div>
         </header>
       )}

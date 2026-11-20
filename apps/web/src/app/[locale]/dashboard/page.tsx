@@ -71,7 +71,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -80,7 +80,7 @@ export default function DashboardPage() {
     return (
       <div className="text-center py-16">
         <p className="text-gray-500 mb-4">Vous devez être connecté.</p>
-        <Link href={`/${locale}/auth/login`} className="text-indigo-600 font-medium hover:underline">Se connecter</Link>
+        <Link href={`/${locale}/auth/login`} className="text-[#1c90d8] font-medium hover:underline">Se connecter</Link>
       </div>
     )
   }
@@ -102,7 +102,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800">{t('profiles')}</h2>
           <Link href={`/${locale}/dashboard/profiles/new`}
-            className="text-sm text-indigo-600 font-medium hover:underline flex items-center gap-1">
+            className="text-sm text-[#1c90d8] font-medium hover:underline flex items-center gap-1">
             + {t('createProfile')}
           </Link>
         </div>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
             <p className="text-gray-400 text-sm mb-3">{t('noProfiles')}</p>
             <Link href={`/${locale}/dashboard/profiles/new`}
-              className="inline-flex items-center justify-center h-9 px-4 bg-indigo-600 text-white text-sm rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+              className="inline-flex items-center justify-center h-9 px-4 bg-[#1c90d8] text-white text-sm rounded-xl font-medium hover:bg-[#1572ab] transition-colors shadow-sm">
               {t('createProfile')}
             </Link>
           </div>
@@ -121,14 +121,14 @@ export default function DashboardPage() {
               <div key={p.id} className="relative group">
                 <button
                   onClick={() => setSelectedProfile(p)}
-                  className="w-full bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-indigo-300 hover:shadow-sm transition-all"
+                  className="w-full bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-sky-300 hover:shadow-md transition-all active:scale-[0.99]"
                 >
                   <div className="mx-auto mb-3">
                     <ProfileAvatar avatarKey={p.avatarKey} displayName={p.displayName} size={56} />
                   </div>
                   <p className="font-medium text-gray-900 text-sm truncate">{p.displayName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{ageLabels[p.ageGroup] ?? p.ageGroup}</p>
-                  <span className="text-xs text-indigo-500 mt-1 block">▶ Mode enfant</span>
+                  <span className="text-xs text-[#1c90d8] font-semibold mt-1 block">▶ Mode enfant</span>
                 </button>
                 <Link
                   href={`/${locale}/dashboard/profiles/${p.id}`}
@@ -151,13 +151,13 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Co-visionnage</h2>
           <Link href={`/${locale}/dashboard/watch-party/new`}
-            className="text-sm text-indigo-600 font-medium hover:underline">
+            className="text-sm text-[#1c90d8] font-medium hover:underline">
             + Nouvelle salle
           </Link>
         </div>
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-100 rounded-xl p-5 flex items-center gap-4">
+          <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center shrink-0">
+            <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </div>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href={`/${locale}/dashboard/watch-party/new`}
-            className="shrink-0 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-4 py-2 rounded-lg"
+            className="shrink-0 text-sm font-medium text-white bg-[#1c90d8] hover:bg-[#1572ab] transition-colors px-4 py-2 rounded-xl shadow-sm"
           >
             Démarrer
           </Link>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800">{t('playlists')}</h2>
           <Link href={`/${locale}/dashboard/playlists/new`}
-            className="text-sm text-indigo-600 font-medium hover:underline">
+            className="text-sm text-[#1c90d8] font-medium hover:underline">
             + {t('createPlaylist')}
           </Link>
         </div>
@@ -188,17 +188,17 @@ export default function DashboardPage() {
           <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center">
             <p className="text-gray-400 text-sm mb-3">{t('noPlaylists')}</p>
             <Link href={`/${locale}/dashboard/playlists/new`}
-              className="inline-flex items-center justify-center h-9 px-4 bg-indigo-600 text-white text-sm rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+              className="inline-flex items-center justify-center h-9 px-4 bg-[#1c90d8] text-white text-sm rounded-xl font-medium hover:bg-[#1572ab] transition-colors shadow-sm">
               {t('createPlaylist')}
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {playlists.map(pl => (
-              <div key={pl.id} className="relative group bg-white rounded-xl border border-gray-200 hover:border-indigo-300 hover:shadow-sm transition-all">
+              <div key={pl.id} className="relative group bg-white rounded-2xl border border-gray-200 hover:border-sky-300 hover:shadow-md transition-all active:scale-[0.99]">
                 <Link href={`/${locale}/dashboard/playlists/${pl.id}`} className="block p-5">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h8" />
                     </svg>
                   </div>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => handleDuplicate(pl.id)}
                   disabled={duplicating === pl.id}
-                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-400 hover:bg-indigo-100 hover:text-indigo-600 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 text-gray-400 hover:bg-sky-100 hover:text-[#1c90d8] transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50"
                   title="Dupliquer la playlist"
                 >
                   {duplicating === pl.id ? (

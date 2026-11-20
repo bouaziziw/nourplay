@@ -51,7 +51,7 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
         className="w-full max-w-sm rounded-2xl bg-white p-7 shadow-2xl"
         onClick={event => event.stopPropagation()}
       >
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-[#1c90d8]">
           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -71,13 +71,13 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
             onChange={event => setPassword(event.target.value)}
             placeholder="Mot de passe du compte"
             aria-label="Mot de passe du compte"
-            className="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="h-11 w-full rounded-xl border border-gray-300 px-3 text-sm focus:border-[#1c90d8] focus:outline-none focus:ring-2 focus:ring-sky-200"
           />
-          {error && <p role="alert" className="text-center text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-center text-sm text-red-600 font-medium">{error}</p>}
           <button
             type="submit"
             disabled={loading || !password}
-            className="h-11 w-full rounded-lg bg-indigo-600 font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-50"
+            className="h-11 w-full rounded-xl bg-[#1c90d8] font-medium text-white transition-colors hover:bg-[#1572ab] disabled:cursor-wait disabled:opacity-50 shadow-sm"
           >
             {loading ? 'Vérification…' : 'Déverrouiller'}
           </button>
@@ -86,7 +86,7 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
           type="button"
           disabled={loading}
           onClick={onClose}
-          className="mt-3 h-9 w-full text-sm text-gray-500 transition-colors hover:text-gray-800 disabled:opacity-50"
+          className="mt-3 h-9 w-full text-sm font-medium text-gray-500 transition-colors hover:text-gray-800 disabled:opacity-50"
         >
           Annuler
         </button>

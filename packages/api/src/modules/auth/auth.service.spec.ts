@@ -233,14 +233,14 @@ describe('AuthService', () => {
       expect(fp).toMatch(/^[0-9a-f]{64}$/)
     })
 
-    it('est identique pour des IPs dans le même /24', () => {
-      expect(service.buildFingerprint('Mozilla/5.0', '192.168.1.10'))
-        .toBe(service.buildFingerprint('Mozilla/5.0', '192.168.1.99'))
+    it('est identique pour des requêtes provenant du même appareil malgré le changement de réseau IP', () => {
+      expect(service.buildFingerprint('Mozilla/5.0 (iPhone)', '192.168.1.10'))
+        .toBe(service.buildFingerprint('Mozilla/5.0 (iPhone)', '10.0.0.1'))
     })
 
-    it('est différent pour des subnets /24 différents', () => {
-      expect(service.buildFingerprint('Mozilla/5.0', '192.168.1.1'))
-        .not.toBe(service.buildFingerprint('Mozilla/5.0', '10.0.0.1'))
+    it('est différent pour des appareils ou navigateurs différents', () => {
+      expect(service.buildFingerprint('Mozilla/5.0 (iPhone)', '192.168.1.1'))
+        .not.toBe(service.buildFingerprint('Mozilla/5.0 (Windows NT 10.0)', '192.168.1.1'))
     })
   })
 
@@ -284,17 +284,17 @@ describe('AuthService', () => {
       await expect(service.refreshTokens('token-hash', 'fp')).rejects.toThrow(UnauthorizedException)
     })
 
-    it('révoque TOUS les tokens et lève UnauthorizedException si fingerprint suspect', async () => {
+    it('révoque le token compromis et lève UnauthorizedException si fingerprint suspect', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
         id: 'rt-1', userId: 'u-1', revokedAt: null,
         expiresAt: new Date(Date.now() + 10000), fingerprint: 'fp-original',
         user: { id: 'u-1', email: 'a@b.com', role: 'PARENT', deletedAt: null },
       })
-      prisma.refreshToken.updateMany.mockResolvedValue({ count: 3 })
+      prisma.refreshToken.update.mockResolvedValue({})
 
       await expect(service.refreshTokens('token-hash', 'fp-different')).rejects.toThrow(UnauthorizedException)
-      expect(prisma.refreshToken.updateMany).toHaveBeenCalledOnce()
-      expect(prisma.refreshToken.updateMany.mock.calls[0][0].where.userId).toBe('u-1')
+      expect(prisma.refreshToken.update).toHaveBeenCalled()
+      expect(prisma.refreshToken.update.mock.calls[0][0].where.id).toBe('rt-1')
     })
   })
 

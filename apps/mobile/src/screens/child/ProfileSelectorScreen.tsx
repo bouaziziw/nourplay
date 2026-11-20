@@ -10,6 +10,7 @@ import { ChildSessionContext } from '../../hooks/useChildSession'
 import { PinModal } from '../../components/PinModal'
 import { api, ProfileSummary } from '../../api'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
+import { Logo } from '../../components/Logo'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileSelector'>
 
@@ -87,7 +88,7 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.appName}>NourPlay</Text>
+        <Logo size="sm" subtitle="Enfant" />
         <TouchableOpacity
           accessibilityRole="button"
           onPress={() => {
@@ -106,7 +107,7 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 64 }} size="large" color="#4f46e5" />
+        <ActivityIndicator style={{ marginTop: 64 }} size="large" color="#1c90d8" />
       ) : profiles.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Aucun profil enfant disponible.</Text>
@@ -215,17 +216,17 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#eef2ff' },
+  safe: { flex: 1, backgroundColor: '#f0f8fd' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
-  appName: { fontSize: 18, fontWeight: '800', color: '#4f46e5' },
-  dashboardLink: { fontSize: 13, color: '#4f46e5', fontWeight: '500' },
-  parentModeButton: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#eef2ff' },
+  appName: { fontSize: 18, fontWeight: '800', color: '#1c90d8' },
+  dashboardLink: { fontSize: 13, color: '#1c90d8', fontWeight: '700' },
+  parentModeButton: { borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#f0f9ff' },
   titleBlock: { alignItems: 'center', marginTop: 32, marginBottom: 24 },
-  title: { fontSize: 26, fontWeight: '800', color: '#1e1b4b' },
-  subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4 },
+  title: { fontSize: 26, fontWeight: '800', color: '#0f172a' },
+  subtitle: { fontSize: 14, color: '#64748b', marginTop: 4 },
   grid: { paddingHorizontal: 16, paddingBottom: 24 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
-  profileCard: { width: '47%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  profileCard: { width: '47%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#1c90d8', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
   avatarImg: { width: 72, height: 72, borderRadius: 36 },
   avatarText: { fontSize: 22, fontWeight: '800' },
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   profileAge: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
   emptyState: { alignItems: 'center', marginTop: 80 },
   emptyText: { fontSize: 15, color: '#6b7280', marginBottom: 16 },
-  linkText: { fontSize: 14, color: '#4f46e5', fontWeight: '600', textAlign: 'center', maxWidth: 280 },
+  linkText: { fontSize: 14, color: '#1c90d8', fontWeight: '600', textAlign: 'center', maxWidth: 280 },
   logoutBtn: { alignItems: 'center', paddingVertical: 20 },
   logoutText: { fontSize: 13, color: '#9ca3af' },
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.55)' },
@@ -242,7 +243,7 @@ const styles = StyleSheet.create({
   unlockSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8, marginBottom: 20, lineHeight: 20 },
   passwordInput: { height: 48, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, color: '#111827', backgroundColor: '#f9fafb' },
   unlockError: { color: '#b91c1c', fontSize: 13, textAlign: 'center', marginTop: 10 },
-  unlockButton: { height: 48, borderRadius: 11, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  unlockButton: { height: 48, borderRadius: 11, backgroundColor: '#1c90d8', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   unlockButtonDisabled: { opacity: 0.55 },
   unlockButtonText: { color: '#fff', fontWeight: '700' },
   cancelButton: { alignItems: 'center', padding: 12, marginTop: 4 },

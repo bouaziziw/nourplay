@@ -43,22 +43,41 @@ export function useChildSession() {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(SESSION_KEY)
-      if (raw) setSessionState(JSON.parse(raw) as ChildSession)
+      // Check localStorage first for same-day persistence across browser sessions
+      let raw = localStorage.getItem(SESSION_KEY)
+      if (!raw) raw = sessionStorage.getItem(SESSION_KEY)
+
+      if (raw) {
+        const parsed = JSON.parse(raw) as ChildSession
+        // Check if activated on the same calendar day (daily limits & schedules reset daily)
+        const isSameDay = new Date(parsed.activatedAt).toDateString() === new Date().toDateString()
+        if (isSameDay) {
+          setSessionState(parsed)
+        } else {
+          localStorage.removeItem(SESSION_KEY)
+          sessionStorage.removeItem(SESSION_KEY)
+        }
+      }
     } catch {
-      // sessionStorage unavailable (SSR safety)
+      // Storage unavailable (SSR safety)
     }
     setHydrated(true)
   }, [])
 
   const set = useCallback((s: Omit<ChildSession, 'activatedAt'>) => {
     const full: ChildSession = { ...s, activatedAt: Date.now() }
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(full)) } catch {}
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(full))
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(full))
+    } catch {}
     setSessionState(full)
   }, [])
 
   const clear = useCallback(() => {
-    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+    try {
+      localStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(SESSION_KEY)
+    } catch {}
     setSessionState(null)
   }, [])
 

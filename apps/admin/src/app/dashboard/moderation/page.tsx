@@ -8,7 +8,7 @@ import { RemoteImage } from '../../../components/RemoteImage'
 const AGE_RATING_COLORS: Record<string, string> = {
   ALL: 'bg-green-500/20 text-green-400',
   AGE_4_PLUS: 'bg-sky-500/20 text-sky-400',
-  AGE_7_PLUS: 'bg-indigo-500/20 text-indigo-400',
+  AGE_7_PLUS: 'bg-primary/20 text-sky-400',
   AGE_10_PLUS: 'bg-amber-500/20 text-amber-400',
   AGE_13_PLUS: 'bg-orange-500/20 text-orange-400',
 }
@@ -287,12 +287,12 @@ export default function ModerationQueuePage() {
             <button
               onClick={handleRevalidateAllPending}
               disabled={revalidating}
-              className="h-9 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-lg transition-colors disabled:opacity-50"
+              className="h-9 px-4 bg-primary hover:bg-primary-600 text-white text-sm rounded-xl transition-colors disabled:opacity-50 shadow-sm"
             >
               {revalidating ? 'Relance…' : 'Relancer toutes les validations'}
             </button>
           )}
-          <button onClick={() => load(page)} className="h-9 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-lg transition-colors">
+          <button onClick={() => load(page)} className="h-9 px-4 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-xl transition-colors">
             ↻ Rafraîchir
           </button>
         </div>
@@ -306,7 +306,7 @@ export default function ModerationQueuePage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
       ) : videos.length === 0 ? (
         <div className="text-center py-20 bg-gray-800 border border-gray-700 rounded-xl">

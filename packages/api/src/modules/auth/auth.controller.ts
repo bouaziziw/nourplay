@@ -31,7 +31,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: isProd || process.env.VERCEL === '1',
   sameSite: (isPreview ? 'none' : isProd ? 'strict' : 'lax') as 'none' | 'strict' | 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days persistent sliding session
   path: '/api/v1/auth',
 }
 
@@ -91,7 +91,7 @@ export class AuthController {
 
     const { accessToken, refreshToken } = await this.authService.login(user.id, user.email, user.role, fingerprint)
     res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-    return { accessToken }
+    return { accessToken, refreshToken }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -144,7 +144,7 @@ export class AuthController {
     const fingerprint = this.authService.buildFingerprint(req.headers['user-agent'] || '', ip)
     const { accessToken, refreshToken } = await this.authService.login(user.id, user.email, user.role, fingerprint)
     res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-    return { accessToken }
+    return { accessToken, refreshToken }
   }
 
   @Public()
@@ -154,7 +154,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Rotation du refresh token' })
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Aucun refresh token présent' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const token = req.cookies?.[REFRESH_COOKIE]
+    const token = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken || (req.headers['x-refresh-token'] as string)
     if (!token) {
       res.status(HttpStatus.NO_CONTENT)
       return
@@ -165,7 +165,7 @@ export class AuthController {
     try {
       const { accessToken, refreshToken } = await this.authService.refreshTokens(tokenHash, fingerprint)
       res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-      return { accessToken }
+      return { accessToken, refreshToken }
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         res.clearCookie(REFRESH_COOKIE, { path: COOKIE_OPTIONS.path })

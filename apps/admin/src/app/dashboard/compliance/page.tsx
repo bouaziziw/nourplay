@@ -55,7 +55,7 @@ export default function CompliancePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -116,7 +116,7 @@ export default function CompliancePage() {
                 </div>
                 <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-indigo-500 rounded-full transition-all"
+                    className="h-full bg-primary rounded-full transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>

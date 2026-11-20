@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
@@ -47,7 +47,9 @@ export default function ChildWatchPage() {
   const [showResume, setShowResume] = useState(false)
   const [approvalStatus, setApprovalStatus] = useState<'PENDING' | 'APPROVED' | 'DENIED' | null | 'unchecked'>('unchecked')
   const [requestingApproval, setRequestingApproval] = useState(false)
-  const [playlistPage, setPlaylistPage] = useState(1)
+  const [playlistVisibleCount, setPlaylistVisibleCount] = useState(12)
+  const [loadingMorePlaylist, setLoadingMorePlaylist] = useState(false)
+  const playlistSentinelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
@@ -163,22 +165,38 @@ export default function ChildWatchPage() {
     : []
   const currentSortedIndex = sortedVideos.findIndex(pv => pv.video.id === videoId)
   const nextVideo = sortedVideos[currentSortedIndex + 1]?.video ?? null
-  const playlistPageCount = Math.ceil(sortedVideos.length / PLAYLIST_VIDEOS_PER_PAGE)
-  const visiblePlaylistVideos = sortedVideos.slice(
-    (playlistPage - 1) * PLAYLIST_VIDEOS_PER_PAGE,
-    playlistPage * PLAYLIST_VIDEOS_PER_PAGE,
-  )
+  const visiblePlaylistVideos = sortedVideos.slice(0, playlistVisibleCount)
+  const hasMorePlaylist = playlistVisibleCount < sortedVideos.length
 
   useEffect(() => {
     if (currentSortedIndex >= 0) {
-      setPlaylistPage(Math.floor(currentSortedIndex / PLAYLIST_VIDEOS_PER_PAGE) + 1)
+      setPlaylistVisibleCount(prev => Math.max(prev, currentSortedIndex + 6))
     }
   }, [currentSortedIndex, videoId])
+
+  // Infinite scroll observer for playlist
+  useEffect(() => {
+    if (!playlistSentinelRef.current || !hasMorePlaylist) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMorePlaylist) {
+          setLoadingMorePlaylist(true)
+          setTimeout(() => {
+            setPlaylistVisibleCount(prev => Math.min(prev + 12, sortedVideos.length))
+            setLoadingMorePlaylist(false)
+          }, 150)
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(playlistSentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMorePlaylist, sortedVideos.length])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -190,7 +208,7 @@ export default function ChildWatchPage() {
         <p className="text-gray-500 mb-4">Vidéo introuvable.</p>
         <button
           onClick={() => router.back()}
-          className="text-indigo-600 hover:underline text-sm"
+          className="text-[#1c90d8] hover:underline text-sm font-medium"
         >
           ← Retour
         </button>
@@ -213,26 +231,26 @@ export default function ChildWatchPage() {
 
       {/* Resume banner */}
       {showResume && (
-        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+        <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-xl px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-[#1c90d8] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-sm text-indigo-700 font-medium">
+            <span className="text-sm text-sky-800 font-medium">
               Reprendre à {Math.floor(savedPosition / 60)}:{String(savedPosition % 60).padStart(2, '0')}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setStartAt(savedPosition); setShowResume(false) }}
-              className="h-7 px-3 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+              className="h-7 px-3 bg-[#1c90d8] text-white text-xs font-semibold rounded-lg hover:bg-[#1572ab] transition-colors"
             >
               Reprendre
             </button>
             <button
               onClick={() => { setStartAt(0); setShowResume(false) }}
-              className="h-7 px-3 text-xs text-indigo-500 hover:text-indigo-700 border border-indigo-200 rounded-lg transition-colors"
+              className="h-7 px-3 text-xs text-[#1c90d8] hover:text-[#1572ab] border border-sky-200 rounded-lg transition-colors"
             >
               Recommencer
             </button>
@@ -266,7 +284,7 @@ export default function ChildWatchPage() {
               <button
                 onClick={handleRequestApproval}
                 disabled={requestingApproval}
-                className="h-10 px-6 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="h-10 px-6 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] disabled:opacity-50 transition-colors shadow-sm"
               >
                 {requestingApproval ? 'Envoi…' : 'Redemander l\'autorisation'}
               </button>
@@ -275,7 +293,7 @@ export default function ChildWatchPage() {
             <button
               onClick={handleRequestApproval}
               disabled={requestingApproval}
-              className="h-10 px-6 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="h-10 px-6 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] disabled:opacity-50 transition-colors shadow-sm"
             >
               {requestingApproval ? 'Envoi en cours…' : 'Demander l\'autorisation'}
             </button>
@@ -309,8 +327,8 @@ export default function ChildWatchPage() {
               !supportsCC
                 ? 'opacity-30 cursor-not-allowed border-gray-200 text-gray-400'
                 : ccEnabled
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                ? 'bg-[#1c90d8] text-white border-[#1c90d8]'
+                : 'bg-white text-gray-500 border-gray-200 hover:border-sky-300 hover:text-[#1c90d8]'
             }`}
           >
             CC
@@ -381,8 +399,8 @@ export default function ChildWatchPage() {
                 onClick={() => router.push(`/${locale}/child/watch/${playlistItem.id}?playlist=${playlistId}`)}
                 className={`overflow-hidden rounded-xl border text-left transition-colors ${
                   playlistItem.id === videoId
-                    ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-300'
-                    : 'border-gray-100 bg-white hover:border-indigo-200'
+                    ? 'border-[#1c90d8] bg-sky-50 ring-1 ring-[#1c90d8]'
+                    : 'border-gray-100 bg-white hover:border-sky-200'
                 }`}
               >
                 <div className="relative aspect-video bg-gray-100">
@@ -398,37 +416,25 @@ export default function ChildWatchPage() {
                       <span className="text-2xl">🎥</span>
                     </div>
                   )}
-                  <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+                  <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#1c90d8] text-xs font-bold text-white shadow">
                     {position}
                   </span>
                 </div>
-                <span className="block p-2 text-xs font-medium leading-snug text-gray-800 line-clamp-2">
+                <span className="block p-2 text-xs font-semibold leading-snug text-gray-800 line-clamp-2">
                   {playlistItem.title}
                 </span>
               </button>
             ))}
           </div>
-          {playlistPageCount > 1 && (
-            <nav aria-label="Pagination des vidéos" className="mt-4 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setPlaylistPage(current => Math.max(1, current - 1))}
-                disabled={playlistPage === 1}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Précédent
-              </button>
-              <span className="text-sm text-gray-500">Page {playlistPage} sur {playlistPageCount}</span>
-              <button
-                type="button"
-                onClick={() => setPlaylistPage(current => Math.min(playlistPageCount, current + 1))}
-                disabled={playlistPage === playlistPageCount}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Suivant
-              </button>
-            </nav>
-          )}
+          {/* Infinite scroll sentinel for playlist */}
+          <div ref={playlistSentinelRef} className="py-3 flex flex-col items-center justify-center">
+            {loadingMorePlaylist && (
+              <div className="flex items-center gap-2 text-xs text-[#1c90d8] font-medium">
+                <div className="animate-spin h-4 w-4 border-2 border-[#1c90d8] border-t-transparent rounded-full" />
+                <span>Chargement de la suite…</span>
+              </div>
+            )}
+          </div>
         </section>
       )}
 
@@ -440,7 +446,7 @@ export default function ChildWatchPage() {
             onClick={() => handleRate('THUMBS_UP')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               myRating === 'THUMBS_UP'
-                ? 'bg-indigo-600 text-white shadow-md'
+                ? 'bg-[#1c90d8] text-white shadow-md'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -485,7 +491,7 @@ export default function ChildWatchPage() {
                     </div>
                   )}
                 </div>
-                <p className="text-xs font-medium text-gray-800 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                <p className="text-xs font-semibold text-gray-800 line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
                   {sv.title}
                 </p>
               </button>
@@ -517,11 +523,11 @@ export default function ChildWatchPage() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+              <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
                 {nextVideo.title}
               </p>
             </div>
-            <svg className="w-5 h-5 text-gray-300 group-hover:text-indigo-500 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 text-gray-300 group-hover:text-[#1c90d8] flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>

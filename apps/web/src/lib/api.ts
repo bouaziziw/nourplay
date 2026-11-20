@@ -408,7 +408,10 @@ export const api = {
     logout: (token?: string | null) =>
       request<void>('/auth/logout', { method: 'POST', ...(token ? bearer(token) : {}) }),
 
-    refresh: () => request<{ accessToken: string } | undefined>('/auth/refresh', { method: 'POST' }),
+    refresh: async (): Promise<{ accessToken: string } | undefined> => {
+      const accessToken = await refreshAccessToken()
+      return accessToken ? { accessToken } : undefined
+    },
 
     verifyEmail: (token: string) =>
       request<{ verified: boolean }>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),

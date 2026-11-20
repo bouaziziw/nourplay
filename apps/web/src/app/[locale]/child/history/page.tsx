@@ -117,7 +117,7 @@ export default function ChildHistoryPage() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
         </div>
       ) : history.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -125,7 +125,7 @@ export default function ChildHistoryPage() {
           <p className="text-gray-500 font-medium">Aucune vidéo regardée pour l&apos;instant.</p>
           <button
             onClick={() => router.push(`/${locale}/child/playlists`)}
-            className="mt-4 h-9 px-4 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+            className="mt-4 h-9 px-4 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] transition-colors shadow-sm"
           >
             Découvrir des vidéos
           </button>
@@ -162,7 +162,7 @@ export default function ChildHistoryPage() {
                   {progress !== null && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
                       <div
-                        className="h-full bg-indigo-500"
+                        className="h-full bg-[#1c90d8]"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -180,7 +180,7 @@ export default function ChildHistoryPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-indigo-600 transition-colors leading-snug">
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors leading-snug">
                     {entry.video.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
@@ -195,7 +195,7 @@ export default function ChildHistoryPage() {
                 </div>
 
                 <svg
-                  className="w-5 h-5 text-gray-300 group-hover:text-indigo-400 flex-shrink-0 transition-colors"
+                  className="w-5 h-5 text-gray-300 group-hover:text-[#1c90d8] flex-shrink-0 transition-colors"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

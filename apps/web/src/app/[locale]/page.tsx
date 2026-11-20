@@ -1,6 +1,6 @@
-import { getTranslations } from 'next-intl/server'
-import { getLocale } from 'next-intl/server'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 import Link from 'next/link'
+import { Logo } from '@nourplay/ui'
 import { AuthenticatedHomeRedirect } from '../../components/AuthenticatedHomeRedirect'
 
 const FEATURES = ['safe', 'profiles', 'playlists', 'multilang'] as const
@@ -35,9 +35,14 @@ const STEP_COLORS = [
   'bg-amber-100 text-amber-700',
 ]
 
-export default async function HomePage() {
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}) {
+  const { locale } = await params
+  setRequestLocale(locale)
   const t = await getTranslations('home')
-  const locale = await getLocale()
 
   const steps = (['1', '2', '3', '4'] as const).map((n, i) => ({
     n,
@@ -59,14 +64,9 @@ export default async function HomePage() {
       {/* ── Navigation ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold text-gray-900">NourPlay</span>
-          </div>
+          <Link href={`/${locale}`} className="hover:opacity-90 transition-opacity">
+            <Logo size="sm" />
+          </Link>
 
           <nav className="flex items-center gap-3">
             <Link
@@ -83,7 +83,7 @@ export default async function HomePage() {
             </Link>
             <Link
               href={`/${locale}/auth/register`}
-              className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors"
+              className="text-sm font-semibold text-white bg-primary hover:bg-primary-600 px-4 py-2 rounded-lg transition-colors shadow-sm shadow-sky-200"
             >
               {t('nav.register')}
             </Link>
@@ -93,13 +93,13 @@ export default async function HomePage() {
 
       <main>
         {/* ── Hero ────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50/60 to-white pt-20 pb-24 sm:pt-28 sm:pb-32">
+        <section className="relative overflow-hidden bg-gradient-to-b from-sky-50/70 via-white to-white pt-20 pb-24 sm:pt-28 sm:pb-32">
           {/* Decorative blobs */}
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-50 pointer-events-none" />
-          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-purple-100 rounded-full blur-3xl opacity-40 pointer-events-none" />
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-sky-100 rounded-full blur-3xl opacity-60 pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-blue-100 rounded-full blur-3xl opacity-40 pointer-events-none" />
 
           <div className="relative max-w-4xl mx-auto px-4 text-center">
-            <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-indigo-100 mb-6">
+            <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-sky-100 mb-6">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -117,7 +117,7 @@ export default async function HomePage() {
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
               <Link
                 href={`/${locale}/auth/register`}
-                className="h-12 px-8 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 flex items-center gap-2"
+                className="h-12 px-8 bg-primary text-white font-semibold rounded-xl hover:bg-primary-600 transition-all shadow-md shadow-sky-200 flex items-center gap-2"
               >
                 {t('hero.cta')}
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -168,9 +168,9 @@ export default async function HomePage() {
               {features.map(f => (
                 <div
                   key={f.key}
-                  className="bg-gray-50 rounded-2xl p-6 hover:bg-indigo-50/50 hover:border-indigo-100 border border-transparent transition-all"
+                  className="bg-gray-50 rounded-2xl p-6 hover:bg-sky-50/50 hover:border-sky-100 border border-transparent transition-all"
                 >
-                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-sky-100 text-primary-600 rounded-xl flex items-center justify-center mb-4">
                     {f.icon}
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
@@ -207,15 +207,15 @@ export default async function HomePage() {
         </section>
 
         {/* ── Final CTA ────────────────────────────────────────────── */}
-        <section className="py-24 bg-indigo-600">
+        <section className="py-24 bg-gradient-to-r from-primary to-primary-600">
           <div className="max-w-6xl mx-auto px-4 text-center">
             <h2 className="text-3xl sm:text-4xl font-bold text-white leading-snug">
               {t('cta.title')}
             </h2>
-            <p className="mt-4 text-indigo-200 text-lg">{t('cta.subtitle')}</p>
+            <p className="mt-4 text-sky-100 text-lg">{t('cta.subtitle')}</p>
             <Link
               href={`/${locale}/auth/register`}
-              className="mt-10 inline-flex h-12 px-8 bg-white text-indigo-700 font-semibold rounded-xl hover:bg-indigo-50 transition-colors shadow-lg items-center gap-2"
+              className="mt-10 inline-flex h-12 px-8 bg-white text-primary font-semibold rounded-xl hover:bg-sky-50 transition-colors shadow-lg items-center gap-2"
             >
               {t('cta.button')}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -229,14 +229,9 @@ export default async function HomePage() {
       {/* ── Footer ──────────────────────────────────────────────── */}
       <footer className="bg-gray-900 py-10">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-500 rounded-md flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z" />
-              </svg>
-            </div>
-            <span className="font-bold text-white text-sm">NourPlay</span>
-            <span className="text-gray-500 text-sm hidden sm:inline">— {t('footer.tagline')}</span>
+          <div className="flex items-center gap-3">
+            <Logo size="sm" theme="dark" />
+            <span className="text-gray-400 text-sm hidden sm:inline">— {t('footer.tagline')}</span>
           </div>
           <p className="text-gray-500 text-sm">{t('footer.copyright')}</p>
         </div>

@@ -165,9 +165,9 @@ export class AuthService {
       throw new UnauthorizedException('Session expirée, reconnectez-vous')
     }
 
-    if (stored.fingerprint !== fingerprint) {
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: stored.userId },
+    if (stored.fingerprint && stored.fingerprint !== fingerprint) {
+      await this.prisma.refreshToken.update({
+        where: { id: stored.id },
         data: { revokedAt: new Date() },
       })
       throw new UnauthorizedException('Session compromise, reconnectez-vous')
@@ -392,15 +392,16 @@ export class AuthService {
 
   // ── Helpers ───────────────────────────────────────────────────
 
-  buildFingerprint(userAgent: string, ip: string): string {
-    const ipSubnet = ip.split('.').slice(0, 3).join('.')
-    return createHash('sha256').update(`${ipSubnet}|${userAgent}`).digest('hex')
+  buildFingerprint(userAgent: string, _ip?: string): string {
+    // Rely on normalized User-Agent to keep sessions stable across dynamic mobile/home IP switches (Wi-Fi <-> 4G/5G, IPv6)
+    const normalizedUa = (userAgent || 'unknown').trim().toLowerCase()
+    return createHash('sha256').update(normalizedUa).digest('hex')
   }
 
   private async generateRefreshToken(userId: string, fingerprint: string): Promise<string> {
     const rawToken = randomBytes(48).toString('hex')
     const tokenHash = createHash('sha256').update(rawToken).digest('hex')
-    const ttl = this.config.get<number>('jwt.refreshTtl', 604800)
+    const ttl = this.config.get<number>('jwt.refreshTtl', 2592000) // 30 days sliding window
 
     await this.prisma.refreshToken.create({
       data: { userId, tokenHash, fingerprint, expiresAt: new Date(Date.now() + ttl * 1000) },

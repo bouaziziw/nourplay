@@ -47,7 +47,7 @@ export function PinModal({ profileName, onSubmit, onClose }: Props) {
         className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-indigo-600">
+        <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-[#1c90d8]">
           {profileName.slice(0, 2).toUpperCase()}
         </div>
         <h2 className="text-xl font-bold text-center text-gray-900 mb-1">{profileName}</h2>
@@ -62,19 +62,19 @@ export function PinModal({ profileName, onSubmit, onClose }: Props) {
             maxLength={6}
             value={pin}
             onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-            className="w-full text-center text-4xl tracking-[1.5rem] border-2 border-gray-200 rounded-xl py-4 px-2 focus:border-indigo-500 focus:outline-none transition-colors"
+            className="w-full text-center text-4xl tracking-[1.5rem] border-2 border-gray-200 rounded-xl py-4 px-2 focus:border-[#1c90d8] focus:outline-none transition-colors"
             placeholder="••••"
             autoComplete="off"
           />
 
           {error && (
-            <p className="text-red-500 text-sm text-center animate-shake">{error}</p>
+            <p className="text-red-500 text-sm text-center animate-shake font-medium">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={pin.length < 4 || loading}
-            className="w-full h-12 bg-indigo-600 text-white rounded-xl font-semibold disabled:opacity-40 hover:bg-indigo-700 active:scale-95 transition-all"
+            className="w-full h-12 bg-[#1c90d8] text-white rounded-xl font-semibold disabled:opacity-40 hover:bg-[#1572ab] active:scale-95 transition-all shadow-sm"
           >
             {loading ? (
               <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

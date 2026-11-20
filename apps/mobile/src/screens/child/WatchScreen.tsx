@@ -27,7 +27,7 @@ export default function WatchScreen({ route, navigation }: Props) {
 
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
+  const [displayedCount, setDisplayedCount] = useState(6)
 
   useEffect(() => {
     if (!auth?.token) return
@@ -50,17 +50,19 @@ export default function WatchScreen({ route, navigation }: Props) {
   const currentIdx = sorted.findIndex(pv => pv.video.id === videoId)
   const video = sorted[currentIdx]?.video ?? null
   const nextVideo = sorted[currentIdx + 1]?.video ?? null
-  const pageCount = Math.ceil(sorted.length / PLAYLIST_VIDEOS_PER_PAGE)
-  const visibleVideos = sorted.slice((page - 1) * PLAYLIST_VIDEOS_PER_PAGE, page * PLAYLIST_VIDEOS_PER_PAGE)
+  const visibleVideos = sorted.slice(0, displayedCount)
+  const hasMore = displayedCount < sorted.length
 
   useEffect(() => {
-    if (currentIdx >= 0) setPage(Math.floor(currentIdx / PLAYLIST_VIDEOS_PER_PAGE) + 1)
+    if (currentIdx >= 0) {
+      setDisplayedCount(prev => Math.max(prev, currentIdx + 4))
+    }
   }, [currentIdx, videoId])
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#1c90d8" />
       </View>
     )
   }
@@ -121,7 +123,7 @@ export default function WatchScreen({ route, navigation }: Props) {
                         </View>
                       )}
                       <View style={styles.playlistPosition}>
-                        <Text style={styles.playlistPositionText}>{(page - 1) * PLAYLIST_VIDEOS_PER_PAGE + index + 1}</Text>
+                        <Text style={styles.playlistPositionText}>{index + 1}</Text>
                       </View>
                     </View>
                     <Text style={styles.playlistItemTitle} numberOfLines={2}>{item.video.title}</Text>
@@ -129,28 +131,13 @@ export default function WatchScreen({ route, navigation }: Props) {
                 )
               })}
             </View>
-            {pageCount > 1 && (
-              <View style={styles.pagination}>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: page === 1 }}
-                  disabled={page === 1}
-                  onPress={() => setPage(current => Math.max(1, current - 1))}
-                  style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
-                >
-                  <Text style={styles.pageButtonText}>Précédent</Text>
-                </TouchableOpacity>
-                <Text style={styles.pageLabel}>Page {page} / {pageCount}</Text>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: page === pageCount }}
-                  disabled={page === pageCount}
-                  onPress={() => setPage(current => Math.min(pageCount, current + 1))}
-                  style={[styles.pageButton, page === pageCount && styles.pageButtonDisabled]}
-                >
-                  <Text style={styles.pageButtonText}>Suivant</Text>
-                </TouchableOpacity>
-              </View>
+            {hasMore && (
+              <TouchableOpacity
+                onPress={() => setDisplayedCount(prev => Math.min(prev + 6, sorted.length))}
+                style={styles.loadMoreBtn}
+              >
+                <Text style={styles.loadMoreText}>Voir plus de vidéos ({sorted.length - displayedCount} restantes)</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -189,9 +176,9 @@ export default function WatchScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#eef2ff' },
+  safe: { flex: 1, backgroundColor: '#f0f8fd' },
   scroll: { padding: 16, gap: 12 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#eef2ff' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f8fd' },
   notFound: { fontSize: 15, color: '#6b7280' },
   infoCard: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, padding: 16 },
   videoTitle: { fontSize: 16, fontWeight: '700', color: '#111827', lineHeight: 22 },
@@ -202,22 +189,19 @@ const styles = StyleSheet.create({
   playlistCounter: { fontSize: 11, color: '#9ca3af' },
   playlistGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 14, gap: 10 },
   playlistItem: { width: '48%', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#f3f4f6', backgroundColor: '#fff' },
-  playlistItemActive: { borderColor: '#6366f1', backgroundColor: '#eef2ff' },
+  playlistItemActive: { borderColor: '#1c90d8', backgroundColor: '#f0f9ff' },
   playlistThumb: { width: '100%', aspectRatio: 16 / 9, position: 'relative', overflow: 'hidden' },
-  playlistPosition: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center' },
+  playlistPosition: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#1c90d8', alignItems: 'center', justifyContent: 'center' },
   playlistPositionText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   playlistItemTitle: { padding: 8, fontSize: 12, lineHeight: 16, fontWeight: '600', color: '#111827' },
-  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 12 },
-  pageButton: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#fff' },
-  pageButtonDisabled: { opacity: 0.4 },
-  pageButtonText: { color: '#4f46e5', fontSize: 11, fontWeight: '700' },
-  pageLabel: { color: '#6b7280', fontSize: 11 },
+  loadMoreBtn: { marginHorizontal: 14, marginTop: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', alignItems: 'center', justifyContent: 'center' },
+  loadMoreText: { color: '#1c90d8', fontSize: 12, fontWeight: '700' },
   nextCard: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, padding: 14 },
   nextLabel: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
   nextItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   nextThumbWrapper: { width: 80, aspectRatio: 16 / 9, borderRadius: 8, overflow: 'hidden', flexShrink: 0 },
   nextThumb: { width: '100%', height: '100%' },
-  nextThumbPlaceholder: { backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' },
+  nextThumbPlaceholder: { backgroundColor: '#def0fa', alignItems: 'center', justifyContent: 'center' },
   nextInfo: { flex: 1 },
   nextTitle: { fontSize: 13, fontWeight: '600', color: '#111827', lineHeight: 18 },
   nextDuration: { fontSize: 11, color: '#9ca3af', marginTop: 3 },

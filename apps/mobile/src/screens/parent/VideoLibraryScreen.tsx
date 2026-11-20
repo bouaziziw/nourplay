@@ -85,7 +85,7 @@ export default function VideoLibraryScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 48 }} size="large" color="#4f46e5" />
+        <ActivityIndicator style={{ marginTop: 48 }} size="large" color="#1c90d8" />
       ) : !searched ? (
         <View style={styles.placeholder}>
           <Text style={styles.placeholderText}>Saisissez un terme et lancez la recherche.</Text>
@@ -181,13 +181,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#111827' },
   searchRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 8 },
   input: { flex: 1, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#111827', borderWidth: 1, borderColor: '#e5e7eb' },
-  searchBtn: { backgroundColor: '#4f46e5', borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' },
+  searchBtn: { backgroundColor: '#1c90d8', borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' },
   searchBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   placeholderText: { fontSize: 14, color: '#9ca3af', textAlign: 'center' },
   list: { padding: 16, gap: 10 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 12, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
-  thumb: { width: 52, height: 40, backgroundColor: '#eef2ff', borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  thumb: { width: 52, height: 40, backgroundColor: '#f0f8fd', borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   thumbIcon: { fontSize: 20 },
   info: { flex: 1 },
   videoTitle: { fontSize: 13, fontWeight: '600', color: '#111827', lineHeight: 18 },
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   tagText: { fontSize: 10, fontWeight: '700', color: '#374151' },
   duration: { fontSize: 11, color: '#9ca3af' },
   lang: { fontSize: 11, color: '#9ca3af' },
-  addBtn: { width: 32, height: 32, backgroundColor: '#4f46e5', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  addBtn: { width: 32, height: 32, backgroundColor: '#1c90d8', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
   addBtnText: { color: '#fff', fontSize: 20, fontWeight: '300', lineHeight: 28 },
   actionBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   actionSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 32 },

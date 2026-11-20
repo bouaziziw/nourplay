@@ -48,7 +48,7 @@ export default function ChildFavoritesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -92,8 +92,8 @@ export default function ChildFavoritesPage() {
                     </span>
                   )}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
+                      <svg className="w-5 h-5 text-[#1c90d8] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
