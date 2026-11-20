@@ -17,6 +17,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
 
   const passwordStrength = (() => {
     if (password.length < 8) return 0
@@ -52,7 +54,25 @@ export default function RegisterPage() {
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Compte créé !</h2>
         <p className="text-gray-500 text-sm">Un email de vérification a été envoyé à <strong>{email}</strong>. Vérifiez votre boîte de réception.</p>
-        <Link href={`/${locale}/auth/login`} className="mt-6 inline-block text-indigo-600 text-sm font-medium hover:underline">
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={async () => {
+              setResending(true)
+              try {
+                await api.auth.resendVerification({ email })
+                setResent(true)
+              } finally {
+                setResending(false)
+              }
+            }}
+            disabled={resending || resent}
+            className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
+          >
+            {resent ? 'Email de vérification renvoyé !' : resending ? 'Envoi en cours…' : 'Vous n\'avez pas reçu l\'email ? Renvoyer'}
+          </button>
+        </div>
+        <Link href={`/${locale}/auth/login`} className="mt-6 inline-block text-primary text-sm font-medium hover:underline">
           Retour à la connexion
         </Link>
       </div>

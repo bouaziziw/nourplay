@@ -15,12 +15,12 @@ export class EmailService {
   private readonly provider: string
 
   constructor(private readonly config: ConfigService) {
-    this.from = config.get<string>('EMAIL_FROM', 'noreply@nour-play.app')
+    this.from = config.get<string>('EMAIL_FROM', 'noreply@nourplay.app')
     this.provider = config.get<string>('EMAIL_PROVIDER', 'console')
   }
 
   async send(options: SendOptions): Promise<void> {
-    if (this.provider === 'console' || process.env.NODE_ENV === 'test') {
+    if (this.provider === 'console') {
       this.logger.debug(`[EMAIL] To: ${options.to} | Subject: ${options.subject}`)
       return
     }
@@ -236,18 +236,58 @@ export class EmailService {
   }
 
   private async sendViaResend(options: SendOptions) {
-    const apiKey = this.config.get<string>('RESEND_API_KEY')
-    if (!apiKey) throw new Error('RESEND_API_KEY manquant')
+    const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim()
+    if (!apiKey) {
+      if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+        this.logger.warn(`[EMAIL] RESEND_API_KEY non configuré — bascule automatique en console`)
+        this.logger.log(`[EMAIL SIMULÉ] Pour: ${options.to} | Sujet: ${options.subject}`)
+        if (options.text) {
+          this.logger.log(`[EMAIL TEXT] ${options.text}`)
+        }
+        return
+      }
+      throw new Error('RESEND_API_KEY manquant')
+    }
 
-    const response = await safeFetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: this.from, to: options.to, subject: options.subject, html: options.html }),
-    })
+    const appName = this.config.get<string>('APP_NAME', 'NourPlay')
+    const from = this.from.includes('<') ? this.from : `${appName} <${this.from}>`
+    const to = Array.isArray(options.to) ? options.to : [options.to]
 
-    if (!response.ok) {
-      const err = await response.text()
-      throw new Error(`Resend API error: ${err}`)
+    const body: Record<string, unknown> = {
+      from,
+      to,
+      subject: options.subject,
+      html: options.html,
+    }
+    if (options.text) {
+      body.text = options.text
+    }
+
+    try {
+      const response = await safeFetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const err = await response.text()
+        this.logger.error(`[EMAIL] Erreur API Resend (${response.status}) pour ${options.to}: ${err}`)
+        throw new Error(`Resend API error: ${err}`)
+      }
+
+      const resData = (await response.json().catch(() => ({}))) as { id?: string }
+      this.logger.log(`[EMAIL] Email envoyé avec succès via Resend à ${options.to}${resData.id ? ` (ID: ${resData.id})` : ''}`)
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Resend API error')) {
+        throw err
+      }
+      const msg = err instanceof Error ? err.message : String(err)
+      this.logger.error(`[EMAIL] Échec d'envoi Resend vers ${options.to}: ${msg}`)
+      throw new Error(`Resend API error: ${msg}`)
     }
   }
 

@@ -14,7 +14,10 @@ const makePrisma = () => ({
   refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
 })
 
-const makeJwt = () => ({ sign: vi.fn().mockReturnValue('mock_access_token') })
+const makeJwt = () => ({
+  sign: vi.fn().mockReturnValue('mock_access_token'),
+  verify: vi.fn().mockReturnValue({ sub: 'mock_user_id' }),
+})
 
 const makeConfig = () => ({
   get: vi.fn((key: string, def?: unknown) => {
@@ -313,6 +316,62 @@ describe('AuthService', () => {
 
       await expect(service.forgotPassword('unknown@example.com')).resolves.not.toThrow()
       expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('resendVerification', () => {
+    it('renvoie un email de vérification pour un compte non vérifié', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u-1',
+        email: 'unverified@example.com',
+        locale: 'fr',
+        emailVerified: false,
+      })
+
+      const result = await service.resendVerification({ email: 'unverified@example.com' })
+
+      expect(result).toEqual({ sent: true })
+      expect(tokenService.createEmailVerificationToken).toHaveBeenCalledWith('u-1')
+      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith('unverified@example.com', 'test-verify-token', 'fr')
+    })
+
+    it('ne renvoie rien si le compte est déjà vérifié', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u-1',
+        email: 'verified@example.com',
+        locale: 'fr',
+        emailVerified: true,
+      })
+
+      const result = await service.resendVerification({ email: 'verified@example.com' })
+
+      expect(result).toEqual({ sent: true, alreadyVerified: true })
+      expect(emailService.sendVerificationEmail).not.toHaveBeenCalled()
+    })
+
+    it('ne lève pas d\'erreur si l\'utilisateur n\'existe pas (anti-énumération)', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      const result = await service.resendVerification({ email: 'nonexistent@example.com' })
+
+      expect(result).toEqual({ sent: true })
+      expect(emailService.sendVerificationEmail).not.toHaveBeenCalled()
+    })
+
+    it('utilise le token JWT d\'authentification s\'il est fourni', async () => {
+      jwt.verify.mockReturnValue({ sub: 'jwt-user-id' })
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'jwt-user-id',
+        email: 'jwtuser@example.com',
+        locale: 'en',
+        emailVerified: false,
+      })
+
+      const result = await service.resendVerification({ authHeader: 'Bearer valid-jwt' })
+
+      expect(result).toEqual({ sent: true })
+      expect(jwt.verify).toHaveBeenCalled()
+      expect(emailService.sendVerificationEmail).toHaveBeenCalledWith('jwtuser@example.com', 'test-verify-token', 'en')
     })
   })
 })

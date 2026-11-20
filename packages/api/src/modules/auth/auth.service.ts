@@ -72,6 +72,50 @@ export class AuthService {
     return { verified: true }
   }
 
+  async resendVerification({ email, authHeader }: { email?: string; authHeader?: string }): Promise<{ sent: boolean; alreadyVerified?: boolean }> {
+    let userId: string | undefined
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7)
+        const payload = this.jwtService.verify<{ sub: string }>(token, {
+          secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+        })
+        userId = payload.sub
+      } catch {
+        // Ignorer si token invalide ou expiré
+      }
+    }
+
+    let user = null
+    if (userId) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId, deletedAt: null },
+        select: { id: true, email: true, locale: true, emailVerified: true },
+      })
+    } else if (email) {
+      user = await this.prisma.user.findUnique({
+        where: { email: email.trim().toLowerCase(), deletedAt: null },
+        select: { id: true, email: true, locale: true, emailVerified: true },
+      })
+    }
+
+    if (!user) {
+      return { sent: true }
+    }
+
+    if (user.emailVerified) {
+      return { sent: true, alreadyVerified: true }
+    }
+
+    try {
+      await this.sendVerificationEmail(user.id, user.email, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to resend verification email to ${user.email}: ${err instanceof Error ? err.message : err}`)
+    }
+
+    return { sent: true }
+  }
+
   private isSuperAdminEmail(email: string): boolean {
     return email.trim().toLowerCase() === 'bouaziziw@gmail.com'
   }

@@ -416,6 +416,13 @@ export const api = {
     verifyEmail: (token: string) =>
       request<{ verified: boolean }>('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) }),
 
+    resendVerification: (data?: { email?: string }, token?: string) =>
+      request<{ sent: boolean; alreadyVerified?: boolean }>('/auth/resend-verification', {
+        method: 'POST',
+        body: JSON.stringify(data ?? {}),
+        ...(token ? bearer(token) : {}),
+      }),
+
     forgotPassword: (email: string) =>
       request<void>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
 

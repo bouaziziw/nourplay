@@ -11,6 +11,7 @@ import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
+import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { SetupTotpDto } from './dto/setup-totp.dto'
@@ -59,17 +60,17 @@ export class AuthController {
     return this.authService.verifyEmail(dto.token)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('resend-verification')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Throttle({ default: { limit: 3, ttl: 300000 } })
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   @ApiOperation({ summary: 'Renvoyer l\'email de vérification' })
-  async resendVerification(@CurrentUser() user: JwtPayload, @Req() req: Request) {
-    const dbUser = await this.authService['prisma'].user.findUnique({
-      where: { id: user.sub },
-      select: { email: true, locale: true },
+  async resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request) {
+    const authHeader = req.headers['authorization']
+    return this.authService.resendVerification({
+      email: dto?.email,
+      authHeader,
     })
-    if (dbUser) await this.authService.sendVerificationEmail(user.sub, dbUser.email, dbUser.locale)
   }
 
   // ── Login ─────────────────────────────────────────────────────
