@@ -134,15 +134,29 @@ export class SubscriptionService implements OnModuleInit {
     const cached = await this.cache.get<PlanLimits>(cacheKey)
     if (cached) return cached
 
-    const sub = await this.prisma.subscription.findUnique({
-      where: { userId },
-      select: { status: true, plan: { select: { slug: true } } },
-    })
+    const [user, sub] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      }),
+      this.prisma.subscription.findUnique({
+        where: { userId },
+        select: { status: true, plan: { select: { slug: true } } },
+      }),
+    ])
 
     const isActive = sub?.status === 'ACTIVE' || sub?.status === 'TRIALING'
     const planSlug = isActive && sub?.plan.slug ? sub.plan.slug : 'free'
     const limits = SubscriptionService.PLAN_LIMITS[planSlug] ?? SubscriptionService.PREMIUM_LIMITS
-    const result: PlanLimits = { ...limits, planSlug }
+
+    const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN'
+    const maxPlaylists = isModeratorOrAdmin ? SubscriptionService.PREMIUM_LIMITS.maxPlaylists : limits.maxPlaylists
+
+    const result: PlanLimits = {
+      maxProfiles: limits.maxProfiles,
+      maxPlaylists,
+      planSlug: isModeratorOrAdmin && planSlug === 'free' ? 'moderator' : planSlug,
+    }
 
     await this.cache.set(cacheKey, result, TTL.PLAN_LIMITS)
     return result

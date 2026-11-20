@@ -30,7 +30,7 @@ export class PlaylistController {
   @Post()
   @ApiOperation({ summary: 'Créer une playlist' })
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreatePlaylistDto) {
-    return this.playlistService.create(user.sub, dto)
+    return this.playlistService.create(user.sub, dto, user.role)
   }
 
   @Get('scheduled')
@@ -125,7 +125,7 @@ export class PlaylistController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Dupliquer une playlist' })
   duplicate(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
-    return this.playlistService.duplicatePlaylist(user.sub, id)
+    return this.playlistService.duplicatePlaylist(user.sub, id, user.role)
   }
 
   @Post(':id/share')

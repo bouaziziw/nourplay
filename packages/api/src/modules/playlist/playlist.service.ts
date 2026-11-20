@@ -66,17 +66,30 @@ export class PlaylistService {
     })
   }
 
-  async create(userId: string, dto: CreatePlaylistDto) {
-    const count = await this.prisma.playlist.count({
-      where: { ownerId: userId, deletedAt: null },
-    })
-    const { maxPlaylists, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
-    if (count >= maxPlaylists) {
-      throw new BadRequestException(
-        planSlug === 'free'
-          ? 'Votre forfait gratuit est limité à 5 playlists. Passez à Premium pour créer des playlists illimitées.'
-          : `Maximum de playlists atteint (${maxPlaylists})`,
-      )
+  async create(userId: string, dto: CreatePlaylistDto, userRole?: string) {
+    let role = userRole
+    if (!role) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      })
+      role = user?.role
+    }
+
+    const isUnlimited = role === 'MODERATOR' || role === 'ADMIN'
+
+    if (!isUnlimited) {
+      const count = await this.prisma.playlist.count({
+        where: { ownerId: userId, deletedAt: null },
+      })
+      const { maxPlaylists, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
+      if (count >= maxPlaylists) {
+        throw new BadRequestException(
+          planSlug === 'free'
+            ? 'Votre forfait gratuit est limité à 5 playlists. Passez à Premium pour créer des playlists illimitées.'
+            : `Maximum de playlists atteint (${maxPlaylists})`,
+        )
+      }
     }
 
     if (dto.importExternalPlaylist) {
@@ -610,7 +623,7 @@ export class PlaylistService {
     )
   }
 
-  async duplicatePlaylist(userId: string, playlistId: string) {
+  async duplicatePlaylist(userId: string, playlistId: string, userRole?: string) {
     const original = await this.prisma.playlist.findFirst({
       where: { id: playlistId, ownerId: userId, deletedAt: null },
       include: {
@@ -622,16 +635,29 @@ export class PlaylistService {
     })
     if (!original) throw new NotFoundException('Playlist introuvable')
 
-    const count = await this.prisma.playlist.count({
-      where: { ownerId: userId, deletedAt: null },
-    })
-    const { maxPlaylists, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
-    if (count >= maxPlaylists) {
-      throw new BadRequestException(
-        planSlug === 'free'
-          ? 'Votre forfait gratuit est limité à 5 playlists. Passez à Premium pour créer des playlists illimitées.'
-          : `Maximum de playlists atteint (${maxPlaylists})`,
-      )
+    let role = userRole
+    if (!role) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      })
+      role = user?.role
+    }
+
+    const isUnlimited = role === 'MODERATOR' || role === 'ADMIN'
+
+    if (!isUnlimited) {
+      const count = await this.prisma.playlist.count({
+        where: { ownerId: userId, deletedAt: null },
+      })
+      const { maxPlaylists, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
+      if (count >= maxPlaylists) {
+        throw new BadRequestException(
+          planSlug === 'free'
+            ? 'Votre forfait gratuit est limité à 5 playlists. Passez à Premium pour créer des playlists illimitées.'
+            : `Maximum de playlists atteint (${maxPlaylists})`,
+        )
+      }
     }
 
     return this.prisma.$transaction(async (tx) => {

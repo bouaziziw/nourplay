@@ -94,6 +94,29 @@ describe('PlaylistService', () => {
       ).rejects.toThrow(BadRequestException)
     })
 
+    it('permet à un MODERATOR de créer des playlists sans limite', async () => {
+      prisma.playlist.count.mockResolvedValue(100)
+      const created = { id: 'pl-mod', name: 'Moderator Playlist' }
+      prisma.playlist.create.mockResolvedValue(created)
+
+      const result = await service.create('user-mod', { name: 'Moderator Playlist', visibility: 'PRIVATE' } as never, 'MODERATOR')
+
+      expect(result).toBe(created)
+      expect(prisma.playlist.create).toHaveBeenCalled()
+    })
+
+    it('permet à un MODERATOR de créer des playlists sans limite en lisant le rôle en base si non fourni', async () => {
+      prisma.playlist.count.mockResolvedValue(100)
+      prisma.user.findUnique.mockResolvedValue({ role: 'MODERATOR' })
+      const created = { id: 'pl-mod-2', name: 'Moderator Playlist 2' }
+      prisma.playlist.create.mockResolvedValue(created)
+
+      const result = await service.create('user-mod-2', { name: 'Moderator Playlist 2', visibility: 'PRIVATE' } as never)
+
+      expect(result).toBe(created)
+      expect(prisma.playlist.create).toHaveBeenCalled()
+    })
+
     it('rejects non-YouTube URLs before making an external request', async () => {
       await expect(service.create('user-1', {
         name: 'External',
