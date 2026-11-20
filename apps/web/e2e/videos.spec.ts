@@ -70,7 +70,9 @@ test.describe('Video library (authenticated)', () => {
 
   test('add-to-playlist button appears on video card hover', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.route('**/api/v1/videos/search?*', route => route.fulfill({
+    await page.route('**/api/v1/videos/search*', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
       json: {
         items: [{
           id: 'video-id',
@@ -89,6 +91,7 @@ test.describe('Video library (authenticated)', () => {
     await page.locator('nav').getByRole('link', { name: 'Vidéothèque', exact: true }).first().click()
     await page.getByRole('button', { name: 'Rechercher' }).click()
     const card = page.locator('.group').filter({ hasText: 'Vidéo de test' })
+    await expect(card).toBeVisible({ timeout: 15_000 })
     await card.hover()
     await expect(card.getByRole('button', { name: '+ Playlist' })).toBeVisible()
   })
