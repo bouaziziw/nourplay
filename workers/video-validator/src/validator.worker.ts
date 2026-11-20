@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 
 const MAX_TOKENS = 3500
-const MIN_APPROVAL_CONFIDENCE = 0.85
-const MIN_REJECTION_CONFIDENCE = 0.75
+const MIN_APPROVAL_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_APPROVE) || 0.85
+const MIN_REJECTION_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_REVIEW) || 0.75
 
 const AGE_RATINGS = ['all_ages', '7_plus', '13_plus', '16_plus', '18_plus'] as const
 const DECISIONS = ['APPROUVE', 'REJETE', 'A_VERIFIER'] as const
@@ -125,10 +125,7 @@ export function resolveAIConfig(): AIConfig {
         'GEMINI_API_KEY (ou GOOGLE_AI_API_KEY) est requis pour Gemini. Obtenez une clé gratuite sur https://aistudio.google.com/',
       )
     }
-    let model = process.env.AI_MODERATION_MODEL || 'gemini-3-flash-preview'
-    if (model === 'gemini-2.0-flash' || model === 'gemini-1.5-flash') {
-      model = 'gemini-3-flash-preview'
-    }
+    const model = process.env.AI_MODERATION_MODEL || 'gemini-3-flash-preview'
     return {
       provider: 'gemini',
       apiKey: geminiKey,

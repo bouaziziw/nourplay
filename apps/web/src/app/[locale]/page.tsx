@@ -29,9 +29,9 @@ const FEATURE_ICONS: Record<typeof FEATURES[number], React.ReactNode> = {
 }
 
 const STEP_COLORS = [
-  'bg-indigo-100 text-indigo-700',
-  'bg-purple-100 text-purple-700',
-  'bg-pink-100 text-pink-700',
+  'bg-primary-100 text-primary-700',
+  'bg-sky-100 text-sky-700',
+  'bg-cyan-100 text-cyan-700',
   'bg-amber-100 text-amber-700',
 ]
 

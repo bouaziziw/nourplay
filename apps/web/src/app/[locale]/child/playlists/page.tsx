@@ -572,7 +572,7 @@ export default function ChildPlaylistsPage() {
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                         />
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 text-4xl">
+                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-100 to-blue-100 text-4xl">
                           🎥
                         </div>
                       )}

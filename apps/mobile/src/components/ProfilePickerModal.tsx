@@ -19,8 +19,8 @@ const AGE_LABELS: Record<string, string> = {
   AGE_10_12: '10–12 ans', AGE_13_15: '13–15 ans',
 }
 
-const COLORS = ['#ede9fe', '#fce7f3', '#d1fae5', '#fef3c7', '#e0f2fe']
-const TEXT_COLORS = ['#7c3aed', '#be185d', '#065f46', '#92400e', '#0369a1']
+const COLORS = ['#def0fa', '#fce7f3', '#d1fae5', '#fef3c7', '#e0f2fe']
+const TEXT_COLORS = ['#1c90d8', '#be185d', '#065f46', '#92400e', '#0369a1']
 
 export function ProfilePickerModal({ visible, videoId, videoTitle, onClose, onAdded }: Props) {
   const auth = useContext(AuthContext)

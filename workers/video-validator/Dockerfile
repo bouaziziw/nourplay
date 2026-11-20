@@ -17,6 +17,7 @@ RUN apk add --no-cache libc6-compat && corepack enable
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/workers/video-validator/node_modules ./workers/video-validator/node_modules
 COPY packages/db ./packages/db
 COPY workers/video-validator ./workers/video-validator
 COPY tsconfig.base.json ./
@@ -33,6 +34,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/db/package.json ./packages/db/package.json
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/packages/db/generated ./packages/db/generated
+COPY --from=builder /app/workers/video-validator/node_modules ./workers/video-validator/node_modules
 COPY --from=builder /app/workers/video-validator/dist ./workers/video-validator/dist
 COPY --from=builder /app/workers/video-validator/package.json ./workers/video-validator/package.json
 

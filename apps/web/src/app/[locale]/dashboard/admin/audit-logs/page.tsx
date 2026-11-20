@@ -13,8 +13,8 @@ const ACTION_COLORS: Record<string, string> = {
   'video.approve':     'bg-green-50 text-green-700 border-green-200',
   'video.reject':      'bg-red-50 text-red-700 border-red-200',
   'report.resolve':    'bg-amber-50 text-amber-700 border-amber-200',
-  'legal.create':      'bg-purple-50 text-purple-700 border-purple-200',
-  'legal.publish':     'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'legal.create':      'bg-sky-50 text-sky-700 border-sky-200',
+  'legal.publish':     'bg-primary-50 text-primary-700 border-primary-200',
   'subscription.grant':  'bg-teal-50 text-teal-700 border-teal-200',
   'subscription.revoke': 'bg-orange-50 text-orange-700 border-orange-200',
 }

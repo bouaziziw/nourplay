@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   count: { fontSize: 13, color: '#9ca3af', marginTop: 2 },
   list: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 24, gap: 11 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 18, padding: 15, borderWidth: 1, borderColor: '#eceef5', shadowColor: '#22264a', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  icon: { width: 48, height: 48, backgroundColor: '#f0efff', borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  icon: { width: 48, height: 48, backgroundColor: '#f0f8fd', borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   info: { flex: 1 },
   name: { fontSize: 14, fontWeight: '700', color: '#111827' },
   desc: { fontSize: 12, color: '#6b7280', marginTop: 1 },

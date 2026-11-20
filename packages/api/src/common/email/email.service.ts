@@ -84,7 +84,7 @@ export class EmailService {
     await this.send({
       to,
       subject: subjects[locale] ?? subjects['fr'],
-      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`),
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`),
       text: link,
     })
   }
@@ -116,7 +116,7 @@ export class EmailService {
     await this.send({
       to,
       subject: subjects[locale] ?? subjects['fr'],
-      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a>`),
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a>`),
       text: `${t.body} ${link}`,
     })
   }
@@ -195,7 +195,7 @@ export class EmailService {
           <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px">${p.profileName}</p>
           <div style="display:flex;gap:24px;margin-bottom:4px">
             <div>
-              <p style="font-size:22px;font-weight:700;color:#4f46e5;margin:0">${fmtTime(p.totalWatchedSec)}</p>
+              <p style="font-size:22px;font-weight:700;color:#1c90d8;margin:0">${fmtTime(p.totalWatchedSec)}</p>
               <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">${isFr ? 'regardées cette semaine' : 'watched this week'}</p>
             </div>
             <div>
@@ -257,14 +257,14 @@ export class EmailService {
       en: { title: 'Verify your email', body: 'Click the button below to verify your email address.', cta: 'Verify my email' },
     }
     const t = texts[locale] ?? texts['fr']
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 24h. Si vous n'avez pas créé de compte, ignorez cet email.</p>`)
+    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 24h. Si vous n'avez pas créé de compte, ignorez cet email.</p>`)
   }
 
   private resetTemplate(link: string, locale: string): string {
     const t = locale === 'fr'
       ? { title: 'Réinitialiser votre mot de passe', body: 'Vous avez demandé la réinitialisation de votre mot de passe.', cta: 'Choisir un nouveau mot de passe' }
       : { title: 'Reset your password', body: 'You requested a password reset.', cta: 'Choose a new password' }
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 1h. Si vous n'avez pas fait cette demande, ignorez cet email.</p>`)
+    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 1h. Si vous n'avez pas fait cette demande, ignorez cet email.</p>`)
   }
 
   private layout(title: string, content: string): string {

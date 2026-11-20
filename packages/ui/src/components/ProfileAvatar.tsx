@@ -11,7 +11,7 @@ const sizeClasses = {
   lg: 'h-20 w-20 text-2xl',
 }
 
-const colors = ['bg-violet-400', 'bg-sky-400', 'bg-emerald-400', 'bg-amber-400', 'bg-rose-400']
+const colors = ['bg-primary', 'bg-sky-400', 'bg-emerald-400', 'bg-amber-400', 'bg-rose-400']
 
 function getColor(name: string) {
   return colors[name.charCodeAt(0) % colors.length]

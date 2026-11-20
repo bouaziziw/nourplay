@@ -64,8 +64,8 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
 
   if (authLoading || !token || !hydrated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -116,7 +116,7 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50">
       {/* Child header */}
       {token && (
         <header className="bg-white/80 backdrop-blur-sm border-b border-white/50 px-4 h-14 flex items-center justify-between sticky top-0 z-40">
@@ -223,14 +223,14 @@ function BlockingScreen({
 }) {
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-sky-950 flex items-center justify-center p-4">
         <div className="text-center text-white max-w-xs">
           <p className="text-5xl mb-4">{title.slice(-2)}</p>
           <h2 className="text-xl font-bold mb-2">{title.slice(0, -2).trim()}</h2>
-          <p className="text-indigo-200 text-sm mb-8">{message}</p>
+          <p className="text-sky-200 text-sm mb-8">{message}</p>
           <button
             onClick={onExit}
-            className="bg-white text-indigo-900 font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-50 transition-colors"
+            className="bg-white text-primary font-semibold px-6 py-2.5 rounded-xl hover:bg-sky-50 transition-colors"
           >
             Retourner au mode enfant
           </button>

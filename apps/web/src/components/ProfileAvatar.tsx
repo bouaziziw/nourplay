@@ -48,7 +48,7 @@ export function ProfileAvatar({ avatarKey, displayName, size = 40, className = '
   const initials = displayName.slice(0, 2).toUpperCase()
   return (
     <div
-      style={{ ...style, background: '#e0e7ff', color: '#4f46e5', fontSize: size * 0.35, fontWeight: 700 }}
+      style={{ ...style, background: '#def0fa', color: '#1c90d8', fontSize: size * 0.35, fontWeight: 700 }}
       className={className}
     >
       {initials}
