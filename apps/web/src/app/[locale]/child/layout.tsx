@@ -19,13 +19,14 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [dailyWatchedSec, setDailyWatchedSec] = useState<number | null>(null)
   const [unlockOpen, setUnlockOpen] = useState(false)
+  const [isUnlocking, setIsUnlocking] = useState(false)
 
   // Redirect to profile selector if no active session (but allow the selector page itself)
   const isProfileSelector = pathname === `/${locale}/child`
   const isPlaylistsPage = pathname === `/${locale}/child/playlists`
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || isUnlocking) return
     if (!token) {
       router.replace(`/${locale}/auth/login`)
       return
@@ -34,9 +35,10 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
     if (!session && !isProfileSelector) {
       router.replace(`/${locale}/child`)
     }
-  }, [authLoading, token, hydrated, session, isProfileSelector, router, locale])
+  }, [authLoading, isUnlocking, token, hydrated, session, isProfileSelector, router, locale])
 
   const handleParentUnlock = async (password: string) => {
+    setIsUnlocking(true)
     await unlockParentMode(password)
     await clear()
     router.push(`/${locale}/dashboard`)
