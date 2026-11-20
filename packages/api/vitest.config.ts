@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    cache: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

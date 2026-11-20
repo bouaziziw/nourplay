@@ -96,7 +96,7 @@ export default function VerifyEmailPage() {
             </button>
           </div>
           {resendStatus === 'error' && (
-            <p className="text-xs text-red-600 mt-1">Une erreur est survenue lors de l'envoi.</p>
+            <p className="text-xs text-red-600 mt-1">Une erreur est survenue lors de l&apos;envoi.</p>
           )}
         </form>
       )}
