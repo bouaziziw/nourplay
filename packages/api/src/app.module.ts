@@ -2,7 +2,8 @@ import { resolve } from 'node:path'
 import { Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
+import { ThrottlerModule } from '@nestjs/throttler'
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard'
 import { ScheduleModule } from '@nestjs/schedule'
 import { PrismaModule } from './common/prisma/prisma.module'
 import { BullModule } from './common/bull/bull.module'
@@ -78,7 +79,7 @@ import { appConfig, validateConfig } from './config/app.config'
     HealthModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
   ],
 })
 export class AppModule {}

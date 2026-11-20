@@ -37,7 +37,7 @@ function DashboardNav() {
   return (
     <nav className="sticky top-0 z-40 flex min-h-14 flex-wrap items-center justify-between border-b border-gray-200 bg-white/95 px-4 shadow-sm shadow-gray-900/[0.03] backdrop-blur">
       <div className="flex min-h-14 min-w-0 items-center gap-6">
-        <Link href={`/${locale}/dashboard`} className="shrink-0 hover:opacity-90 transition-opacity">
+        <Link href={`/${locale}/dashboard`} aria-label="NourPlay" className="shrink-0 hover:opacity-90 transition-opacity">
           <Logo size="sm" subtitle="Parent" />
         </Link>
         <div className="hidden items-center gap-1 sm:flex">

@@ -375,7 +375,7 @@ describe('Auth — integration (Supertest)', () => {
         id: 'rt-1',
         userId: TEST_USER.id,
         tokenHash,
-        fingerprint: service_fingerprint(userAgent, ip),
+        fingerprint: service_fingerprint(FINGERPRINT_UA),
         revokedAt: null,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         user: { id: TEST_USER.id, email: TEST_USER.email, role: TEST_USER.role, deletedAt: null },
@@ -516,9 +516,9 @@ describe('Auth — integration (Supertest)', () => {
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 
-/** Returns the fingerprint that the server computes for localhost requests in tests. */
-function service_fingerprint(): string {
-  // AuthService.buildFingerprint hashes `<ipSubnet>|<userAgent>`
-  const ipSubnet = FINGERPRINT_IP.split('.').slice(0, 3).join('.')
-  return createHash('sha256').update(`${ipSubnet}|${FINGERPRINT_UA}`).digest('hex')
+/** Returns the fingerprint that the server computes for requests in tests. */
+function service_fingerprint(ua: string = FINGERPRINT_UA): string {
+  // AuthService.buildFingerprint hashes normalized User-Agent
+  const normalizedUa = (ua || 'unknown').trim().toLowerCase()
+  return createHash('sha256').update(normalizedUa).digest('hex')
 }
