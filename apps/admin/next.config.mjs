@@ -19,7 +19,12 @@ if (basePath !== '' && basePath !== '/admin') {
   throw new Error('ADMIN_BASE_PATH must be empty or /admin')
 }
 
-const apiOrigin = process.env.API_PROXY_ORIGIN
+let apiOrigin = process.env.API_PROXY_ORIGIN
+if (process.env.VERCEL_GIT_COMMIT_REF === 'dev') {
+  if (apiOrigin && (apiOrigin.includes('nourplay-api.vercel.app') || apiOrigin.includes('nourplay-api-'))) {
+    apiOrigin = 'https://nourplay-api-git-dev-bouaziziws-projects.vercel.app'
+  }
+}
 if (apiOrigin) {
   const url = new URL(apiOrigin)
   if (!['http:', 'https:'].includes(url.protocol) || url.origin !== apiOrigin) {

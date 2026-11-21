@@ -63,8 +63,17 @@ const securityHeaders = [
   },
 ]
 
-const apiOrigin = process.env.API_PROXY_ORIGIN
-const adminOrigin = process.env.ADMIN_PROXY_ORIGIN
+let apiOrigin = process.env.API_PROXY_ORIGIN
+let adminOrigin = process.env.ADMIN_PROXY_ORIGIN
+
+if (process.env.VERCEL_GIT_COMMIT_REF === 'dev') {
+  if (apiOrigin && (apiOrigin.includes('nourplay-api.vercel.app') || apiOrigin.includes('nourplay-api-'))) {
+    apiOrigin = 'https://nourplay-api-git-dev-bouaziziws-projects.vercel.app'
+  }
+  if (adminOrigin && (adminOrigin.includes('nourplay-admin.vercel.app') || adminOrigin.includes('nourplay-admin-'))) {
+    adminOrigin = 'https://nourplay-admin-git-dev-bouaziziws-projects.vercel.app'
+  }
+}
 
 if (Boolean(apiOrigin) !== Boolean(adminOrigin)) {
   throw new Error('API_PROXY_ORIGIN and ADMIN_PROXY_ORIGIN must be configured together')
