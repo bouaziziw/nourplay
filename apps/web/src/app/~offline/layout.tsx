@@ -11,7 +11,7 @@ export default function OfflineLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <body suppressHydrationWarning>{children}</body>
     </html>
   )
