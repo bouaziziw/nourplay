@@ -120,6 +120,10 @@ export class AuthService {
     return email.trim().toLowerCase() === 'bouaziziw@gmail.com'
   }
 
+  private isModeratorEmail(email: string): boolean {
+    return email.trim().toLowerCase() === 'welidbouazizi@gmail.com'
+  }
+
   // ── Login ────────────────────────────────────────────────────
 
   async validateUser(email: string, password: string) {
@@ -137,6 +141,12 @@ export class AuthService {
         data: { role: 'ADMIN', emailVerified: true },
       })
       user.role = 'ADMIN'
+    } else if (this.isModeratorEmail(user.email) && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      user.role = 'MODERATOR'
     }
 
     const { passwordHash: _, ...result } = user
@@ -193,6 +203,12 @@ export class AuthService {
         data: { role: 'ADMIN', emailVerified: true },
       })
       role = 'ADMIN'
+    } else if (this.isModeratorEmail(email) && role !== 'MODERATOR' && role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      role = 'MODERATOR'
     }
     const accessToken = this.jwtService.sign({ sub: userId, email, role })
     const refreshToken = await this.generateRefreshToken(userId, fingerprint)
@@ -225,6 +241,12 @@ export class AuthService {
         data: { role: 'ADMIN', emailVerified: true },
       })
       user.role = 'ADMIN'
+    } else if (this.isModeratorEmail(user.email) && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      user.role = 'MODERATOR'
     }
     const accessToken = this.jwtService.sign({ sub: user.id, email: user.email, role: user.role })
     const newRefreshToken = await this.generateRefreshToken(user.id, fingerprint)
@@ -357,6 +379,7 @@ export class AuthService {
     if (!email) throw new UnauthorizedException('Lien invalide ou expiré')
 
     const shouldBeAdmin = this.isSuperAdminEmail(email)
+    const shouldBeModerator = this.isModeratorEmail(email)
     let user = await this.prisma.user.findUnique({
       where: { email, deletedAt: null },
       select: { id: true, email: true, role: true, emailVerified: true },
@@ -364,13 +387,14 @@ export class AuthService {
 
     if (!user) {
       // Création automatique d'un compte si l'email est inconnu (premier usage magic link)
+      const role = shouldBeAdmin ? 'ADMIN' : (shouldBeModerator ? 'MODERATOR' : 'PARENT')
       user = await this.prisma.user.create({
-        data: { email, role: shouldBeAdmin ? 'ADMIN' : 'PARENT', emailVerified: true, emailVerifiedAt: new Date() },
+        data: { email, role, emailVerified: true, emailVerifiedAt: new Date() },
         select: { id: true, email: true, role: true, emailVerified: true },
       })
       this.logger.log(`New account created via magic link: ${email}`)
     } else {
-      const updateData: { emailVerified?: boolean; emailVerifiedAt?: Date; role?: 'ADMIN' } = {}
+      const updateData: { emailVerified?: boolean; emailVerifiedAt?: Date; role?: 'ADMIN' | 'MODERATOR' } = {}
       if (!user.emailVerified) {
         updateData.emailVerified = true
         updateData.emailVerifiedAt = new Date()
@@ -378,6 +402,9 @@ export class AuthService {
       if (shouldBeAdmin && user.role !== 'ADMIN') {
         updateData.role = 'ADMIN'
         user.role = 'ADMIN'
+      } else if (shouldBeModerator && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+        updateData.role = 'MODERATOR'
+        user.role = 'MODERATOR'
       }
       if (Object.keys(updateData).length > 0) {
         await this.prisma.user.update({
@@ -399,13 +426,15 @@ export class AuthService {
     })
 
     const shouldBeAdmin = this.isSuperAdminEmail(profile.email)
+    const shouldBeModerator = this.isModeratorEmail(profile.email)
 
     if (!user) {
+      const role = shouldBeAdmin ? 'ADMIN' : (shouldBeModerator ? 'MODERATOR' : 'PARENT')
       user = await this.prisma.user.create({
         data: {
           email: profile.email,
           googleId: profile.googleId,
-          role: shouldBeAdmin ? 'ADMIN' : 'PARENT',
+          role,
           locale: profile.locale ?? 'fr',
           emailVerified: true,
           emailVerifiedAt: new Date(),
@@ -413,13 +442,16 @@ export class AuthService {
         select: { id: true, email: true, role: true, googleId: true },
       })
     } else {
-      const updateData: { googleId?: string; emailVerified?: boolean; role?: 'ADMIN' } = {}
+      const updateData: { googleId?: string; emailVerified?: boolean; role?: 'ADMIN' | 'MODERATOR' } = {}
       if (!user.googleId) {
         updateData.googleId = profile.googleId
         updateData.emailVerified = true
       }
       if (shouldBeAdmin && user.role !== 'ADMIN') {
         updateData.role = 'ADMIN'
+        updateData.emailVerified = true
+      } else if (shouldBeModerator && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+        updateData.role = 'MODERATOR'
         updateData.emailVerified = true
       }
       if (Object.keys(updateData).length > 0) {

