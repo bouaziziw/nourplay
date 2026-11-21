@@ -151,9 +151,10 @@ export class SubscriptionService implements OnModuleInit {
 
     const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN'
     const maxPlaylists = isModeratorOrAdmin ? SubscriptionService.PREMIUM_LIMITS.maxPlaylists : limits.maxPlaylists
+    const maxProfiles = isModeratorOrAdmin ? SubscriptionService.PREMIUM_LIMITS.maxProfiles : limits.maxProfiles
 
     const result: PlanLimits = {
-      maxProfiles: limits.maxProfiles,
+      maxProfiles,
       maxPlaylists,
       planSlug: isModeratorOrAdmin && planSlug === 'free' ? 'moderator' : planSlug,
     }

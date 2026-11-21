@@ -75,7 +75,7 @@ export class UserController {
   @Post('me/profiles')
   @ApiOperation({ summary: 'Créer un profil enfant' })
   createProfile(@CurrentUser() user: JwtPayload, @Body() dto: CreateProfileDto) {
-    return this.userService.createProfile(user.sub, dto)
+    return this.userService.createProfile(user.sub, dto, user.role)
   }
 
   @Get('me/profiles/:profileId')

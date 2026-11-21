@@ -94,18 +94,31 @@ export class UserService {
     }
   }
 
-  async createProfile(userId: string, dto: CreateProfileDto) {
-    const count = await this.prisma.childProfile.count({
-      where: { userId, deletedAt: null },
-    })
+  async createProfile(userId: string, dto: CreateProfileDto, userRole?: string) {
+    let role = userRole
+    if (!role) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      })
+      role = user?.role
+    }
 
-    const { maxProfiles, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
-    if (count >= maxProfiles) {
-      throw new BadRequestException(
-        planSlug === 'free'
-          ? 'Votre forfait gratuit est limité à 1 profil enfant. Passez à Premium pour créer des profils illimités.'
-          : `Maximum de profils enfants atteint (${maxProfiles})`,
-      )
+    const isUnlimited = role === 'MODERATOR' || role === 'ADMIN'
+
+    if (!isUnlimited) {
+      const count = await this.prisma.childProfile.count({
+        where: { userId, deletedAt: null },
+      })
+
+      const { maxProfiles, planSlug } = await this.subscriptionService.getUserPlanLimits(userId)
+      if (count >= maxProfiles) {
+        throw new BadRequestException(
+          planSlug === 'free'
+            ? 'Votre forfait gratuit est limité à 1 profil enfant. Passez à Premium pour créer des profils illimités.'
+            : `Maximum de profils enfants atteint (${maxProfiles})`,
+        )
+      }
     }
 
     const pinHash = await this.hashPin(dto.pin)
