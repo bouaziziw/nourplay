@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6 },
   subtitle: { fontSize: 14, color: '#6b7280', marginBottom: 20, textAlign: 'center' },
-  name: { fontWeight: '600', color: '#4f46e5' },
+  name: { fontWeight: '600', color: '#1c90d8' },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 12, width: '100%' },
   errorText: { color: '#b91c1c', fontSize: 13, textAlign: 'center' },
   pinInput: {
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 24, fontWeight: '700', letterSpacing: 8, color: '#111827', marginBottom: 20,
   },
   btn: {
-    width: '100%', height: 48, backgroundColor: '#4f46e5', borderRadius: 12,
+    width: '100%', height: 48, backgroundColor: '#1c90d8', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.5 },

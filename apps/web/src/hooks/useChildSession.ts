@@ -13,7 +13,29 @@ export interface ChildSession {
 }
 
 const SESSION_KEY = 'nourplay_child_session'
+const SESSION_EVENT = 'nourplay:child-session-change'
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+
+function readSessionFromStorage(): ChildSession | null {
+  try {
+    let raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) raw = sessionStorage.getItem(SESSION_KEY)
+
+    if (raw) {
+      const parsed = JSON.parse(raw) as ChildSession
+      // Check if activated on the same calendar day (daily limits & schedules reset daily)
+      const isSameDay = new Date(parsed.activatedAt).toDateString() === new Date().toDateString()
+      if (isSameDay) {
+        return parsed
+      }
+      localStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(SESSION_KEY)
+    }
+  } catch {
+    // Storage unavailable (SSR safety)
+  }
+  return null
+}
 
 export function isWithinSchedule(schedule: Record<string, string[]> | null | undefined): boolean {
   if (!schedule) return true
@@ -41,24 +63,40 @@ export function useChildSession() {
   const [session, setSessionState] = useState<ChildSession | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY)
-      if (raw) setSessionState(JSON.parse(raw) as ChildSession)
-    } catch {
-      // sessionStorage unavailable (SSR safety)
-    }
+  const sync = useCallback(() => {
+    setSessionState(readSessionFromStorage())
     setHydrated(true)
   }, [])
 
+  useEffect(() => {
+    sync()
+
+    const onSessionChange = () => sync()
+    window.addEventListener('storage', onSessionChange)
+    window.addEventListener(SESSION_EVENT, onSessionChange)
+
+    return () => {
+      window.removeEventListener('storage', onSessionChange)
+      window.removeEventListener(SESSION_EVENT, onSessionChange)
+    }
+  }, [sync])
+
   const set = useCallback((s: Omit<ChildSession, 'activatedAt'>) => {
     const full: ChildSession = { ...s, activatedAt: Date.now() }
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(full)) } catch {}
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(full))
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(full))
+      window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: full }))
+    } catch {}
     setSessionState(full)
   }, [])
 
   const clear = useCallback(() => {
-    try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+    try {
+      localStorage.removeItem(SESSION_KEY)
+      sessionStorage.removeItem(SESSION_KEY)
+      window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: null }))
+    } catch {}
     setSessionState(null)
   }, [])
 

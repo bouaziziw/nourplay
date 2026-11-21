@@ -5,15 +5,15 @@ import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { api, AdminStats } from '../../lib/api'
 
-function StatCard({ label, value, sub, href, color = 'indigo' }: {
+function StatCard({ label, value, sub, href, color = 'sky' }: {
   label: string; value: number | string; sub?: string; href?: string; color?: string
 }) {
   const colorMap: Record<string, string> = {
-    indigo: 'bg-indigo-500/10 text-indigo-400',
+    indigo: 'bg-primary/10 text-sky-400',
     green: 'bg-green-500/10 text-green-400',
     amber: 'bg-amber-500/10 text-amber-400',
     red: 'bg-red-500/10 text-red-400',
-    sky: 'bg-sky-500/10 text-sky-400',
+    sky: 'bg-primary/10 text-[#1c90d8]',
   }
   const card = (
     <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-gray-600 transition-colors">
@@ -36,7 +36,7 @@ const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-red-500/20 text-red-400',
   MODERATOR: 'bg-amber-500/20 text-amber-400',
   TEACHER: 'bg-sky-500/20 text-sky-400',
-  PARENT: 'bg-indigo-500/20 text-indigo-400',
+  PARENT: 'bg-primary/20 text-sky-400',
 }
 
 export default function DashboardPage() {
@@ -55,7 +55,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }

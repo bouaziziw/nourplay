@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react'
-import { api } from '../lib/api'
+import { api, ApiError, setOnTokenUpdate } from '../lib/api'
 
 interface User {
   id: string
@@ -69,6 +69,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refreshToken() }, [refreshToken])
 
+  useEffect(() => {
+    setOnTokenUpdate((newToken: string) => {
+      setState(current => current.token === newToken ? current : { ...current, token: newToken })
+    })
+    return () => setOnTokenUpdate(null)
+  }, [])
+
+  useEffect(() => {
+    if (!state.token) return
+    // Rafraîchir automatiquement le token après 10 minutes (durée de validité : 15 min)
+    const timer = setTimeout(() => {
+      void refreshToken()
+    }, 10 * 60 * 1000)
+    return () => clearTimeout(timer)
+  }, [state.token, refreshToken])
+
   const login = async (email: string, password: string) => {
     const result = await api.auth.login({ email, password })
     if (result.requiresTwoFactor) return result
@@ -77,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await api.auth.logout().catch(() => {})
+    if (state.token) await api.auth.logout(state.token).catch(() => {})
     setState({ user: null, token: null, loading: false, parentModeUnlocked: false })
   }
 
@@ -86,10 +102,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser])
 
   const unlockParentMode = useCallback(async (password: string) => {
-    if (!state.token) throw new Error('Vous devez être connecté pour déverrouiller le mode parent.')
-    await api.auth.verifyParentPassword(state.token, password)
+    let currentToken = state.token
+    if (!currentToken) {
+      const session = await api.auth.refresh().catch(() => null)
+      if (session?.accessToken) {
+        currentToken = session.accessToken
+        await loadUser(currentToken)
+      }
+    }
+    if (!currentToken) throw new Error('Vous devez être connecté pour déverrouiller le mode parent.')
+
+    try {
+      await api.auth.verifyParentPassword(currentToken, password)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401 && err.message !== 'Mot de passe incorrect') {
+        const session = await api.auth.refresh().catch(() => null)
+        if (session?.accessToken) {
+          await loadUser(session.accessToken)
+          await api.auth.verifyParentPassword(session.accessToken, password)
+          setState(current => ({ ...current, parentModeUnlocked: true }))
+          return
+        }
+      }
+      throw err
+    }
     setState(current => ({ ...current, parentModeUnlocked: true }))
-  }, [state.token])
+  }, [state.token, loadUser])
 
   const lockParentMode = useCallback(() => {
     setState(current => ({ ...current, parentModeUnlocked: false }))

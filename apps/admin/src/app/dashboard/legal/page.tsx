@@ -101,7 +101,7 @@ export default function LegalPage() {
         </div>
         <button
           onClick={() => { setShowForm(true); setError(''); setSuccess('') }}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+          className="px-4 py-2 bg-primary hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
         >
           + Nouvelle version
         </button>
@@ -121,7 +121,7 @@ export default function LegalPage() {
             key={type}
             onClick={() => setActiveType(type)}
             className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-              activeType === type ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+              activeType === type ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
             {TYPE_LABELS[type] ?? type}
@@ -148,7 +148,7 @@ export default function LegalPage() {
             {current && (
               <button
                 onClick={() => openPreview(current.id)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+                className="text-xs text-sky-400 hover:text-sky-300 underline"
               >
                 Voir le contenu
               </button>
@@ -160,7 +160,7 @@ export default function LegalPage() {
       {/* Versions table */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
       ) : (
         <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
@@ -277,7 +277,7 @@ export default function LegalPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                  className="px-4 py-2 bg-primary hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
                 >
                   {submitting ? 'Création…' : 'Créer (brouillon)'}
                 </button>

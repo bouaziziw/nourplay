@@ -63,10 +63,33 @@ const securityHeaders = [
   },
 ]
 
+const apiOrigin = process.env.API_PROXY_ORIGIN
+const adminOrigin = process.env.ADMIN_PROXY_ORIGIN
+
+if (Boolean(apiOrigin) !== Boolean(adminOrigin)) {
+  throw new Error('API_PROXY_ORIGIN and ADMIN_PROXY_ORIGIN must be configured together')
+}
+
+for (const origin of [apiOrigin, adminOrigin].filter(Boolean)) {
+  const url = new URL(origin)
+  if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin) {
+    throw new Error('Proxy destinations must be HTTP(S) origins without credentials, paths, or trailing slashes')
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  output: process.platform === 'win32' ? undefined : 'standalone',
   reactStrictMode: true,
+  async rewrites() {
+    if (!apiOrigin || !adminOrigin) return []
+    return {
+      beforeFiles: [
+        { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
+        { source: '/admin/:path*', destination: `${adminOrigin}/admin/:path*` },
+      ],
+    }
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'img.youtube.com' },

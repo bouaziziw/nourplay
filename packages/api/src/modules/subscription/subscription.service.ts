@@ -60,14 +60,61 @@ export class SubscriptionService implements OnModuleInit {
     const cached = await this.cache.get<PlanRow[]>('sub:plans')
     if (cached) return cached
 
-    const plans = await this.prisma.subscriptionPlan.findMany({
+    let plans = await this.prisma.subscriptionPlan.findMany({
       where: { isActive: true },
       orderBy: { priceEur: 'asc' },
       select: { id: true, name: true, slug: true, priceEur: true, interval: true, features: true },
     })
 
+    if (plans.length === 0) {
+      await this.ensureDefaultPlans()
+      plans = await this.prisma.subscriptionPlan.findMany({
+        where: { isActive: true },
+        orderBy: { priceEur: 'asc' },
+        select: { id: true, name: true, slug: true, priceEur: true, interval: true, features: true },
+      })
+    }
+
     await this.cache.set('sub:plans', plans, TTL.PLANS_LIST)
     return plans
+  }
+
+  private async ensureDefaultPlans() {
+    try {
+      const defaultPlans = [
+        {
+          slug: 'free',
+          name: 'Gratuit',
+          priceEur: 0,
+          interval: 'MONTHLY' as const,
+          features: ['1 profil enfant', '5 playlists', 'Vidéothèque complète', 'Support par email'],
+        },
+        {
+          slug: 'premium-monthly',
+          name: 'Premium Mensuel',
+          priceEur: 999,
+          interval: 'MONTHLY' as const,
+          features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire'],
+        },
+        {
+          slug: 'premium-yearly',
+          name: 'Premium Annuel',
+          priceEur: 7999,
+          interval: 'YEARLY' as const,
+          features: ['Profils enfants illimités', 'Playlists illimitées', 'Planification horaire', 'Rapports d\'activité détaillés', 'Support prioritaire', '2 mois offerts'],
+        },
+      ]
+
+      for (const plan of defaultPlans) {
+        await this.prisma.subscriptionPlan.upsert({
+          where: { slug: plan.slug },
+          update: { features: plan.features },
+          create: plan,
+        })
+      }
+    } catch {
+      // Ignoré en cas d'erreur concurrente
+    }
   }
 
   // ── Plan limits ───────────────────────────────────────────────
@@ -87,15 +134,30 @@ export class SubscriptionService implements OnModuleInit {
     const cached = await this.cache.get<PlanLimits>(cacheKey)
     if (cached) return cached
 
-    const sub = await this.prisma.subscription.findUnique({
-      where: { userId },
-      select: { status: true, plan: { select: { slug: true } } },
-    })
+    const [user, sub] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, email: true },
+      }),
+      this.prisma.subscription.findUnique({
+        where: { userId },
+        select: { status: true, plan: { select: { slug: true } } },
+      }),
+    ])
 
     const isActive = sub?.status === 'ACTIVE' || sub?.status === 'TRIALING'
     const planSlug = isActive && sub?.plan.slug ? sub.plan.slug : 'free'
     const limits = SubscriptionService.PLAN_LIMITS[planSlug] ?? SubscriptionService.PREMIUM_LIMITS
-    const result: PlanLimits = { ...limits, planSlug }
+
+    const isModeratorOrAdmin = user?.role === 'MODERATOR' || user?.role === 'ADMIN' || user?.email?.trim().toLowerCase() === 'welidbouazizi@gmail.com'
+    const maxPlaylists = isModeratorOrAdmin ? SubscriptionService.PREMIUM_LIMITS.maxPlaylists : limits.maxPlaylists
+    const maxProfiles = isModeratorOrAdmin ? SubscriptionService.PREMIUM_LIMITS.maxProfiles : limits.maxProfiles
+
+    const result: PlanLimits = {
+      maxProfiles,
+      maxPlaylists,
+      planSlug: isModeratorOrAdmin && planSlug === 'free' ? 'moderator' : planSlug,
+    }
 
     await this.cache.set(cacheKey, result, TTL.PLAN_LIMITS)
     return result

@@ -134,6 +134,29 @@ describe('UserService', () => {
 
       await expect(service.createProfile('u-1', dto)).rejects.toThrow(BadRequestException)
     })
+
+    it('permet à un MODERATOR de créer des profils sans limite', async () => {
+      prisma.childProfile.count.mockResolvedValue(100)
+      const profile = { id: 'p-mod', displayName: 'Child Mod' }
+      prisma.childProfile.create.mockResolvedValue(profile)
+
+      const result = await service.createProfile('u-mod', dto, 'MODERATOR')
+
+      expect(result).toBe(profile)
+      expect(prisma.childProfile.create).toHaveBeenCalled()
+    })
+
+    it('permet à un MODERATOR de créer des profils sans limite en lisant le rôle en base si non fourni', async () => {
+      prisma.childProfile.count.mockResolvedValue(100)
+      prisma.user.findUnique.mockResolvedValue({ role: 'MODERATOR' })
+      const profile = { id: 'p-mod-2', displayName: 'Child Mod 2' }
+      prisma.childProfile.create.mockResolvedValue(profile)
+
+      const result = await service.createProfile('u-mod-2', dto)
+
+      expect(result).toBe(profile)
+      expect(prisma.childProfile.create).toHaveBeenCalled()
+    })
   })
 
   // ── getProfile ────────────────────────────────────────────────

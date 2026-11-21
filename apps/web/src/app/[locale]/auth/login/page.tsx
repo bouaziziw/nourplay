@@ -68,41 +68,41 @@ export default function LoginPage() {
           <input
             id="email" type="email" autoComplete="email" required
             value={email} onChange={e => setEmail(e.target.value)}
-            className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full h-10 rounded-xl border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
 
         <div>
           <div className="flex justify-between mb-1">
             <label htmlFor="password" className="text-sm font-medium text-gray-700">{t('password')}</label>
-            <Link href={`/${locale}/auth/forgot-password`} className="text-xs text-indigo-600 hover:underline">
+            <Link href={`/${locale}/auth/forgot-password`} className="text-xs text-primary hover:underline font-medium">
               Mot de passe oublié ?
             </Link>
           </div>
           <input
             id="password" type="password" autoComplete="current-password" required
             value={password} onChange={e => setPassword(e.target.value)}
-            className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full h-10 rounded-xl border border-gray-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
           />
         </div>
       </div>
 
       <button
         type="submit" disabled={loading}
-        className="mt-6 w-full h-11 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mt-6 w-full h-11 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-sky-950/10 active:scale-[0.99]"
       >
         {loading ? 'Connexion…' : t('login')}
       </button>
 
       <p className="mt-3 text-center text-sm">
-        <Link href={`/${locale}/auth/magic-link`} className="text-indigo-600 hover:underline">
+        <Link href={`/${locale}/auth/magic-link`} className="text-primary hover:underline font-medium">
           Connexion sans mot de passe (lien email)
         </Link>
       </p>
 
       <p className="mt-2 text-center text-sm text-gray-500">
         Pas encore de compte ?{' '}
-        <Link href={`/${locale}/auth/register`} className="text-indigo-600 font-medium hover:underline">
+        <Link href={`/${locale}/auth/register`} className="text-primary font-semibold hover:underline">
           {t('register')}
         </Link>
       </p>
@@ -145,12 +145,12 @@ function TotpStep({ userId, locale, onSuccess }: { userId: string; locale: strin
         type="text" inputMode="numeric" pattern="\d{6}" maxLength={6}
         value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
         placeholder="000000"
-        className="w-full h-12 rounded-lg border border-gray-300 px-4 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full h-12 rounded-xl border border-gray-300 px-4 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-primary"
         aria-label="Code TOTP"
       />
 
       <button type="submit" disabled={loading || code.length !== 6}
-        className="mt-4 w-full h-11 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        className="mt-4 w-full h-11 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-600 disabled:opacity-50 transition-colors shadow-md shadow-sky-950/10"
       >
         {loading ? 'Vérification…' : 'Confirmer'}
       </button>

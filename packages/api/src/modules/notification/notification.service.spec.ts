@@ -12,6 +12,14 @@ const makePrisma = () => ({
     updateMany: vi.fn(),
     delete: vi.fn(),
   },
+  deviceToken: {
+    findMany: vi.fn().mockResolvedValue([]),
+    deleteMany: vi.fn(),
+  },
+  webPushSubscription: {
+    findMany: vi.fn().mockResolvedValue([]),
+    deleteMany: vi.fn(),
+  },
   $transaction: vi.fn(),
 })
 

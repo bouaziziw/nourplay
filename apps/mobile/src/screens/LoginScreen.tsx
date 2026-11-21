@@ -8,6 +8,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthContext } from '../hooks/useAuth'
 import type { RootStackParamList } from '../navigation/AppNavigator'
 import { ApiError } from '../api'
+import { Logo } from '../components/Logo'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>
 
@@ -45,10 +46,7 @@ export default function LoginScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kav}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <View style={styles.logo}>
-              <Text style={styles.logoText}>N</Text>
-            </View>
-            <Text style={styles.title}>NourPlay</Text>
+            <Logo size="lg" style={{ marginBottom: 12 }} />
             <Text style={styles.subtitle}>La plateforme vidéo sécurisée pour vos enfants</Text>
           </View>
 
@@ -104,20 +102,14 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#eef2ff' },
+  safe: { flex: 1, backgroundColor: '#f0f8fd' },
   kav: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  header: { alignItems: 'center', marginBottom: 32 },
-  logo: {
-    width: 64, height: 64, borderRadius: 20,
-    backgroundColor: '#4f46e5', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
-  logoText: { color: '#fff', fontSize: 32, fontWeight: '800' },
-  title: { fontSize: 28, fontWeight: '800', color: '#1e1b4b', letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: '#6b7280', marginTop: 4, textAlign: 'center' },
+  header: { alignItems: 'center', marginBottom: 28 },
+  subtitle: { fontSize: 14, color: '#64748b', marginTop: 4, textAlign: 'center' },
   card: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    shadowColor: '#1c90d8', shadowOpacity: 0.08, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 4,
   },
   cardTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 20 },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginBottom: 16 },
@@ -129,8 +121,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   btn: {
-    height: 48, backgroundColor: '#4f46e5', borderRadius: 12,
+    height: 48, backgroundColor: '#1c90d8', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center', marginTop: 4,
+    shadowColor: '#1c90d8', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   btnDisabled: { opacity: 0.6 },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },

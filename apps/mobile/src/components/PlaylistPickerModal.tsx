@@ -54,7 +54,7 @@ export function PlaylistPickerModal({ visible, videoId, videoTitle, onClose, onA
         <Text style={styles.subtitle} numberOfLines={1}>{videoTitle}</Text>
 
         {loading ? (
-          <ActivityIndicator style={{ marginVertical: 32 }} color="#4f46e5" />
+          <ActivityIndicator style={{ marginVertical: 32 }} color="#1c90d8" />
         ) : playlists.length === 0 ? (
           <Text style={styles.empty}>Aucune playlist disponible.</Text>
         ) : (
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 16 },
   item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 12 },
   itemAdded: { backgroundColor: '#f0fdf4' },
-  itemIcon: { width: 36, height: 36, backgroundColor: '#eef2ff', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  itemIcon: { width: 36, height: 36, backgroundColor: '#f0f8fd', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 14, fontWeight: '600', color: '#111827' },
   itemCount: { fontSize: 12, color: '#9ca3af', marginTop: 1 },

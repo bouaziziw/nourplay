@@ -47,7 +47,11 @@ export class AuthService {
       select: { id: true, email: true, role: true, locale: true, createdAt: true },
     })
 
-    await this.sendVerificationEmail(user.id, dto.email, dto.locale)
+    try {
+      await this.sendVerificationEmail(user.id, dto.email, dto.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send verification email to ${dto.email}: ${err instanceof Error ? err.message : err}`)
+    }
     this.logger.log(`New user registered: ${user.email} (${user.role})`)
     return user
   }
@@ -68,6 +72,58 @@ export class AuthService {
     return { verified: true }
   }
 
+  async resendVerification({ email, authHeader }: { email?: string; authHeader?: string }): Promise<{ sent: boolean; alreadyVerified?: boolean }> {
+    let userId: string | undefined
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7)
+        const payload = this.jwtService.verify<{ sub: string }>(token, {
+          secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+        })
+        userId = payload.sub
+      } catch {
+        // Ignorer si token invalide ou expiré
+      }
+    }
+
+    let user = null
+    if (userId) {
+      user = await this.prisma.user.findUnique({
+        where: { id: userId, deletedAt: null },
+        select: { id: true, email: true, locale: true, emailVerified: true },
+      })
+    } else if (email) {
+      user = await this.prisma.user.findUnique({
+        where: { email: email.trim().toLowerCase(), deletedAt: null },
+        select: { id: true, email: true, locale: true, emailVerified: true },
+      })
+    }
+
+    if (!user) {
+      return { sent: true }
+    }
+
+    if (user.emailVerified) {
+      return { sent: true, alreadyVerified: true }
+    }
+
+    try {
+      await this.sendVerificationEmail(user.id, user.email, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to resend verification email to ${user.email}: ${err instanceof Error ? err.message : err}`)
+    }
+
+    return { sent: true }
+  }
+
+  private isSuperAdminEmail(email: string): boolean {
+    return email.trim().toLowerCase() === 'bouaziziw@gmail.com'
+  }
+
+  private isModeratorEmail(email: string): boolean {
+    return email.trim().toLowerCase() === 'welidbouazizi@gmail.com'
+  }
+
   // ── Login ────────────────────────────────────────────────────
 
   async validateUser(email: string, password: string) {
@@ -78,6 +134,21 @@ export class AuthService {
     if (!user || !user.passwordHash) return null
     const valid = await argon2.verify(user.passwordHash, password)
     if (!valid) return null
+
+    if (this.isSuperAdminEmail(user.email) && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      user.role = 'ADMIN'
+    } else if (this.isModeratorEmail(user.email) && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      user.role = 'MODERATOR'
+    }
+
     const { passwordHash: _, ...result } = user
     return result
   }
@@ -126,6 +197,19 @@ export class AuthService {
   }
 
   async login(userId: string, email: string, role: string, fingerprint: string) {
+    if (this.isSuperAdminEmail(email) && role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      role = 'ADMIN'
+    } else if (this.isModeratorEmail(email) && role !== 'MODERATOR' && role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      role = 'MODERATOR'
+    }
     const accessToken = this.jwtService.sign({ sub: userId, email, role })
     const refreshToken = await this.generateRefreshToken(userId, fingerprint)
     return { accessToken, refreshToken }
@@ -141,9 +225,9 @@ export class AuthService {
       throw new UnauthorizedException('Session expirée, reconnectez-vous')
     }
 
-    if (stored.fingerprint !== fingerprint) {
-      await this.prisma.refreshToken.updateMany({
-        where: { userId: stored.userId },
+    if (stored.fingerprint && stored.fingerprint !== fingerprint) {
+      await this.prisma.refreshToken.update({
+        where: { id: stored.id },
         data: { revokedAt: new Date() },
       })
       throw new UnauthorizedException('Session compromise, reconnectez-vous')
@@ -151,6 +235,19 @@ export class AuthService {
 
     await this.prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } })
     const { user } = stored
+    if (this.isSuperAdminEmail(user.email) && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN', emailVerified: true },
+      })
+      user.role = 'ADMIN'
+    } else if (this.isModeratorEmail(user.email) && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'MODERATOR', emailVerified: true },
+      })
+      user.role = 'MODERATOR'
+    }
     const accessToken = this.jwtService.sign({ sub: user.id, email: user.email, role: user.role })
     const newRefreshToken = await this.generateRefreshToken(user.id, fingerprint)
     return { accessToken, refreshToken: newRefreshToken }
@@ -174,7 +271,11 @@ export class AuthService {
     if (!user) return
 
     const token = await this.tokenService.createPasswordResetToken(user.id)
-    await this.emailService.sendPasswordResetEmail(email, token, user.locale)
+    try {
+      await this.emailService.sendPasswordResetEmail(email, token, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send password reset email to ${email}: ${err instanceof Error ? err.message : err}`)
+    }
   }
 
   async resetPassword(token: string, newPassword: string) {
@@ -266,13 +367,19 @@ export class AuthService {
     if (!user) return
 
     const token = await this.tokenService.createMagicLinkToken(email)
-    await this.emailService.sendMagicLinkEmail(email, token, user.locale)
+    try {
+      await this.emailService.sendMagicLinkEmail(email, token, user.locale)
+    } catch (err) {
+      this.logger.error(`Failed to send magic link email to ${email}: ${err instanceof Error ? err.message : err}`)
+    }
   }
 
   async loginWithMagicLink(token: string, fingerprint: string) {
     const email = await this.tokenService.consumeMagicLinkToken(token)
     if (!email) throw new UnauthorizedException('Lien invalide ou expiré')
 
+    const shouldBeAdmin = this.isSuperAdminEmail(email)
+    const shouldBeModerator = this.isModeratorEmail(email)
     let user = await this.prisma.user.findUnique({
       where: { email, deletedAt: null },
       select: { id: true, email: true, role: true, emailVerified: true },
@@ -280,16 +387,31 @@ export class AuthService {
 
     if (!user) {
       // Création automatique d'un compte si l'email est inconnu (premier usage magic link)
+      const role = shouldBeAdmin ? 'ADMIN' : (shouldBeModerator ? 'MODERATOR' : 'PARENT')
       user = await this.prisma.user.create({
-        data: { email, role: 'PARENT', emailVerified: true, emailVerifiedAt: new Date() },
+        data: { email, role, emailVerified: true, emailVerifiedAt: new Date() },
         select: { id: true, email: true, role: true, emailVerified: true },
       })
       this.logger.log(`New account created via magic link: ${email}`)
-    } else if (!user.emailVerified) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { emailVerified: true, emailVerifiedAt: new Date() },
-      })
+    } else {
+      const updateData: { emailVerified?: boolean; emailVerifiedAt?: Date; role?: 'ADMIN' | 'MODERATOR' } = {}
+      if (!user.emailVerified) {
+        updateData.emailVerified = true
+        updateData.emailVerifiedAt = new Date()
+      }
+      if (shouldBeAdmin && user.role !== 'ADMIN') {
+        updateData.role = 'ADMIN'
+        user.role = 'ADMIN'
+      } else if (shouldBeModerator && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+        updateData.role = 'MODERATOR'
+        user.role = 'MODERATOR'
+      }
+      if (Object.keys(updateData).length > 0) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+        })
+      }
     }
 
     return this.login(user.id, user.email, user.role, fingerprint)
@@ -303,24 +425,42 @@ export class AuthService {
       select: { id: true, email: true, role: true, googleId: true },
     })
 
+    const shouldBeAdmin = this.isSuperAdminEmail(profile.email)
+    const shouldBeModerator = this.isModeratorEmail(profile.email)
+
     if (!user) {
+      const role = shouldBeAdmin ? 'ADMIN' : (shouldBeModerator ? 'MODERATOR' : 'PARENT')
       user = await this.prisma.user.create({
         data: {
           email: profile.email,
           googleId: profile.googleId,
-          role: 'PARENT',
+          role,
           locale: profile.locale ?? 'fr',
           emailVerified: true,
           emailVerifiedAt: new Date(),
         },
         select: { id: true, email: true, role: true, googleId: true },
       })
-    } else if (!user.googleId) {
-      user = await this.prisma.user.update({
-        where: { id: user.id },
-        data: { googleId: profile.googleId, emailVerified: true },
-        select: { id: true, email: true, role: true, googleId: true },
-      })
+    } else {
+      const updateData: { googleId?: string; emailVerified?: boolean; role?: 'ADMIN' | 'MODERATOR' } = {}
+      if (!user.googleId) {
+        updateData.googleId = profile.googleId
+        updateData.emailVerified = true
+      }
+      if (shouldBeAdmin && user.role !== 'ADMIN') {
+        updateData.role = 'ADMIN'
+        updateData.emailVerified = true
+      } else if (shouldBeModerator && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
+        updateData.role = 'MODERATOR'
+        updateData.emailVerified = true
+      }
+      if (Object.keys(updateData).length > 0) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+          select: { id: true, email: true, role: true, googleId: true },
+        })
+      }
     }
 
     return user
@@ -328,15 +468,16 @@ export class AuthService {
 
   // ── Helpers ───────────────────────────────────────────────────
 
-  buildFingerprint(userAgent: string, ip: string): string {
-    const ipSubnet = ip.split('.').slice(0, 3).join('.')
-    return createHash('sha256').update(`${ipSubnet}|${userAgent}`).digest('hex')
+  buildFingerprint(userAgent: string, _ip?: string): string {
+    // Rely on normalized User-Agent to keep sessions stable across dynamic mobile/home IP switches (Wi-Fi <-> 4G/5G, IPv6)
+    const normalizedUa = (userAgent || 'unknown').trim().toLowerCase()
+    return createHash('sha256').update(normalizedUa).digest('hex')
   }
 
   private async generateRefreshToken(userId: string, fingerprint: string): Promise<string> {
     const rawToken = randomBytes(48).toString('hex')
     const tokenHash = createHash('sha256').update(rawToken).digest('hex')
-    const ttl = this.config.get<number>('jwt.refreshTtl', 604800)
+    const ttl = this.config.get<number>('jwt.refreshTtl', 2592000) // 30 days sliding window
 
     await this.prisma.refreshToken.create({
       data: { userId, tokenHash, fingerprint, expiresAt: new Date(Date.now() + ttl * 1000) },

@@ -143,7 +143,7 @@ export class VideoController {
 
   @Patch('playlists/:playlistId/submissions/approve')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.PARENT, UserRole.TEACHER)
+  @Roles(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.MODERATOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Envoyer en validation toutes les vidéos en attente de sa playlist' })
   approvePlaylistSubmissions(
@@ -161,7 +161,7 @@ export class VideoController {
 
   @Get('submissions')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.PARENT, UserRole.TEACHER)
+  @Roles(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.MODERATOR)
   @ApiOperation({ summary: 'Liste des vidéos soumises par l’utilisateur connecté' })
   listMySubmissions(@CurrentUser() user: JwtPayload) {
     return this.videoService.listMySubmissions(user.sub)
@@ -169,7 +169,7 @@ export class VideoController {
 
   @Patch('submissions/:id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.PARENT, UserRole.TEACHER)
+  @Roles(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.MODERATOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Modifier le titre de sa vidéo avant son approbation' })
   updateOwnSubmission(
@@ -182,7 +182,7 @@ export class VideoController {
 
   @Patch(':id/submitter-approval')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.PARENT, UserRole.TEACHER)
+  @Roles(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.MODERATOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Approuver son ajout et lancer la validation automatique' })
   approveSubmission(

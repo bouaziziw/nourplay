@@ -1,5 +1,9 @@
 # Guide de Configuration et de Déploiement — NourPlay
 
+> Pour la configuration actuelle sur un seul domaine, suivez le
+> [guide Vercel pas à pas](./GUIDE_DEPLOIEMENT_PAS_A_PAS.md). Les exemples
+> VPS requièrent un service admin supplémentaire, absent du compose fourni.
+
 > **Version :** 1.0.0  
 > **Date de référence :** 2026  
 > **Auteur :** Lead Developer & Équipe DevOps NourPlay  
@@ -104,9 +108,9 @@ cp .env.example .env
 |---|---|:---:|---|
 | `NODE_ENV` | Environnement d'exécution | Oui | `production` |
 | `APP_NAME` | Nom de l'application | Oui | `NourPlay` |
-| `APP_URL` | URL de l'application web principale | Oui | `https://nourplay.app` |
-| `API_URL` | URL publique de l'API backend | Oui | `https://api.nourplay.app` |
-| `ADMIN_URL` | URL du tableau de bord admin | Oui | `https://admin.nourplay.app` |
+| `APP_URL` | URL de l'application web principale | Oui | `https://nour-play.app` |
+| `API_URL` | URL publique de l'API backend | Oui | `https://nour-play.app` |
+| `ADMIN_URL` | URL du tableau de bord admin | Oui | `https://nour-play.app/admin` |
 | `DATABASE_URL` | Chaîne de connexion PostgreSQL principale | Oui | `postgresql://user:pwd@host:5432/dbname?sslmode=require` |
 | `DATABASE_URL_TEST` | Chaîne de connexion PostgreSQL pour les tests | Non | Utilisé uniquement en CI/Tests locaux |
 | `REDIS_URL` | Chaîne de connexion Redis | Oui | `rediss://default:pwd@host:6379` (TLS) |
@@ -119,15 +123,15 @@ cp .env.example .env
 | `TOTP_ISSUER` | Nom de l'émetteur TOTP affiché dans Google Auth / Authy | Oui | `NourPlay` |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth 2.0 Google | Non | Clé console Google Cloud Platform |
 | `GOOGLE_CLIENT_SECRET` | Client Secret OAuth 2.0 Google | Non | Clé console Google Cloud Platform |
-| `GOOGLE_CALLBACK_URL` | URL de retour OAuth Google | Non | `https://api.nourplay.app/api/v1/auth/google/callback` |
+| `GOOGLE_CALLBACK_URL` | URL de retour OAuth Google | Non | `https://nour-play.app/api/v1/auth/google/callback` |
 | `EMAIL_PROVIDER` | Provider d'email (`resend` ou `smtp`) | Oui | `resend` |
 | `RESEND_API_KEY` | Clé API Resend | Non (Local: MailHog) | `re_xxxxxxxxxxxx` |
-| `EMAIL_FROM` | Adresse d'expéditeur certifiée SPF/DKIM | Oui | `NourPlay <noreply@nourplay.app>` |
+| `EMAIL_FROM` | Adresse d'expéditeur certifiée SPF/DKIM | Oui | `NourPlay <noreply@nour-play.app>` |
 | `S3_ENDPOINT` | Point de terminaison S3 compatible (ex: Cloudflare R2) | Non | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 | `S3_ACCESS_KEY_ID` | Identifiant de clé d'accès S3 / R2 | Non | Clé Cloudflare R2 / AWS IAM |
 | `S3_SECRET_ACCESS_KEY`| Clé secrète S3 / R2 | Non | Clé Cloudflare R2 / AWS IAM |
 | `S3_BUCKET` | Nom du bucket pour les avatars et exports RGPD | Non | `nourplay-production-assets` |
-| `S3_PUBLIC_URL` | URL du CDN public pour les avatars | Non | `https://assets.nourplay.app` |
+| `S3_PUBLIC_URL` | URL du CDN public pour les avatars | Non | `https://assets.nour-play.app` |
 | `YOUTUBE_API_KEY` | Clé Google Cloud pour les métadonnées et l’import de playlists YouTube | Optionnelle, requise pour importer une playlist | Clé YouTube Data API v3 |
 | `VIMEO_ACCESS_TOKEN` | Jeton d'accès API Vimeo | Non (Mocks dispo) | Token développeur Vimeo |
 | `OPENAI_API_KEY` | Clé API OpenAI pour la validation IA | Non (sans clé, revue humaine obligatoire) | Clé OpenAI |
@@ -137,9 +141,9 @@ cp .env.example .env
 | `STRIPE_WEBHOOK_SECRET` | Clé secrète de signature des webhooks Stripe | Non | `whsec_xxxx` |
 | `VAPID_PUBLIC_KEY` | Clé publique pour les notifications Web Push | Non | Clé générée par `npx web-push generate-vapid-keys` |
 | `VAPID_PRIVATE_KEY`| Clé privée Web Push | Non | Clé générée par `npx web-push generate-vapid-keys` |
-| `VAPID_SUBJECT` | Contact émetteur Web Push (RFC 8292) | Non | `mailto:security@nourplay.app` |
+| `VAPID_SUBJECT` | Contact émetteur Web Push (RFC 8292) | Non | `mailto:security@nour-play.app` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Point d'ingestion OpenTelemetry | Non | `http://tempo:4318` ou Grafana Cloud OTLP |
-| `CORS_ORIGINS` | Origines autorisées (séparées par une virgule) | Oui | `https://nourplay.app,https://admin.nourplay.app` |
+| `CORS_ORIGINS` | Origines autorisées (séparées par une virgule, sans chemin) | Oui | `https://nour-play.app,https://www.nour-play.app` |
 
 ---
 
@@ -308,7 +312,7 @@ pnpm ios
 
 > Sur un téléphone physique, connectez le téléphone et l'ordinateur au même réseau Wi-Fi. L'application utilise automatiquement l'adresse réseau du serveur Metro pour joindre l'API sur le port `4000`. Si nécessaire, définissez `EXPO_PUBLIC_API_URL` (par exemple `http://192.168.1.200:4000/api/v1`) avant de lancer Expo. Vérifiez également que le pare-feu autorise les connexions entrantes sur le port `4000`.
 >
-> Le lecteur YouTube mobile utilise `https://nourplay.app` comme origine/référent pour éviter l'erreur 153. Si l'application est servie sous un autre domaine, définissez `EXPO_PUBLIC_APP_URL` avec son origine HTTPS.
+> Le lecteur YouTube mobile utilise `https://nour-play.app` comme origine/référent pour éviter l'erreur 153. Si l'application est servie sous un autre domaine, définissez `EXPO_PUBLIC_APP_URL` avec son origine HTTPS.
 >
 > Les liens qui tentent de faire sortir le lecteur vidéo vers YouTube, Vimeo, Dailymotion ou une autre page externe sont bloqués dans l'application mobile.
 
@@ -376,21 +380,11 @@ NourPlay prend en charge deux modèles d'hébergement en production :
                        │     & WAF (Edge)        │
                        └────────────┬────────────┘
                                     │
-          ┌─────────────────────────┼─────────────────────────┐
-          │                         │                         │
-          ▼                         ▼                         ▼
-┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
-│  Vercel (Edge)   │      │  Vercel (Edge)   │      │ Render / Railway │
-│  apps/web        │      │  apps/admin      │      │ packages/api     │
-│  nourplay.app    │      │ admin.nourplay   │      │ api.nourplay.app │
-└──────────────────┘      └──────────────────┘      └────────┬─────────┘
-                                                             │
-                  ┌─────────────────────────┬────────────────┼─────────────────────────┐
-                  ▼                         ▼                ▼                         ▼
-        ┌──────────────────┐      ┌──────────────────┐ ┌──────────┐          ┌──────────────────┐
-        │ Supabase / Neon  │      │ Upstash Redis    │ │ Workers  │          │ Cloudflare R2    │
-        │ PostgreSQL 16    │      │ BullMQ & Cache   │ │ BullMQ   │          │ Avatars / Assets │
-        └──────────────────┘      └──────────────────┘ └──────────┘          └──────────────────┘
+                           nour-play.app → Vercel apps/web
+                              /admin/* → origine apps/admin
+                              /api/*   → origine packages/api
+                                             │
+                     Neon / PostgreSQL · Redis · worker · stockage S3
 ```
 
 ---
@@ -404,13 +398,12 @@ NourPlay prend en charge deux modèles d'hébergement en production :
    - Conservez l'URL directe (port `5432`) pour les migrations Prisma.
 3. **Variables d'environnement à définir :**
    ```ini
-   DATABASE_URL="postgresql://postgres:[PASSWORD]@[HOST]:6543/postgres?pgbouncer=true&sslmode=require"
-   DIRECT_URL="postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres?sslmode=require"
+   DATABASE_URL="postgresql://postgres:<REDACTED_SECRET>@[HOST]:6543/postgres?pgbouncer=true&sslmode=require"
    ```
-4. **Exécution des migrations initiales :**
-   ```bash
-   pnpm db:migrate:prod
-   ```
+4. **Migrations :** le schéma ne lit pas `DIRECT_URL`. Fournissez temporairement
+   l'URL directe dans `DATABASE_URL` au processus `pnpm --filter @nourplay/db
+   migrate:deploy`, sans modifier l'URL poolée de l'API. Suivez les précautions
+   du [guide pas à pas § 4](./GUIDE_DEPLOIEMENT_PAS_A_PAS.md).
 
 ---
 
@@ -420,7 +413,7 @@ NourPlay prend en charge deux modèles d'hébergement en production :
 2. Activez le chiffrement TLS et définissez la politique d'éviction sur `noeviction` (obligatoire pour garantir l'intégrité des files de messages BullMQ).
 3. **Variable d'environnement :**
    ```ini
-   REDIS_URL="rediss://default:[PASSWORD]@[HOST]:[PORT]"
+   REDIS_URL="rediss://default:<REDACTED_SECRET>@[HOST]:[PORT]"
    ```
 
 ---
@@ -465,17 +458,25 @@ NourPlay prend en charge deux modèles d'hébergement en production :
 5. **Output Directory :** `.next`
 6. **Variables d'environnement Vercel :**
    ```ini
-   NEXT_PUBLIC_API_URL="https://api.nourplay.app/api/v1"
-   NEXT_PUBLIC_APP_URL="https://nourplay.app"
+   NEXT_PUBLIC_API_URL="https://nour-play.app/api/v1"
+   NEXT_PUBLIC_APP_URL="https://nour-play.app"
+   API_PROXY_ORIGIN="https://<origine-technique-api>"
+   ADMIN_PROXY_ORIGIN="https://<origine-technique-admin>"
    ```
 
 ##### Application Admin (`apps/admin`) :
 1. Créez un second projet Vercel pointant sur `apps/admin`.
 2. **Variables d'environnement Vercel :**
    ```ini
-   NEXT_PUBLIC_API_URL="https://api.nourplay.app/api/v1"
-   NEXT_PUBLIC_ADMIN_URL="https://admin.nourplay.app"
+   NEXT_PUBLIC_API_URL="https://nour-play.app/api/v1"
+   ADMIN_BASE_PATH="/admin"
    ```
+
+Associez `nour-play.app` au seul projet web ; les origines techniques ne sont
+pas des sous-domaines publics personnalisés. Configurez les deux proxys au
+build du web et le `basePath` au build et à l'exécution de l'admin. Les
+previews doivent utiliser des origines et données isolées ; leur protection
+Vercel peut empêcher les rewrites. Voir le guide pas à pas.
 
 ---
 
@@ -486,25 +487,25 @@ NourPlay prend en charge deux modèles d'hébergement en production :
    ```json
    [
      {
-       "AllowedOrigins": ["https://nourplay.app", "https://admin.nourplay.app"],
+       "AllowedOrigins": ["https://nour-play.app"],
        "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
        "AllowedHeaders": ["*"],
        "MaxAgeSeconds": 3600
      }
    ]
    ```
-3. Associez un nom de domaine personnalisé au bucket : `assets.nourplay.app`.
+3. Associez un nom de domaine personnalisé au bucket : `assets.nour-play.app`.
 4. Renseignez les identifiants R2 (`S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`).
 
 ---
 
 #### 5.2.6 Envoi d'emails transactionnels : Resend
 
-1. Ajoutez votre domaine `nourplay.app` sur [Resend](https://resend.com).
+1. Ajoutez votre domaine `nour-play.app` sur [Resend](https://resend.com).
 2. Configurez vos enregistrements DNS chez votre registrar :
-   - **DKIM :** Clé TXT `resend._domainkey.nourplay.app`
+   - **DKIM :** Clé TXT `resend._domainkey.nour-play.app`
    - **SPF :** Enregistrement TXT `v=spf1 include:amazonses.com ~all`
-   - **DMARC :** Enregistrement TXT `_dmarc.nourplay.app` avec valeur `v=DMARC1; p=reject; rua=mailto:dmarc@nourplay.app`
+   - **DMARC :** Enregistrement TXT `_dmarc.nour-play.app` avec valeur `v=DMARC1; p=reject; rua=mailto:dmarc@nour-play.app`
 3. Générez une clé API de production avec permissions d'envoi et configurez `RESEND_API_KEY`.
 
 ---
@@ -521,7 +522,7 @@ NourPlay prend en charge deux modèles d'hébergement en production :
 
 1. Dans le Dashboard Stripe en mode Live :
    - Créez les produits et tarifs récurrents (ex: *Pass Famille*, *Pass Établissement Scolaire*).
-   - Configurez un Webhook pointant vers `https://api.nourplay.app/api/v1/subscription/webhook`.
+   - Configurez un Webhook pointant vers `https://nour-play.app/api/v1/subscriptions/webhook`.
    - Sélectionnez les événements : `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`.
 2. Récupérez la clé de signature du webhook (`whsec_...`) et assignez-la à `STRIPE_WEBHOOK_SECRET`.
 
@@ -604,12 +605,12 @@ sudo apt update && sudo apt install caddy -y
 ```caddy
 # ── Configuration Globale ────────────────────────────────────
 {
-    email security@nourplay.app
+    email security@nour-play.app
     admin off
 }
 
 # ── Frontend Web ─────────────────────────────────────────────
-nourplay.app, www.nourplay.app {
+nour-play.app, www.nour-play.app {
     encode gzip zstd
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -618,32 +619,22 @@ nourplay.app, www.nourplay.app {
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
     }
-    reverse_proxy localhost:3000
-}
-
-# ── Back-office Admin ────────────────────────────────────────
-admin.nourplay.app {
-    encode gzip zstd
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        X-Frame-Options "DENY"
+    handle /api/* {
+        reverse_proxy localhost:4000
     }
-    reverse_proxy localhost:3001
-}
-
-# ── Backend API ──────────────────────────────────────────────
-api.nourplay.app {
-    encode gzip zstd
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        Access-Control-Allow-Credentials "true"
+    @admin path /admin /admin/*
+    handle @admin {
+        reverse_proxy localhost:3001
     }
-    reverse_proxy localhost:4000 {
-        header_up X-Forwarded-Proto https
-        header_up X-Real-IP {remote_host}
+    handle {
+        reverse_proxy localhost:3000
     }
 }
 ```
+
+Le compose fourni ne démarre pas d'admin sur `3001` : ajoutez et testez
+séparément un service admin compilé et lancé avec `ADMIN_BASE_PATH=/admin`.
+Cet exemple ne configure pas le routage WebSocket.
 
 Rechargez Caddy pour activer la génération automatique des certificats TLS :
 ```bash
@@ -751,9 +742,9 @@ Le dépôt comprend un pipeline complet et sécurisé sous `.github/workflows/` 
    - Taux d'erreurs HTTP 4xx/5xx, latence P95/P99, taille des queues BullMQ, taux de validation IA des vidéos.
 4. **Alerting recommandé :**
    - Configurer un service externe de surveillance de disponibilité (ex: [Better Uptime](https://betteruptime.com) ou [UptimeRobot](https://uptimerobot.com)) pointant sur :
-     - `https://nourplay.app`
-     - `https://api.nourplay.app/api/health`
-     - `https://admin.nourplay.app`
+     - `https://nour-play.app`
+     - `https://nour-play.app/api/v1/subscriptions/plans`
+     - `https://nour-play.app/admin/login`
    - Alerte immédiate (SMS / Slack / PagerDuty) si le code HTTP n'est pas `200` pendant plus de 60 secondes.
 
 ---
@@ -781,7 +772,7 @@ Avant d'ouvrir la plateforme au public, vérifiez impérativement chaque point :
   - [ ] Webhooks Stripe validés avec le secret de signature en mode Live.
 - [ ] **DNS & Réseau :**
   - [ ] Certificats SSL/TLS 1.3 valides avec HSTS activé.
-  - [ ] Enregistrements DNS propagés (`nourplay.app`, `api.nourplay.app`, `admin.nourplay.app`, `assets.nourplay.app`).
+  - [ ] Enregistrements DNS propagés (`nour-play.app`, `www` et `assets` si utilisés).
 - [ ] **Tests de bascule :**
   - [ ] Test d'inscription parent complet + validation d'email.
   - [ ] Test d'ajout d'une vidéo YouTube/Vimeo et passage par le worker de validation IA.

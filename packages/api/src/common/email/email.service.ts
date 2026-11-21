@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-
+import { safeFetch } from '../http/safe-fetch'
 interface SendOptions {
   to: string
   subject: string
@@ -20,7 +20,7 @@ export class EmailService {
   }
 
   async send(options: SendOptions): Promise<void> {
-    if (this.provider === 'console' || process.env.NODE_ENV === 'test') {
+    if (this.provider === 'console') {
       this.logger.debug(`[EMAIL] To: ${options.to} | Subject: ${options.subject}`)
       return
     }
@@ -84,7 +84,7 @@ export class EmailService {
     await this.send({
       to,
       subject: subjects[locale] ?? subjects['fr'],
-      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`),
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`),
       text: link,
     })
   }
@@ -116,7 +116,7 @@ export class EmailService {
     await this.send({
       to,
       subject: subjects[locale] ?? subjects['fr'],
-      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a>`),
+      html: this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a>`),
       text: `${t.body} ${link}`,
     })
   }
@@ -195,7 +195,7 @@ export class EmailService {
           <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 8px">${p.profileName}</p>
           <div style="display:flex;gap:24px;margin-bottom:4px">
             <div>
-              <p style="font-size:22px;font-weight:700;color:#4f46e5;margin:0">${fmtTime(p.totalWatchedSec)}</p>
+              <p style="font-size:22px;font-weight:700;color:#1c90d8;margin:0">${fmtTime(p.totalWatchedSec)}</p>
               <p style="font-size:11px;color:#9ca3af;margin:2px 0 0">${isFr ? 'regardées cette semaine' : 'watched this week'}</p>
             </div>
             <div>
@@ -236,18 +236,58 @@ export class EmailService {
   }
 
   private async sendViaResend(options: SendOptions) {
-    const apiKey = this.config.get<string>('RESEND_API_KEY')
-    if (!apiKey) throw new Error('RESEND_API_KEY manquant')
+    const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim()
+    if (!apiKey) {
+      if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+        this.logger.warn(`[EMAIL] RESEND_API_KEY non configuré — bascule automatique en console`)
+        this.logger.log(`[EMAIL SIMULÉ] Pour: ${options.to} | Sujet: ${options.subject}`)
+        if (options.text) {
+          this.logger.log(`[EMAIL TEXT] ${options.text}`)
+        }
+        return
+      }
+      throw new Error('RESEND_API_KEY manquant')
+    }
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: this.from, to: options.to, subject: options.subject, html: options.html }),
-    })
+    const appName = this.config.get<string>('APP_NAME', 'NourPlay')
+    const from = this.from.includes('<') ? this.from : `${appName} <${this.from}>`
+    const to = Array.isArray(options.to) ? options.to : [options.to]
 
-    if (!response.ok) {
-      const err = await response.text()
-      throw new Error(`Resend API error: ${err}`)
+    const body: Record<string, unknown> = {
+      from,
+      to,
+      subject: options.subject,
+      html: options.html,
+    }
+    if (options.text) {
+      body.text = options.text
+    }
+
+    try {
+      const response = await safeFetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const err = await response.text()
+        this.logger.error(`[EMAIL] Erreur API Resend (${response.status}) pour ${options.to}: ${err}`)
+        throw new Error(`Resend API error: ${err}`)
+      }
+
+      const resData = (await response.json().catch(() => ({}))) as { id?: string }
+      this.logger.log(`[EMAIL] Email envoyé avec succès via Resend à ${options.to}${resData.id ? ` (ID: ${resData.id})` : ''}`)
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Resend API error')) {
+        throw err
+      }
+      const msg = err instanceof Error ? err.message : String(err)
+      this.logger.error(`[EMAIL] Échec d'envoi Resend vers ${options.to}: ${msg}`)
+      throw new Error(`Resend API error: ${msg}`)
     }
   }
 
@@ -257,17 +297,17 @@ export class EmailService {
       en: { title: 'Verify your email', body: 'Click the button below to verify your email address.', cta: 'Verify my email' },
     }
     const t = texts[locale] ?? texts['fr']
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 24h. Si vous n'avez pas créé de compte, ignorez cet email.</p>`)
+    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 24h. Si vous n'avez pas créé de compte, ignorez cet email.</p>`)
   }
 
   private resetTemplate(link: string, locale: string): string {
     const t = locale === 'fr'
       ? { title: 'Réinitialiser votre mot de passe', body: 'Vous avez demandé la réinitialisation de votre mot de passe.', cta: 'Choisir un nouveau mot de passe' }
       : { title: 'Reset your password', body: 'You requested a password reset.', cta: 'Choose a new password' }
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 1h. Si vous n'avez pas fait cette demande, ignorez cet email.</p>`)
+    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 1h. Si vous n'avez pas fait cette demande, ignorez cet email.</p>`)
   }
 
   private layout(title: string, content: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nourplay.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nour-play.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
   }
 }

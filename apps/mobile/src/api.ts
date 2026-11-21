@@ -107,16 +107,21 @@ export const api = {
       }),
 
     login: (data: { email: string; password: string }) =>
-      request<{ accessToken?: string; requiresTwoFactor?: boolean; userId?: string }>(
+      request<{ accessToken?: string; refreshToken?: string; requiresTwoFactor?: boolean; userId?: string }>(
         '/auth/login', { method: 'POST', body: JSON.stringify(data) }),
 
     loginWith2fa: (data: { userId: string; code: string }) =>
-      request<{ accessToken: string }>('/auth/login/2fa', { method: 'POST', body: JSON.stringify(data) }),
+      request<{ accessToken: string; refreshToken?: string }>('/auth/login/2fa', { method: 'POST', body: JSON.stringify(data) }),
 
     refresh: (refreshToken: string) =>
-      request<{ accessToken: string }>('/auth/refresh', {
+      request<{ accessToken: string; refreshToken?: string }>('/auth/refresh', {
         method: 'POST',
-        headers: { Cookie: `refresh_token=${refreshToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `refresh_token=${refreshToken}`,
+          'X-Refresh-Token': refreshToken,
+        },
+        body: JSON.stringify({ refreshToken }),
       }),
   },
 
@@ -145,6 +150,12 @@ export const api = {
       request<{ id: string }>(`/users/me/profiles/${profileId}/history`, {
         method: 'POST',
         body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
+    notifySessionExpired: (token: string, profileId: string) =>
+      request<{ notified: boolean }>(`/users/me/profiles/${profileId}/session-expired`, {
+        method: 'POST',
         ...bearer(token),
       }),
   },

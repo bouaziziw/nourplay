@@ -16,11 +16,11 @@ body {
 
 ::selection {
   color: #fff;
-  background: rgb(99 102 241 / 45%);
+  background: rgb(28 144 216 / 45%);
 }
 
 :focus-visible {
-  outline: 2px solid #818cf8;
+  outline: 2px solid #1c90d8;
   outline-offset: 2px;
 }
 

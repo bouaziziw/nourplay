@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { NotFoundException, BadRequestException } from '@nestjs/common'
+import { NotFoundException, BadRequestException, Logger } from '@nestjs/common'
 import { ModerationService } from './moderation.service'
 import { ReviewAction } from './dto/review-video.dto'
 import { VideoValidationStatus } from '@nourplay/db'
@@ -83,12 +83,18 @@ describe('ModerationService', () => {
         locale: 'fr',
       })
       email.sendVideoReviewEmail.mockRejectedValue(new Error('RESEND_API_KEY manquant'))
+      const loggerError = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
 
       const result = await service.reviewVideo(ACTOR.id, ACTOR.role, 'v1', {
         action: ReviewAction.APPROVE,
       })
       await new Promise(resolve => setImmediate(resolve))
 
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to send video review email'),
+        expect.anything(),
+      )
+      loggerError.mockRestore()
       expect(result.validationStatus).toBe('APPROVED')
       expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'video.approve' }))
     })

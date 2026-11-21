@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
@@ -48,7 +48,9 @@ export default function ChildPlaylistPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isOfflineFallback, setIsOfflineFallback] = useState(false)
-  const [page, setPage] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(VIDEOS_PER_PAGE)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const isSaved = saved.some(p => p.id === id)
 
@@ -82,19 +84,38 @@ export default function ChildPlaylistPage() {
     }
   }
 
+  const videos = playlist ? playlist.playlistVideos.sort((a, b) => a.position - b.position) : []
+  const hasMore = visibleCount < videos.length
+  const visibleVideos = videos.slice(0, visibleCount)
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore) {
+          setLoadingMore(true)
+          setTimeout(() => {
+            setVisibleCount(prev => Math.min(prev + VIDEOS_PER_PAGE, videos.length))
+            setLoadingMore(false)
+          }, 150)
+        }
+      },
+      { rootMargin: '250px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, videos.length])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
 
   if (!playlist) return null
-
-  const videos = playlist.playlistVideos.sort((a, b) => a.position - b.position)
-  const pageCount = Math.ceil(videos.length / VIDEOS_PER_PAGE)
-  const visibleVideos = videos.slice((page - 1) * VIDEOS_PER_PAGE, page * VIDEOS_PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -116,10 +137,10 @@ export default function ChildPlaylistPage() {
           <button
             onClick={handleToggleSave}
             disabled={saving}
-            title={isSaved ? 'Supprimer de l\'accès hors ligne' : 'Enregistrer hors ligne'}
+            title={isSaved ? "Supprimer de l'accès hors ligne" : 'Enregistrer hors ligne'}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
               saving ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
-              : isSaved ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+              : isSaved ? 'bg-sky-100 text-[#1c90d8] hover:bg-sky-200'
               : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200'
             }`}
           >
@@ -167,7 +188,7 @@ export default function ChildPlaylistPage() {
             <Link
               key={video.id}
               href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
-              className="group overflow-hidden rounded-2xl bg-white/80 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-lg active:scale-[0.98]"
+              className="group overflow-hidden rounded-2xl bg-white/80 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-lg active:scale-[0.98] border border-transparent hover:border-sky-200"
             >
               {/* Thumbnail */}
               <div className="relative w-full bg-gray-200" style={{ paddingBottom: '56.25%' }}>
@@ -176,58 +197,52 @@ export default function ChildPlaylistPage() {
                     src={video.thumbnailUrl}
                     alt={video.title}
                     fill
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100">
                     <span className="text-4xl">🎥</span>
                   </div>
                 )}
                 {/* Big play button overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-xl">
-                    <svg className="w-7 h-7 text-indigo-600 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                  <div className="w-14 h-14 bg-white/95 rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                    <svg className="w-6 h-6 text-[#1c90d8] ml-1" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   </div>
                 </div>
                 {video.durationSec && (
-                  <span className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded-md">
+                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded-md font-medium">
                     {formatDuration(video.durationSec)}
                   </span>
                 )}
-                <span className="absolute top-2 left-2 bg-indigo-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">
+                <span className="absolute top-2 left-2 bg-[#1c90d8] text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold shadow">
                   {position}
                 </span>
               </div>
               {/* Title */}
               <div className="p-3">
-                <p className="font-semibold text-gray-900 text-sm line-clamp-2 leading-snug">{video.title}</p>
+                <p className="font-semibold text-gray-900 text-sm line-clamp-2 leading-snug group-hover:text-[#1c90d8] transition-colors">{video.title}</p>
               </div>
             </Link>
           ))}
           </div>
-          {pageCount > 1 && (
-            <nav aria-label="Pagination des vidéos" className="flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setPage(current => Math.max(1, current - 1))}
-                disabled={page === 1}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Précédent
-              </button>
-              <span className="text-sm text-gray-500">Page {page} sur {pageCount}</span>
-              <button
-                type="button"
-                onClick={() => setPage(current => Math.min(pageCount, current + 1))}
-                disabled={page === pageCount}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Suivant
-              </button>
-            </nav>
-          )}
+
+          {/* Infinite scroll sentinel & status */}
+          <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center gap-2">
+            {loadingMore && (
+              <div className="flex items-center gap-2 text-sm text-[#1c90d8] font-medium">
+                <div className="animate-spin h-5 w-5 border-2 border-[#1c90d8] border-t-transparent rounded-full" />
+                <span>Chargement des vidéos suivantes…</span>
+              </div>
+            )}
+            {!hasMore && videos.length > VIDEOS_PER_PAGE && (
+              <span className="text-xs text-gray-400 font-medium">
+                Toutes les {videos.length} vidéos sont affichées
+              </span>
+            )}
+          </div>
         </>
       )}
     </div>

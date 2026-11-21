@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
   Inject,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import { Prisma } from '@nourplay/db'
@@ -14,6 +15,7 @@ import { CacheService } from '../../common/cache/cache.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
 import { allowedAgeRatings } from '../../common/age-utils'
+import { safeFetch } from '../../common/http/safe-fetch'
 import { SubmitVideoDto } from './dto/submit-video.dto'
 
 const VIDEO_SEARCH_TTL = 120
@@ -29,7 +31,7 @@ interface ParsedVideo {
 }
 
 @Injectable()
-export class VideoService {
+export class VideoService implements OnModuleInit {
   private readonly logger = new Logger(VideoService.name)
 
   constructor(
@@ -39,13 +41,65 @@ export class VideoService {
     private readonly audit: AuditService,
   ) {}
 
+  async onModuleInit() {
+    await this.ensureDefaultSources()
+  }
+
+  async ensureDefaultSources() {
+    try {
+      await this.prisma.videoSource.upsert({
+        where: { slug: 'youtube' },
+        update: { embedAllowed: true, isActive: true },
+        create: {
+          name: 'YouTube',
+          slug: 'youtube',
+          baseUrl: 'https://www.youtube.com',
+          embedAllowed: true,
+          cguVersion: '2024-01',
+          cguCheckedAt: new Date(),
+          embedPolicy: {
+            embedUrl: 'https://www.youtube.com/embed/{id}',
+            allowFullscreen: true,
+            requiresConsent: false,
+          },
+        },
+      })
+      await this.prisma.videoSource.upsert({
+        where: { slug: 'vimeo' },
+        update: { embedAllowed: true, isActive: true },
+        create: {
+          name: 'Vimeo',
+          slug: 'vimeo',
+          baseUrl: 'https://vimeo.com',
+          embedAllowed: true,
+          cguVersion: '2024-01',
+          cguCheckedAt: new Date(),
+          embedPolicy: {
+            embedUrl: 'https://player.vimeo.com/video/{id}',
+            allowFullscreen: true,
+            requiresConsent: false,
+          },
+        },
+      })
+      this.logger.log('Default video sources (YouTube, Vimeo) verified and active')
+    } catch (err) {
+      this.logger.warn(`Could not ensure default video sources: ${err instanceof Error ? err.message : err}`)
+    }
+  }
+
   async submit(userId: string, dto: SubmitVideoDto) {
     const parsed = this.parseVideoUrl(dto.url)
     if (!parsed) throw new BadRequestException('URL de vidéo non supportée (YouTube ou Vimeo uniquement)')
 
-    const source = await this.prisma.videoSource.findFirst({
+    let source = await this.prisma.videoSource.findFirst({
       where: { slug: parsed.sourceSlug, embedAllowed: true, isActive: true },
     })
+    if (!source && (parsed.sourceSlug === 'youtube' || parsed.sourceSlug === 'vimeo')) {
+      await this.ensureDefaultSources()
+      source = await this.prisma.videoSource.findFirst({
+        where: { slug: parsed.sourceSlug, embedAllowed: true, isActive: true },
+      })
+    }
     if (!source) throw new BadRequestException('Source vidéo non autorisée')
 
     // Déduplique : si la vidéo existe déjà et est approuvée, on la retourne
@@ -604,7 +658,7 @@ export class VideoService {
   private async fetchYouTubeMetadata(videoId: string, sourceSlug: string) {
     if (sourceSlug !== 'youtube' || !process.env.YOUTUBE_API_KEY) return {}
     try {
-      const res = await fetch(
+      const res = await safeFetch(
         `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet,contentDetails&key=${process.env.YOUTUBE_API_KEY}`,
       )
       const data = await res.json() as { items?: Array<{ snippet: { title: string; description: string; defaultAudioLanguage?: string; thumbnails: { high: { url: string } } }; contentDetails: { duration: string } }> }

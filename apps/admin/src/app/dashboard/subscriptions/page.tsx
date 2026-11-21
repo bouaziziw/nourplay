@@ -110,7 +110,7 @@ export default function SubscriptionsPage() {
         </div>
         <button
           onClick={() => setShowGrant(true)}
-          className="h-9 px-4 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+          className="h-9 px-4 text-sm font-medium bg-primary hover:bg-primary-600 text-white rounded-xl transition-colors shadow-sm"
         >
           + Attribuer
         </button>
@@ -311,7 +311,7 @@ export default function SubscriptionsPage() {
               <button
                 onClick={handleGrant}
                 disabled={granting || !grantUserId || !grantPlanId}
-                className="flex-1 h-9 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                className="flex-1 h-9 text-sm font-medium bg-primary hover:bg-primary-600 disabled:opacity-50 text-white rounded-xl transition-colors shadow-sm"
               >
                 {granting ? 'Attribution…' : 'Attribuer'}
               </button>

@@ -49,7 +49,7 @@ export default function ChildProfileSelector() {
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-10 w-10 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }

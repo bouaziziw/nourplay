@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../../../hooks/useAuth'
-import { api, ParentalApprovalRequest, VideoSubmission } from '../../../../lib/api'
+import { api, ApiError, ParentalApprovalRequest, VideoSubmission } from '../../../../lib/api'
 import { RemoteImage } from '../../../../components/RemoteImage'
 
 const AGE_RATING_LABELS: Record<string, string> = {
@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 export default function ApprovalsPage() {
-  const { token, user } = useAuth()
+  const { token, user, refreshToken } = useAuth()
   const [statusFilter, setStatusFilter] = useState('PENDING')
   const [requests, setRequests] = useState<ParentalApprovalRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,6 +39,7 @@ export default function ApprovalsPage() {
   const [submissions, setSubmissions] = useState<VideoSubmission[]>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
   const [submissionsError, setSubmissionsError] = useState('')
+  const [pollingErrorCount, setPollingErrorCount] = useState(0)
   const [approvingSubmission, setApprovingSubmission] = useState<string | null>(null)
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
@@ -57,29 +58,39 @@ export default function ApprovalsPage() {
   useEffect(() => { load() }, [load])
 
   const loadSubmissions = useCallback(async () => {
-    if (!token || !['PARENT', 'TEACHER'].includes(user?.role ?? '')) return
+    if (!token || !['PARENT', 'TEACHER', 'ADMIN', 'MODERATOR'].includes(user?.role ?? '')) return
     setSubmissionsLoading(true)
     setSubmissionsError('')
     try {
-      setSubmissions(await api.videos.mySubmissions(token))
+      const data = await api.videos.mySubmissions(token)
+      setSubmissions(data)
+      setPollingErrorCount(0)
     } catch (err) {
+      setPollingErrorCount(prev => prev + 1)
+      if (err instanceof ApiError && err.status === 401) {
+        // En cas de token expiré (401), rafraîchir la session sans boucler indéfiniment
+        await refreshToken().catch(() => {})
+        return
+      }
       setSubmissionsError(err instanceof Error ? err.message : 'Impossible de charger vos vidéos.')
     } finally {
       setSubmissionsLoading(false)
     }
-  }, [token, user?.role])
+  }, [token, user?.role, refreshToken])
 
   useEffect(() => { loadSubmissions() }, [loadSubmissions])
 
   useEffect(() => {
+    if (pollingErrorCount >= 3) return
+
     const hasPendingValidation = submissions.some(
       video => video.validationStatus === 'PENDING',
     )
     if (!hasPendingValidation) return
 
-    const interval = setInterval(() => { void loadSubmissions() }, 3000)
+    const interval = setInterval(() => { void loadSubmissions() }, 4000)
     return () => clearInterval(interval)
-  }, [submissions, loadSubmissions])
+  }, [submissions, loadSubmissions, pollingErrorCount])
 
   const handleApproveSubmission = async (videoId: string) => {
     if (!token) return

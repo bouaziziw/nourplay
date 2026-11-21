@@ -75,6 +75,8 @@ services:
       context: .
       dockerfile: workers/video-validator/Dockerfile
     container_name: nourplay-video-validator
+    # Désactivé en production : ne démarre que avec `--profile worker`
+    profiles: ['worker']
     restart: unless-stopped
     env_file: .env
     environment:

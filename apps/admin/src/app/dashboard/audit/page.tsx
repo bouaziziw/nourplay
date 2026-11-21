@@ -86,7 +86,7 @@ export default function AuditPage() {
         </div>
         <button
           type="submit"
-          className="h-9 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+          className="h-9 px-4 bg-primary hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
         >
           Filtrer
         </button>
@@ -103,7 +103,7 @@ export default function AuditPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
       ) : logs.length === 0 ? (
         <div className="text-center py-20 bg-gray-800 border border-gray-700 rounded-xl">

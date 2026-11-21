@@ -171,6 +171,28 @@ describe('SubscriptionService', () => {
       expect(result.maxProfiles).toBe(1)
       expect(result.maxPlaylists).toBe(5)
     })
+
+    it('retourne les profils et playlists illimités (999) pour un MODERATOR même sur plan gratuit', async () => {
+      prisma.user.findUnique.mockResolvedValue({ role: 'MODERATOR' })
+      prisma.subscription.findUnique.mockResolvedValue(null)
+
+      const result = await service.getUserPlanLimits('u-mod')
+
+      expect(result.maxProfiles).toBe(999)
+      expect(result.maxPlaylists).toBe(999)
+      expect(result.planSlug).toBe('moderator')
+    })
+
+    it('retourne les profils et playlists illimités (999) pour un ADMIN même sur plan gratuit', async () => {
+      prisma.user.findUnique.mockResolvedValue({ role: 'ADMIN' })
+      prisma.subscription.findUnique.mockResolvedValue(null)
+
+      const result = await service.getUserPlanLimits('u-admin')
+
+      expect(result.maxProfiles).toBe(999)
+      expect(result.maxPlaylists).toBe(999)
+      expect(result.planSlug).toBe('moderator')
+    })
   })
 
   // ── getMySubscription ─────────────────────────────────────────────────────

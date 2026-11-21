@@ -6,8 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AuthContext } from '../../hooks/useAuth'
-import { ChildSessionContext, isWithinSchedule, sessionElapsedMin } from '../../hooks/useChildSession'
+import { ChildSessionContext, isWithinSchedule } from '../../hooks/useChildSession'
+import { sendLocalScreenTimeNotification } from '../../hooks/usePushNotifications'
 import { api, PlaylistSummary } from '../../api'
+import { ChildCountdownTimer } from '../../components/ChildCountdownTimer'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChildPlaylists'>
@@ -35,11 +37,15 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
     const interval = setInterval(() => {
       if (!session || !childCtx) return
       if (!isWithinSchedule(session.viewingSchedule) || childCtx.isSessionExpired()) {
+        void sendLocalScreenTimeNotification(session.displayName)
+        if (auth?.token && session.profileId) {
+          void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+        }
         childCtx.clear()
       }
     }, 60_000)
     return () => clearInterval(interval)
-  }, [session, childCtx])
+  }, [session, childCtx, auth?.token])
 
   // Enforce schedule on mount
   useEffect(() => {
@@ -51,6 +57,10 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
       return
     }
     if (childCtx.isSessionExpired()) {
+      void sendLocalScreenTimeNotification(session.displayName)
+      if (auth?.token && session.profileId) {
+        void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+      }
       Alert.alert('Temps écoulé ⏰', `La session de ${session.displayName} est terminée pour aujourd'hui.`, [
         { text: 'OK', onPress: () => childCtx.clear() },
       ])
@@ -64,10 +74,6 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
     ])
   }
 
-  const remaining = session?.sessionLimitMin
-    ? Math.max(0, session.sessionLimitMin - sessionElapsedMin(session.activatedAt))
-    : null
-
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
@@ -79,8 +85,21 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
           <Text style={styles.profileName}>{session?.displayName}</Text>
         </View>
         <View style={styles.headerRight}>
-          {remaining !== null && (
-            <Text style={styles.remaining}>{remaining} min</Text>
+          {session && (
+            <ChildCountdownTimer
+              sessionLimitMin={session.sessionLimitMin}
+              dailyLimitMin={session.dailyLimitMin}
+              activatedAt={session.activatedAt}
+              onExpire={() => {
+                void sendLocalScreenTimeNotification(session.displayName)
+                if (auth?.token && session.profileId) {
+                  void api.users.notifySessionExpired(auth.token, session.profileId).catch(() => {})
+                }
+                Alert.alert('Temps écoulé ⏰', `La session de ${session.displayName} est terminée pour aujourd'hui.`, [
+                  { text: 'OK', onPress: () => childCtx?.clear() },
+                ])
+              }}
+            />
           )}
           <View style={styles.actions}>
             <TouchableOpacity
@@ -99,7 +118,7 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
       <Text style={styles.pageTitle}>Mes playlists</Text>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 64 }} size="large" color="#4f46e5" />
+        <ActivityIndicator style={{ marginTop: 64 }} size="large" color="#1c90d8" />
       ) : playlists.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>📚</Text>
@@ -140,29 +159,29 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#eef2ff' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.8)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.5)' },
+  safe: { flex: 1, backgroundColor: '#f0f8fd' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.85)', borderBottomWidth: 1, borderBottomColor: 'rgba(28,144,216,0.1)' },
   profile: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 12, fontWeight: '700', color: '#4f46e5' },
+  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 12, fontWeight: '700', color: '#1c90d8' },
   profileName: { fontSize: 14, fontWeight: '600', color: '#1f2937' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  parentBtn: { borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#eef2ff' },
-  parentText: { fontSize: 12, color: '#4f46e5', fontWeight: '700' },
-  remaining: { fontSize: 12, color: '#9ca3af' },
-  exitBtn: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  exitText: { fontSize: 12, color: '#6b7280' },
-  pageTitle: { fontSize: 22, fontWeight: '800', color: '#1e1b4b', marginHorizontal: 16, marginTop: 20, marginBottom: 12 },
+  parentBtn: { borderWidth: 1, borderColor: '#bae6fd', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0f9ff' },
+  parentText: { fontSize: 12, color: '#1c90d8', fontWeight: '700' },
+  remaining: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  exitBtn: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  exitText: { fontSize: 12, color: '#64748b' },
+  pageTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginHorizontal: 16, marginTop: 20, marginBottom: 12 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  cardIcon: { width: 52, height: 52, backgroundColor: '#e0e7ff', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#1c90d8', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  cardIcon: { width: 52, height: 52, backgroundColor: '#e0f2fe', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
   cardIconText: { fontSize: 24 },
   cardBody: { flex: 1 },
   cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
   cardDesc: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   cardCount: { fontSize: 12, color: '#9ca3af', marginTop: 4 },
-  chevron: { fontSize: 24, color: '#d1d5db', marginLeft: 8 },
+  chevron: { fontSize: 24, color: '#cbd5e1', marginLeft: 8 },
   emptyState: { alignItems: 'center', marginTop: 80 },
   emptyEmoji: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 15, color: '#6b7280' },

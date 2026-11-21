@@ -8,6 +8,7 @@ const makePrisma = () => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
     count: vi.fn(),
   },
   playlistVideo: {
@@ -91,6 +92,29 @@ describe('PlaylistService', () => {
       await expect(
         service.create('user-1', { name: 'Trop', visibility: 'PRIVATE' } as never),
       ).rejects.toThrow(BadRequestException)
+    })
+
+    it('permet à un MODERATOR de créer des playlists sans limite', async () => {
+      prisma.playlist.count.mockResolvedValue(100)
+      const created = { id: 'pl-mod', name: 'Moderator Playlist' }
+      prisma.playlist.create.mockResolvedValue(created)
+
+      const result = await service.create('user-mod', { name: 'Moderator Playlist', visibility: 'PRIVATE' } as never, 'MODERATOR')
+
+      expect(result).toBe(created)
+      expect(prisma.playlist.create).toHaveBeenCalled()
+    })
+
+    it('permet à un MODERATOR de créer des playlists sans limite en lisant le rôle en base si non fourni', async () => {
+      prisma.playlist.count.mockResolvedValue(100)
+      prisma.user.findUnique.mockResolvedValue({ role: 'MODERATOR' })
+      const created = { id: 'pl-mod-2', name: 'Moderator Playlist 2' }
+      prisma.playlist.create.mockResolvedValue(created)
+
+      const result = await service.create('user-mod-2', { name: 'Moderator Playlist 2', visibility: 'PRIVATE' } as never)
+
+      expect(result).toBe(created)
+      expect(prisma.playlist.create).toHaveBeenCalled()
     })
 
     it('rejects non-YouTube URLs before making an external request', async () => {
@@ -409,15 +433,25 @@ describe('PlaylistService', () => {
   describe('publishScheduled', () => {
     it('publie les playlists dont la date est échue', async () => {
       prisma.playlist.findMany.mockResolvedValue([{ id: 'pl-1' }, { id: 'pl-2' }])
-      prisma.playlist.update.mockResolvedValue({})
+      prisma.playlist.updateMany.mockResolvedValue({ count: 1 })
 
       await service.publishScheduled()
 
-      expect(prisma.playlist.update).toHaveBeenCalledTimes(2)
-      const firstCall = prisma.playlist.update.mock.calls[0][0]
+      expect(prisma.playlist.updateMany).toHaveBeenCalledTimes(2)
+      const firstCall = prisma.playlist.updateMany.mock.calls[0][0]
+      expect(firstCall.where).toEqual({
+        id: 'pl-1',
+        scheduledPublishAt: { lte: expect.any(Date) },
+        visibility: 'PRIVATE',
+        deletedAt: null,
+      })
+      expect(firstCall.where.scheduledPublishAt.lte).toEqual(
+        prisma.playlist.findMany.mock.calls[0][0].where.scheduledPublishAt.lte,
+      )
       expect(firstCall.data.visibility).toBe('SHARED_LINK')
       expect(firstCall.data.scheduledPublishAt).toBeNull()
       expect(typeof firstCall.data.shareToken).toBe('string')
+      expect(firstCall.data.shareToken).not.toBe(prisma.playlist.updateMany.mock.calls[1][0].data.shareToken)
     })
 
     it('ne fait rien si aucune playlist n\'est échue', async () => {
@@ -425,7 +459,29 @@ describe('PlaylistService', () => {
 
       await service.publishScheduled()
 
-      expect(prisma.playlist.update).not.toHaveBeenCalled()
+      expect(prisma.playlist.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('ne remplace pas le jeton si deux exécutions publient la même playlist', async () => {
+      prisma.playlist.findMany.mockResolvedValue([{ id: 'pl-1' }])
+      let token: string | undefined
+      prisma.playlist.updateMany.mockImplementation(async ({ data }) => {
+        if (token) return { count: 0 }
+        token = data.shareToken
+        return { count: 1 }
+      })
+
+      await Promise.all([service.publishScheduled(), service.publishScheduled()])
+
+      expect(prisma.playlist.updateMany).toHaveBeenCalledTimes(2)
+      expect(token).toBe(prisma.playlist.updateMany.mock.calls[0][0].data.shareToken)
+    })
+
+    it('propage les erreurs pour que le cron ne signale pas un succès incorrect', async () => {
+      prisma.playlist.findMany.mockResolvedValue([{ id: 'pl-1' }])
+      prisma.playlist.updateMany.mockRejectedValue(new Error('database unavailable'))
+
+      await expect(service.publishScheduled()).rejects.toThrow('database unavailable')
     })
   })
 

@@ -51,7 +51,7 @@ function formatDuration(sec: number | null): string {
 
 export default function VideosPage() {
   const locale = useLocale()
-  const { token, user } = useAuth()
+  const { token, user, refreshToken } = useAuth()
 
   const [q, setQ] = useState('')
   const [lang, setLang] = useState('')
@@ -95,6 +95,7 @@ export default function VideosPage() {
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
   const [submissionsError, setSubmissionsError] = useState('')
   const [submissionsPage, setSubmissionsPage] = useState(1)
+  const [pollingErrorCount, setPollingErrorCount] = useState(0)
   const [approvingSubmission, setApprovingSubmission] = useState<string | null>(null)
 
   // Report modal
@@ -106,29 +107,37 @@ export default function VideosPage() {
   const [reportError, setReportError] = useState('')
 
   const loadSubmissions = useCallback(async () => {
-    if (!token || !['PARENT', 'TEACHER'].includes(user?.role ?? '')) return
+    if (!token || !['PARENT', 'TEACHER', 'ADMIN', 'MODERATOR'].includes(user?.role ?? '')) return
     setSubmissionsLoading(true)
     setSubmissionsError('')
     try {
-      setSubmissions(await api.videos.mySubmissions(token))
+      const data = await api.videos.mySubmissions(token)
+      setSubmissions(data)
+      setPollingErrorCount(0)
     } catch (err) {
+      setPollingErrorCount(prev => prev + 1)
+      if (err instanceof ApiError && err.status === 401) {
+        await refreshToken().catch(() => {})
+        return
+      }
       setSubmissionsError(err instanceof Error ? err.message : 'Impossible de charger vos vidéos.')
     } finally {
       setSubmissionsLoading(false)
     }
-  }, [token, user?.role])
+  }, [token, user?.role, refreshToken])
 
   useEffect(() => { loadSubmissions() }, [loadSubmissions])
 
   useEffect(() => {
+    if (pollingErrorCount >= 3) return
     const hasPendingValidation = submissions.some(
       video => video.validationStatus === 'PENDING',
     )
     if (!hasPendingValidation) return
 
-    const interval = setInterval(() => { void loadSubmissions() }, 3000)
+    const interval = setInterval(() => { void loadSubmissions() }, 4000)
     return () => clearInterval(interval)
-  }, [submissions, loadSubmissions])
+  }, [submissions, loadSubmissions, pollingErrorCount])
 
   useEffect(() => {
     if (!token) return

@@ -9,6 +9,6 @@ import { NotificationModule } from '../notification/notification.module'
   imports: [SubscriptionModule, NotificationModule],
   controllers: [UserController],
   providers: [UserService, UserTasksService],
-  exports: [UserService],
+  exports: [UserService, UserTasksService],
 })
 export class UserModule {}

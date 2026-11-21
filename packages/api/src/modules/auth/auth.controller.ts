@@ -3,7 +3,7 @@ import {
   HttpCode, HttpStatus, UseGuards, Query, UnauthorizedException,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger'
-import { Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { createHash } from 'crypto'
 import { Throttle } from '@nestjs/throttler'
 import { AuthGuard } from '@nestjs/passport'
@@ -11,6 +11,7 @@ import { AuthService } from './auth.service'
 import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
+import { ResendVerificationDto } from './dto/resend-verification.dto'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
 import { ResetPasswordDto } from './dto/reset-password.dto'
 import { SetupTotpDto } from './dto/setup-totp.dto'
@@ -25,11 +26,13 @@ import { Public } from '../../common/decorators/public.decorator'
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator'
 
 const REFRESH_COOKIE = 'refresh_token'
+const isPreview = process.env.VERCEL_ENV === 'preview'
+const isProd = process.env.NODE_ENV === 'production'
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  secure: isProd || process.env.VERCEL === '1',
+  sameSite: (isPreview ? 'none' : isProd ? 'strict' : 'lax') as 'none' | 'strict' | 'lax',
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days persistent sliding session
   path: '/api/v1/auth',
 }
 
@@ -57,17 +60,17 @@ export class AuthController {
     return this.authService.verifyEmail(dto.token)
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Public()
   @Post('resend-verification')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @Throttle({ default: { limit: 3, ttl: 300000 } })
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 300000 } })
   @ApiOperation({ summary: 'Renvoyer l\'email de vérification' })
-  async resendVerification(@CurrentUser() user: JwtPayload, @Req() req: Request) {
-    const dbUser = await this.authService['prisma'].user.findUnique({
-      where: { id: user.sub },
-      select: { email: true, locale: true },
+  async resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request) {
+    const authHeader = req.headers['authorization']
+    return this.authService.resendVerification({
+      email: dto?.email,
+      authHeader,
     })
-    if (dbUser) await this.authService.sendVerificationEmail(user.sub, dbUser.email, dbUser.locale)
   }
 
   // ── Login ─────────────────────────────────────────────────────
@@ -89,7 +92,7 @@ export class AuthController {
 
     const { accessToken, refreshToken } = await this.authService.login(user.id, user.email, user.role, fingerprint)
     res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-    return { accessToken }
+    return { accessToken, refreshToken }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -142,7 +145,7 @@ export class AuthController {
     const fingerprint = this.authService.buildFingerprint(req.headers['user-agent'] || '', ip)
     const { accessToken, refreshToken } = await this.authService.login(user.id, user.email, user.role, fingerprint)
     res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-    return { accessToken }
+    return { accessToken, refreshToken }
   }
 
   @Public()
@@ -152,7 +155,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Rotation du refresh token' })
   @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'Aucun refresh token présent' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const token = req.cookies?.[REFRESH_COOKIE]
+    const token = req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken || (req.headers['x-refresh-token'] as string)
     if (!token) {
       res.status(HttpStatus.NO_CONTENT)
       return
@@ -163,7 +166,7 @@ export class AuthController {
     try {
       const { accessToken, refreshToken } = await this.authService.refreshTokens(tokenHash, fingerprint)
       res.cookie(REFRESH_COOKIE, refreshToken, COOKIE_OPTIONS)
-      return { accessToken }
+      return { accessToken, refreshToken }
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         res.clearCookie(REFRESH_COOKIE, { path: COOKIE_OPTIONS.path })

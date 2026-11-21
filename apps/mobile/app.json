@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "../web/public/icons/icon-maskable-512.png",
-        "backgroundColor": "#4f46e5"
+        "backgroundColor": "#1c90d8"
       },
       "package": "app.nourplay.mobile",
       "permissions": []
@@ -32,7 +32,7 @@
         {
           "image": "../web/public/icons/icon-512.png",
           "imageWidth": 200,
-          "backgroundColor": "#4f46e5"
+          "backgroundColor": "#1c90d8"
         }
       ],
       [

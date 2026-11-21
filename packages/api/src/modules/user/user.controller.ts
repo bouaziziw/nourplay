@@ -75,7 +75,7 @@ export class UserController {
   @Post('me/profiles')
   @ApiOperation({ summary: 'Créer un profil enfant' })
   createProfile(@CurrentUser() user: JwtPayload, @Body() dto: CreateProfileDto) {
-    return this.userService.createProfile(user.sub, dto)
+    return this.userService.createProfile(user.sub, dto, user.role)
   }
 
   @Get('me/profiles/:profileId')
@@ -192,6 +192,16 @@ export class UserController {
     @Param('profileId', ParseUUIDPipe) profileId: string,
   ) {
     return this.userService.getDailyWatchTime(user.sub, profileId)
+  }
+
+  @Post('me/profiles/:profileId/session-expired')
+  @ApiOperation({ summary: 'Alerter le parent de la fin du temps de visionnage de la session enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  notifySessionExpired(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.notifySessionExpired(user.sub, profileId)
   }
 
   // ── Progression vidéo ────────────────────────────────────────

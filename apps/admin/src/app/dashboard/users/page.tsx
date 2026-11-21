@@ -11,7 +11,7 @@ const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-red-500/20 text-red-400',
   MODERATOR: 'bg-amber-500/20 text-amber-400',
   TEACHER: 'bg-sky-500/20 text-sky-400',
-  PARENT: 'bg-indigo-500/20 text-indigo-400',
+  PARENT: 'bg-primary/20 text-sky-400',
 }
 
 export default function UsersPage() {
@@ -92,7 +92,7 @@ export default function UsersPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
       ) : users.length === 0 ? (
         <div className="text-center py-20 bg-gray-800 border border-gray-700 rounded-xl">
@@ -140,7 +140,7 @@ export default function UsersPage() {
                   <td className="px-4 py-3 text-right">
                     <Link
                       href={`/dashboard/users/${u.id}`}
-                      className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                      className="text-xs text-sky-400 hover:text-sky-300 font-medium"
                     >
                       Voir →
                     </Link>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Logo } from '@nourplay/ui'
 import { AuthProvider, useAuth } from '../../hooks/useAuth'
 import { ApiError } from '../../lib/api'
 
@@ -54,12 +55,9 @@ function LoginForm() {
     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-600 rounded-xl mb-4">
-            <span className="text-white font-black text-xl">N</span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">NourPlay Admin</h1>
-          <p className="text-gray-400 text-sm mt-1">Back-office</p>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <Logo size="lg" subtitle="Admin" theme="dark" className="justify-center mb-2" />
+          <p className="text-gray-400 text-sm">Back-office d&apos;administration sécurisé</p>
         </div>
 
         <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
@@ -79,7 +77,7 @@ function LoginForm() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   autoFocus
-                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="admin@exemple.com"
                 />
               </div>
@@ -90,14 +88,14 @@ function LoginForm() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="••••••••"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-10 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="w-full h-10 bg-primary hover:bg-primary-600 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50 shadow-md shadow-sky-950/30"
               >
                 {loading ? 'Connexion…' : 'Se connecter'}
               </button>
@@ -114,13 +112,13 @@ function LoginForm() {
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 autoFocus
-                className="w-full h-12 px-3 bg-gray-700 border border-gray-600 rounded-lg text-xl text-white text-center tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full h-12 px-3 bg-gray-700 border border-gray-600 rounded-xl text-xl text-white text-center tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="000000"
               />
               <button
                 type="submit"
                 disabled={loading || code.length < 6}
-                className="w-full h-10 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="w-full h-10 bg-primary hover:bg-primary-600 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50 shadow-sm"
               >
                 {loading ? 'Vérification…' : 'Vérifier'}
               </button>

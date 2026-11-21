@@ -118,7 +118,7 @@ export default function AppNavigator() {
 function ParentModeAction({ onPress }: { onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} style={{ paddingHorizontal: 10, paddingVertical: 6 }}>
-      <Text style={{ color: '#4f46e5', fontWeight: '700', fontSize: 13 }}>Parent</Text>
+      <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 13 }}>Parent</Text>
     </TouchableOpacity>
   )
 }
@@ -134,7 +134,7 @@ function LockParentModeAction() {
       }}
       style={{ paddingHorizontal: 10, paddingVertical: 6 }}
     >
-      <Text style={{ color: '#4f46e5', fontWeight: '700', fontSize: 13 }}>Enfant</Text>
+      <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 13 }}>Enfant</Text>
     </TouchableOpacity>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { Logo } from '@nourplay/ui'
 import { AuthProvider, useAuth } from '../../hooks/useAuth'
 
 const NAV = [
@@ -37,11 +38,8 @@ function Sidebar() {
   return (
     <aside className="sticky top-0 z-30 flex w-full shrink-0 flex-col border-b border-gray-800 bg-gray-900 md:h-screen md:w-60 md:border-b-0 md:border-r">
       {/* Logo */}
-      <div className="flex h-14 shrink-0 items-center border-b border-gray-800 px-4">
-        <div className="mr-2.5 flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 shadow-lg shadow-indigo-950/40">
-          <span className="text-white font-black text-sm">N</span>
-        </div>
-        <span className="text-sm font-bold tracking-tight text-white">NourPlay <span className="text-indigo-300">Admin</span></span>
+      <div className="flex h-16 shrink-0 items-center border-b border-gray-800 px-4">
+        <Logo size="sm" subtitle="Admin" theme="dark" />
       </div>
 
       {/* Role badge */}
@@ -65,7 +63,7 @@ function Sidebar() {
               href={link.href}
               className={`mx-0 flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:mx-1 ${
                 active
-                  ? 'bg-indigo-600/20 text-indigo-300 shadow-sm'
+                  ? 'bg-primary/20 text-sky-400 border border-primary/30 shadow-sm'
                   : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
               }`}
             >
@@ -102,7 +100,7 @@ function Guard({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -122,7 +120,7 @@ function Guard({ children }: { children: React.ReactNode }) {
               await logout()
               router.replace('/login')
             }}
-            className="mt-5 h-9 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+            className="mt-5 h-9 rounded-xl bg-[#1c90d8] px-4 text-sm font-medium text-white transition-colors hover:bg-[#1572ab] shadow-sm"
           >
             Se déconnecter
           </button>
@@ -134,7 +132,7 @@ function Guard({ children }: { children: React.ReactNode }) {
   if (user.role === 'MODERATOR' && pathname === '/dashboard') {
     return (
       <main className="flex min-w-0 flex-1 items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </main>
     )
   }

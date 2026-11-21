@@ -4,6 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": ["API_PROXY_ORIGIN", "ADMIN_PROXY_ORIGIN", "ADMIN_BASE_PATH"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "dev": {

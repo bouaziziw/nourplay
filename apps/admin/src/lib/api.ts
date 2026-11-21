@@ -1,4 +1,17 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL?.startsWith('/')) {
+    return process.env.NEXT_PUBLIC_API_URL
+  }
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host.endsWith('vercel.app') || host.endsWith('nour-play.app')) {
+      return '/api/v1'
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'
+}
+
+const API_URL = getApiUrl()
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {

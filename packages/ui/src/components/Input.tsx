@@ -26,12 +26,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-describedby={[error && errorId, hint && hintId].filter(Boolean).join(' ') || undefined}
           aria-invalid={!!error}
           className={[
-            'h-10 rounded-md border px-3 text-sm outline-none transition-colors',
+            'h-10 rounded-xl border px-3 text-sm outline-none transition-all duration-200',
             'placeholder:text-gray-400',
             'focus:border-primary focus:ring-2 focus:ring-primary/20',
             error
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-              : 'border-gray-300',
+              : 'border-gray-300 focus:border-primary',
             className,
           ].join(' ')}
           {...props}

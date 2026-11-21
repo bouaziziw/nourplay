@@ -37,7 +37,7 @@ export default function AccountScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#1c90d8" />
       </View>
     )
   }
@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { fontSize: 22, fontWeight: '800', color: '#111827' },
   card: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  avatarWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  avatarText: { fontSize: 24, fontWeight: '800', color: '#4f46e5' },
+  avatarWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#def0fa', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  avatarText: { fontSize: 24, fontWeight: '800', color: '#1c90d8' },
   email: { fontSize: 15, fontWeight: '600', color: '#111827' },
   role: { fontSize: 12, color: '#9ca3af', marginTop: 2, textTransform: 'capitalize' },
   section: { marginHorizontal: 16, marginTop: 16, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },

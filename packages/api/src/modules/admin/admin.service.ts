@@ -72,6 +72,10 @@ export class AdminService {
     const existing = await this.prisma.user.findUnique({ where: { id: userId } })
     if (!existing) throw new NotFoundException('Utilisateur introuvable')
 
+    if (existing.email?.trim().toLowerCase() === 'bouaziziw@gmail.com' && dto.role && dto.role !== UserRole.ADMIN) {
+      throw new BadRequestException('Impossible de rétrograder le compte super-administrateur principal')
+    }
+
     if (dto.role && existing.role === UserRole.ADMIN && dto.role !== UserRole.ADMIN) {
       const adminCount = await this.prisma.user.count({ where: { role: UserRole.ADMIN, deletedAt: null } })
       if (adminCount <= 1) throw new BadRequestException('Impossible de rétrograder le dernier administrateur')

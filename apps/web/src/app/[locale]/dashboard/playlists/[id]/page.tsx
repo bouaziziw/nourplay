@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
@@ -35,7 +35,9 @@ export default function ParentPlaylistPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
-  const [page, setPage] = useState(1)
+  const [visibleCount, setVisibleCount] = useState(VIDEOS_PER_PAGE)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const handleExport = async () => {
     if (!token || !playlist) return
@@ -57,10 +59,33 @@ export default function ParentPlaylistPage() {
       .finally(() => setLoading(false))
   }, [token, id])
 
+  const videos = playlist ? playlist.playlistVideos.sort((a, b) => a.position - b.position) : []
+  const hasMore = visibleCount < videos.length
+  const visibleVideos = videos.slice(0, visibleCount)
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore) return
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore) {
+          setLoadingMore(true)
+          setTimeout(() => {
+            setVisibleCount(prev => Math.min(prev + VIDEOS_PER_PAGE, videos.length))
+            setLoadingMore(false)
+          }, 150)
+        }
+      },
+      { rootMargin: '250px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, videos.length])
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -69,14 +94,10 @@ export default function ParentPlaylistPage() {
     return (
       <div className="text-center py-16">
         <p className="text-gray-500">{error || 'Playlist introuvable'}</p>
-        <button onClick={() => router.back()} className="mt-4 text-indigo-600 hover:underline text-sm">← Retour</button>
+        <button onClick={() => router.back()} className="mt-4 text-[#1c90d8] hover:underline text-sm font-medium">← Retour</button>
       </div>
     )
   }
-
-  const videos = playlist.playlistVideos.sort((a, b) => a.position - b.position)
-  const pageCount = Math.ceil(videos.length / VIDEOS_PER_PAGE)
-  const visibleVideos = videos.slice((page - 1) * VIDEOS_PER_PAGE, page * VIDEOS_PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -102,14 +123,14 @@ export default function ParentPlaylistPage() {
         <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
           <Link
             href={`/${locale}/dashboard/playlists/${id}/edit`}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            className="rounded-xl bg-[#1c90d8] px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#1572ab] shadow-sm"
           >
             Ajouter des vidéos
           </Link>
           <button
             onClick={handleExport}
             disabled={exporting || videos.length === 0}
-            className="text-sm text-gray-600 font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            className="text-sm text-gray-600 font-medium border border-gray-200 rounded-xl px-3.5 py-1.5 hover:bg-gray-50 transition-colors disabled:opacity-40 flex items-center gap-1.5 shadow-sm"
             title="Exporter en CSV"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,7 +140,7 @@ export default function ParentPlaylistPage() {
           </button>
           <Link
             href={`/${locale}/child`}
-            className="text-sm text-indigo-600 font-medium border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-50 transition-colors"
+            className="text-sm text-[#1c90d8] font-medium border border-sky-200 bg-sky-50 rounded-xl px-3.5 py-1.5 hover:bg-sky-100 transition-colors shadow-sm"
           >
             Mode enfant
           </Link>
@@ -140,7 +161,7 @@ export default function ParentPlaylistPage() {
             <Link
               key={video.id}
               href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
-              className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all"
+              className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-sky-300 hover:shadow-lg transition-all active:scale-[0.99]"
             >
               {/* Thumbnail */}
               <div className="relative w-full bg-gray-100" style={{ paddingBottom: '56.25%' }}>
@@ -162,13 +183,13 @@ export default function ParentPlaylistPage() {
                 {/* Play overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                    <svg className="w-5 h-5 text-indigo-600 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[#1c90d8] ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
                     </svg>
                   </div>
                 </div>
                 {video.durationSec && (
-                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded font-medium">
                     {formatDuration(video.durationSec)}
                   </span>
                 )}
@@ -176,13 +197,13 @@ export default function ParentPlaylistPage() {
 
               {/* Info */}
               <div className="p-3">
-                <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">{video.title}</p>
+                <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug group-hover:text-[#1c90d8] transition-colors">{video.title}</p>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-xs text-gray-400">#{position}</span>
+                  <span className="text-xs font-medium text-gray-400">#{position}</span>
                   {video.language && (
-                    <span className="text-xs text-gray-400 uppercase">{video.language}</span>
+                    <span className="text-xs text-gray-400 uppercase font-medium">{video.language}</span>
                   )}
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 ml-auto">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium ml-auto">
                     {video.ageRating.replace('_', '+')}
                   </span>
                 </div>
@@ -191,27 +212,21 @@ export default function ParentPlaylistPage() {
           ))}
         </div>
       )}
-      {pageCount > 1 && (
-        <nav aria-label="Pagination des vidéos" className="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => setPage(current => Math.max(1, current - 1))}
-            disabled={page === 1}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Précédent
-          </button>
-          <span className="text-sm text-gray-500">Page {page} sur {pageCount}</span>
-          <button
-            type="button"
-            onClick={() => setPage(current => Math.min(pageCount, current + 1))}
-            disabled={page === pageCount}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Suivant
-          </button>
-        </nav>
-      )}
+
+      {/* Infinite scroll sentinel & status */}
+      <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center gap-2">
+        {loadingMore && (
+          <div className="flex items-center gap-2 text-sm text-[#1c90d8] font-medium">
+            <div className="animate-spin h-5 w-5 border-2 border-[#1c90d8] border-t-transparent rounded-full" />
+            <span>Chargement des vidéos…</span>
+          </div>
+        )}
+        {!hasMore && videos.length > VIDEOS_PER_PAGE && (
+          <span className="text-xs text-gray-400 font-medium">
+            Toutes les {videos.length} vidéos sont affichées
+          </span>
+        )}
+      </div>
     </div>
   )
 }

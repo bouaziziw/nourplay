@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { Logger } from '@nestjs/common'
 import { UserTasksService } from './user.tasks'
 
 const makePrisma = () => ({
@@ -162,9 +163,12 @@ describe('UserTasksService', () => {
         makeUser({ id: 'u2', email: 'ok@test.com', childProfiles: [makeProfile({ watchHistory: [makeHistory('v2', 'Vidéo 2')] })] }),
       ])
       email.sendWeeklySummaryEmail.mockRejectedValueOnce(new Error('SMTP'))
+      const loggerWarn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
 
       await expect(service.sendWeeklyDigests()).resolves.not.toThrow()
       expect(email.sendWeeklySummaryEmail).toHaveBeenCalledTimes(2)
+      expect(loggerWarn).toHaveBeenCalledWith(expect.stringContaining('Weekly digest failed for u1'))
+      loggerWarn.mockRestore()
     })
 
     it('passe la locale de l\'utilisateur à l\'email', async () => {

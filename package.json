@@ -17,10 +17,37 @@
       "msgpackr-extract",
       "prisma",
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "@xmldom/xmldom@<0.8.15": "0.8.15",
+      "@xmldom/xmldom@>=0.9.0 <0.9.12": "0.9.12",
+      "body-parser@<1.20.9": "1.20.9",
+      "brace-expansion@<1.1.21": "1.1.21",
+      "brace-expansion@>=2.0.0 <2.1.7": "2.1.7",
+      "brace-expansion@>=5.0.0 <5.0.12": "5.0.12",
+      "browserslist@<=4.28.6": "4.28.7",
+      "compression@<1.8.2": "1.8.2",
+      "decode-uri-component@<=0.5.0": "0.5.1",
+      "fast-uri@>=3.0.0 <3.1.9": "3.1.9",
+      "form-data@>=4.0.0 <4.0.6": "4.0.6",
+      "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+      "lodash@>=4.0.0 <=4.17.22": "4.18.1",
+      "multer@>=2.0.0 <2.5.0": "2.5.0",
+      "nanoid@>=3.0.0 <3.3.18": "3.3.18",
+      "node-forge@<=1.4.2": "1.4.3",
+      "postcss@>=8.4.0 <=8.5.22": "8.5.23",
+      "proxy-addr@<2.0.8": "2.0.8",
+      "shell-quote@<=1.8.4": "1.11.0",
+      "serialize-javascript@<7.0.3": "7.0.3",
+      "source-map-js@<1.2.2": "1.2.2",
+      "undici@>=7.0.0 <7.30.1": "7.30.1",
+      "ws@>=7.0.0 <7.5.11": "7.5.11",
+      "ws@>=8.0.0 <8.21.0": "8.21.0"
+    }
   },
   "scripts": {
     "dev": "turbo run dev",
+    "worker:validator": "pnpm --filter @nourplay/video-validator dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
@@ -30,15 +57,20 @@
     "db:migrate": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:dev",
     "db:migrate:prod": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:deploy",
     "db:seed": "dotenv -e .env -- pnpm --filter @nourplay/db seed",
+    "db:make-admin": "dotenv -e .env -- tsx scripts/make-admin.ts",
     "db:studio": "dotenv -e .env -- pnpm --filter @nourplay/db studio",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore"
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
+    "vercel:validate": "node scripts/validate-vercel.js",
+    "vercel:build:api": "cd ../.. && pnpm --filter @nourplay/db generate && pnpm --filter @nourplay/db build && pnpm --filter @nourplay/api build",
+    "vercel:build:web": "cd ../.. && pnpm --filter @nourplay/web build",
+    "vercel:build:admin": "cd ../.. && pnpm --filter @nourplay/admin build"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.57.0",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "14.2.13",
     "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
     "dotenv-cli": "^7.1.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.5.28",
     "prettier": "^3.3.3",
     "turbo": "^2.3.3",
     "typescript": "^5.5.4"

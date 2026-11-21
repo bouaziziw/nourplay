@@ -1,4 +1,4 @@
-type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info'
+type Variant = 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info'
 
 interface BadgeProps {
   variant?: Variant
@@ -8,10 +8,11 @@ interface BadgeProps {
 
 const variantClasses: Record<Variant, string> = {
   default: 'bg-gray-100 text-gray-700',
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-amber-100 text-amber-700',
-  danger: 'bg-red-100 text-red-700',
-  info: 'bg-blue-100 text-blue-700',
+  primary: 'bg-sky-50 text-sky-700 border border-sky-200 font-semibold',
+  success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  warning: 'bg-amber-50 text-amber-700 border border-amber-200',
+  danger: 'bg-rose-50 text-rose-700 border border-rose-200',
+  info: 'bg-sky-100 text-sky-800',
 }
 
 export function Badge({ variant = 'default', children, className = '' }: BadgeProps) {

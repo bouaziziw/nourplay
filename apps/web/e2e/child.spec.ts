@@ -1,29 +1,22 @@
 import { test, expect } from '@playwright/test'
-
-async function loginAs(page: Parameters<typeof test.fn>[0]['page'], email: string, password: string) {
-  await page.goto('/login')
-  await page.fill('input[type=email]', email)
-  await page.fill('input[type=password]', password)
-  await page.click('button[type=submit]')
-  await page.waitForURL(/\/child$/, { timeout: 10_000 })
-}
+import { loginAs } from './auth-helper'
 
 // ── Child interface without an authenticated account ─────────────────────────
 
 test.describe('Child interface (unauthenticated)', () => {
   test('/child/favorites redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/favorites')
-    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 8_000 })
   })
 
   test('/child/playlists redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/playlists')
-    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 8_000 })
   })
 
   test('/child/watch/some-id redirects to profile selector when no session', async ({ page }) => {
     await page.goto('/child/watch/00000000-0000-0000-0000-000000000000')
-    await expect(page).toHaveURL(/\/login/, { timeout: 8_000 })
+    await expect(page).toHaveURL(/\/auth\/login/, { timeout: 8_000 })
   })
 })
 
@@ -50,7 +43,7 @@ test.describe('Child profile selector (authenticated)', () => {
     await page.getByRole('button', { name: 'Mode Parent' }).click()
     await page.getByLabel('Mot de passe du compte').fill('incorrect-password')
     await page.getByRole('button', { name: 'Déverrouiller' }).click()
-    await expect(page.getByRole('alert')).toContainText('incorrect')
+    await expect(page.getByRole('dialog').getByRole('alert')).toContainText('incorrect')
     await expect(page).toHaveURL(/\/child/)
 
     await page.getByLabel('Mot de passe du compte').fill(process.env.TEST_PASSWORD!)
@@ -63,7 +56,7 @@ test.describe('Child profile selector (authenticated)', () => {
     await page.goto('/child')
     // Either profile cards or "Aucun profil" empty state
     await expect(
-      page.locator('button.group, text=Aucun profil')
+      page.locator('button.group').or(page.getByText('Aucun profil'))
     ).toBeVisible({ timeout: 8_000 })
   })
 })

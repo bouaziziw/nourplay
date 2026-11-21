@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useLocale } from 'next-intl'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { io, Socket } from 'socket.io-client'
 import { useAuth } from '../../../../../hooks/useAuth'
@@ -35,7 +36,8 @@ interface ChatMessage {
   ts: number
 }
 
-export default function WatchRoomPage({ params }: { params: { code: string } }) {
+export default function WatchRoomPage() {
+  const params = useParams<{ code: string }>()
   const locale = useLocale()
   const { token, user, loading } = useAuth()
   const socketRef = useRef<Socket | null>(null)

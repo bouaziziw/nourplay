@@ -139,7 +139,7 @@ EMAIL_FROM=noreply@nourplay.app
 # OAuth Google
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=xxx
-GOOGLE_CALLBACK_URL=https://api.nourplay.app/api/v1/auth/google/callback
+GOOGLE_CALLBACK_URL=https://nour-play.app/api/v1/auth/google/callback
 
 # TOTP
 TOTP_APP_NAME=NourPlay

@@ -1,7 +1,10 @@
 import { defineConfig } from 'vitest/config'
+import swc from 'unplugin-swc'
 import { resolve } from 'path'
 
 export default defineConfig({
+  // SWC emits decorator metadata, required by NestJS constructor injection
+  plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
     globals: true,
     environment: 'node',
