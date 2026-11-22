@@ -44,5 +44,9 @@ Thumbs.db
 # Prisma
 packages/db/generated/
 
+# Expo Native Prebuild directories (managed by CNG / EAS)
+apps/mobile/android/
+apps/mobile/ios/
+
 # Uploads (never committed)
 uploads/

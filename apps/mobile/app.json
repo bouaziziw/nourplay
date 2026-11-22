@@ -3,11 +3,11 @@
     "name": "NourPlay",
     "slug": "nourplay",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "../web/public/icons/icon-512.png",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "app.nourplay.mobile",
       "infoPlist": {
         "NSAppTransportSecurity": {
@@ -16,21 +16,25 @@
       }
     },
     "android": {
+      "package": "app.nourplay.mobile",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "../web/public/icons/icon-maskable-512.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1c90d8"
       },
-      "package": "app.nourplay.mobile",
-      "permissions": []
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
-      "favicon": "../web/public/icons/icon-192.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "../web/public/icons/icon-512.png",
+          "image": "./assets/splash.png",
           "imageWidth": 200,
           "backgroundColor": "#1c90d8"
         }
@@ -40,7 +44,19 @@
         {
           "faceIDPermission": "Allow NourPlay to use Face ID to securely store tokens."
         }
+      ],
+      [
+        "./plugins/withAndroidTV",
+        {
+          "banner": "./assets/tv-banner.png"
+        }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b64014b1-0255-4cca-b481-a8d3e7099eca"
+      }
+    },
+    "owner": "wbouazizi"
   }
 }
