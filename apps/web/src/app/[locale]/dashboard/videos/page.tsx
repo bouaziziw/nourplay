@@ -195,7 +195,11 @@ export default function VideosPage() {
     }
   }, [token, q, lang, ageRating, selectedTags])
 
-  useEffect(() => { search(1) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (token) {
+      void search(1)
+    }
+  }, [token, search])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

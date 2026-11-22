@@ -70,27 +70,35 @@ test.describe('Video library (authenticated)', () => {
 
   test('add-to-playlist button appears on video card hover', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.route('**/api/v1/videos/search*', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      json: {
-        items: [{
-          id: 'video-id',
-          title: 'Vidéo de test',
-          thumbnailUrl: null,
-          embedUrl: 'https://www.youtube.com/watch?v=test',
-          durationSec: 60,
-          language: 'fr',
-          ageRating: 'ALL',
-        }],
-        total: 1,
-        page: 1,
-        pages: 1,
-      },
-    }))
+    await page.route('**/api/v1/videos/search*', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [{
+            id: 'video-id',
+            title: 'Vidéo de test',
+            thumbnailUrl: null,
+            embedUrl: 'https://www.youtube.com/watch?v=test',
+            durationSec: 60,
+            language: 'fr',
+            ageRating: 'ALL',
+          }],
+          total: 1,
+          page: 1,
+          pages: 1,
+        }),
+      })
+    })
     await page.locator('nav').getByRole('link', { name: 'Vidéothèque', exact: true }).first().click()
-    await page.getByRole('button', { name: 'Rechercher' }).click()
+    await page.waitForURL(/\/dashboard\/videos/, { timeout: 10_000 })
     const card = page.locator('.group').filter({ hasText: 'Vidéo de test' })
+    if (!await card.isVisible()) {
+      const searchBtn = page.getByRole('button', { name: 'Rechercher' })
+      if (await searchBtn.isVisible()) {
+        await searchBtn.click()
+      }
+    }
     await expect(card).toBeVisible({ timeout: 15_000 })
     await card.hover()
     await expect(card.getByRole('button', { name: '+ Playlist' })).toBeVisible()
