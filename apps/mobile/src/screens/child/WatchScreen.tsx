@@ -9,10 +9,10 @@ import { AuthContext } from '../../hooks/useAuth'
 import { ChildSessionContext } from '../../hooks/useChildSession'
 import { VideoPlayer } from '../../components/VideoPlayer'
 import { api, PlaylistDetail } from '../../api'
+import { getPlaylistTheme } from '../../utils/channelTheme'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Watch'>
-const PLAYLIST_VIDEOS_PER_PAGE = 6
 
 function formatDuration(sec: number | null): string {
   if (!sec) return ''
@@ -27,7 +27,11 @@ export default function WatchScreen({ route, navigation }: Props) {
 
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [displayedCount, setDisplayedCount] = useState(6)
+  const [isLoved, setIsLoved] = useState(false)
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false })
+  }, [navigation])
 
   useEffect(() => {
     if (!auth?.token) return
@@ -50,124 +54,152 @@ export default function WatchScreen({ route, navigation }: Props) {
   const currentIdx = sorted.findIndex(pv => pv.video.id === videoId)
   const video = sorted[currentIdx]?.video ?? null
   const nextVideo = sorted[currentIdx + 1]?.video ?? null
-  const visibleVideos = sorted.slice(0, displayedCount)
-  const hasMore = displayedCount < sorted.length
 
-  useEffect(() => {
-    if (currentIdx >= 0) {
-      setDisplayedCount(prev => Math.max(prev, currentIdx + 4))
-    }
-  }, [currentIdx, videoId])
+  const theme = playlist ? getPlaylistTheme(playlist.name) : null
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#1c90d8" />
+        <Text style={styles.loadingText}>Lancement de la vidéo... 🍿</Text>
       </View>
     )
   }
 
   if (!video) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center}>
+        <Text style={styles.emptyEmoji}>🎬</Text>
         <Text style={styles.notFound}>Vidéo introuvable.</Text>
-      </View>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backHomeBtn}>
+          <Text style={styles.backHomeText}>‹ Retour aux vidéos</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Player */}
-        <VideoPlayer
-          key={videoId}
-          embedUrl={video.embedUrl}
-          title={video.title}
-          onWatched={handleWatched}
-        />
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      {/* Friendly Kid Watch Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.backBtnIcon}>‹</Text>
+          <Text style={styles.backBtnText}>Retour</Text>
+        </TouchableOpacity>
 
-        {/* Video info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.videoTitle}>{video.title}</Text>
-          {playlist && (
-            <Text style={styles.playlistName}>
-              {playlist.name}{currentIdx >= 0 ? ` · #${sorted[currentIdx].position}` : ''}
-            </Text>
-          )}
+        {playlist && (
+          <View style={styles.playlistBadgePill}>
+            <Text style={styles.playlistBadgeEmoji}>{theme?.emoji ?? '🎬'}</Text>
+            <Text style={styles.playlistBadgeName} numberOfLines={1}>{playlist.name}</Text>
+          </View>
+        )}
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Main 16:9 Video Player */}
+        <View style={styles.playerCard}>
+          <VideoPlayer
+            key={videoId}
+            embedUrl={video.embedUrl}
+            title={video.title}
+            onWatched={handleWatched}
+          />
         </View>
 
-        {sorted.length > 1 && (
-          <View style={styles.playlistCard}>
-            <View style={styles.playlistHeader}>
-              <Text style={styles.playlistLabel}>Vidéos de la playlist</Text>
-              <Text style={styles.playlistCounter}>{currentIdx + 1} / {sorted.length}</Text>
+        {/* Video Info & Kid Actions */}
+        <View style={styles.infoCard}>
+          <View style={styles.titleRow}>
+            <Text style={styles.videoTitle}>{video.title}</Text>
+            <TouchableOpacity
+              onPress={() => setIsLoved(!isLoved)}
+              style={[styles.loveBtn, isLoved && styles.loveBtnActive]}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.loveEmoji}>{isLoved ? '❤️' : '🤍'}</Text>
+              <Text style={[styles.loveText, isLoved && styles.loveTextActive]}>
+                {isLoved ? 'J\'adore !' : 'J\'aime'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Big "Vidéo Suivante" Button (Children love this!) */}
+        {nextVideo && (
+          <TouchableOpacity
+            style={styles.nextBigButton}
+            activeOpacity={0.85}
+            onPress={() => navigation.replace('Watch', { videoId: nextVideo.id, playlistId })}
+          >
+            <View style={styles.nextBigIconBox}>
+              <Text style={styles.nextBigIcon}>⏭️</Text>
             </View>
-            <View style={styles.playlistGrid}>
-              {visibleVideos.map((item, index) => {
-                const active = item.video.id === videoId
+            <View style={styles.nextBigTextBox}>
+              <Text style={styles.nextBigLabel}>Vidéo suivante</Text>
+              <Text style={styles.nextBigTitle} numberOfLines={1}>{nextVideo.title}</Text>
+            </View>
+            <Text style={styles.nextBigArrow}>›</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Horizontal Carousel of other videos in this playlist */}
+        {sorted.length > 1 && (
+          <View style={styles.carouselSection}>
+            <View style={styles.carouselHeader}>
+              <Text style={styles.carouselTitle}>Toutes les vidéos ({sorted.length})</Text>
+              <Text style={styles.carouselCounter}>{currentIdx + 1} / {sorted.length}</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.carouselScroll}
+            >
+              {sorted.map((item, index) => {
+                const isActive = item.video.id === videoId
                 return (
                   <TouchableOpacity
                     key={item.video.id}
-                    style={[styles.playlistItem, active && styles.playlistItemActive]}
-                    accessibilityState={{ selected: active }}
+                    style={[styles.thumbCard, isActive && styles.thumbCardActive]}
+                    activeOpacity={0.8}
                     onPress={() => {
-                      if (!active) navigation.replace('Watch', { videoId: item.video.id, playlistId })
+                      if (!isActive) navigation.replace('Watch', { videoId: item.video.id, playlistId })
                     }}
                   >
-                    <View style={styles.playlistThumb}>
+                    <View style={styles.thumbBox}>
                       {item.video.thumbnailUrl ? (
-                        <Image source={{ uri: item.video.thumbnailUrl }} style={styles.nextThumb} resizeMode="cover" accessibilityLabel={item.video.title} />
+                        <Image source={{ uri: item.video.thumbnailUrl }} style={styles.thumbImg} resizeMode="cover" />
                       ) : (
-                        <View style={[styles.nextThumb, styles.nextThumbPlaceholder]}>
-                          <Text style={{ fontSize: 18 }}>🎥</Text>
+                        <View style={styles.thumbPlaceholder}>
+                          <Text style={{ fontSize: 24 }}>🎥</Text>
                         </View>
                       )}
-                      <View style={styles.playlistPosition}>
-                        <Text style={styles.playlistPositionText}>{index + 1}</Text>
+
+                      {isActive && (
+                        <View style={styles.playingBadge}>
+                          <Text style={styles.playingText}>En cours ▶</Text>
+                        </View>
+                      )}
+
+                      <View style={styles.posBadge}>
+                        <Text style={styles.posBadgeText}>{index + 1}</Text>
                       </View>
+
+                      {item.video.durationSec ? (
+                        <View style={styles.durBadge}>
+                          <Text style={styles.durBadgeText}>{formatDuration(item.video.durationSec)}</Text>
+                        </View>
+                      ) : null}
                     </View>
-                    <Text style={styles.playlistItemTitle} numberOfLines={2}>{item.video.title}</Text>
+
+                    <Text style={styles.thumbTitle} numberOfLines={2}>{item.video.title}</Text>
                   </TouchableOpacity>
                 )
               })}
-            </View>
-            {hasMore && (
-              <TouchableOpacity
-                onPress={() => setDisplayedCount(prev => Math.min(prev + 6, sorted.length))}
-                style={styles.loadMoreBtn}
-              >
-                <Text style={styles.loadMoreText}>Voir plus de vidéos ({sorted.length - displayedCount} restantes)</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Next video */}
-        {nextVideo && (
-          <View style={styles.nextCard}>
-            <Text style={styles.nextLabel}>Suivant</Text>
-            <TouchableOpacity
-              style={styles.nextItem}
-              activeOpacity={0.7}
-              onPress={() => navigation.replace('Watch', { videoId: nextVideo.id, playlistId })}
-            >
-              <View style={styles.nextThumbWrapper}>
-                {nextVideo.thumbnailUrl ? (
-                  <Image source={{ uri: nextVideo.thumbnailUrl }} style={styles.nextThumb} resizeMode="cover" accessibilityLabel={nextVideo.title} />
-                ) : (
-                  <View style={[styles.nextThumb, styles.nextThumbPlaceholder]}>
-                    <Text style={{ fontSize: 18 }}>🎥</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.nextInfo}>
-                <Text style={styles.nextTitle} numberOfLines={2}>{nextVideo.title}</Text>
-                {nextVideo.durationSec ? (
-                  <Text style={styles.nextDuration}>{formatDuration(nextVideo.durationSec)}</Text>
-                ) : null}
-              </View>
-              <Text style={styles.nextChevron}>›</Text>
-            </TouchableOpacity>
+            </ScrollView>
           </View>
         )}
       </ScrollView>
@@ -176,34 +208,182 @@ export default function WatchScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f8fd' },
-  scroll: { padding: 16, gap: 12 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f8fd' },
-  notFound: { fontSize: 15, color: '#6b7280' },
-  infoCard: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, padding: 16 },
-  videoTitle: { fontSize: 16, fontWeight: '700', color: '#111827', lineHeight: 22 },
-  playlistName: { fontSize: 13, color: '#6b7280', marginTop: 4 },
-  playlistCard: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, paddingVertical: 14 },
-  playlistHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, marginBottom: 10 },
-  playlistLabel: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8 },
-  playlistCounter: { fontSize: 11, color: '#9ca3af' },
-  playlistGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 14, gap: 10 },
-  playlistItem: { width: '48%', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#f3f4f6', backgroundColor: '#fff' },
-  playlistItemActive: { borderColor: '#1c90d8', backgroundColor: '#f0f9ff' },
-  playlistThumb: { width: '100%', aspectRatio: 16 / 9, position: 'relative', overflow: 'hidden' },
-  playlistPosition: { position: 'absolute', top: 6, left: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#1c90d8', alignItems: 'center', justifyContent: 'center' },
-  playlistPositionText: { color: '#fff', fontSize: 10, fontWeight: '700' },
-  playlistItemTitle: { padding: 8, fontSize: 12, lineHeight: 16, fontWeight: '600', color: '#111827' },
-  loadMoreBtn: { marginHorizontal: 14, marginTop: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', alignItems: 'center', justifyContent: 'center' },
-  loadMoreText: { color: '#1c90d8', fontSize: 12, fontWeight: '700' },
-  nextCard: { backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 16, padding: 14 },
-  nextLabel: { fontSize: 11, fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  nextItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  nextThumbWrapper: { width: 80, aspectRatio: 16 / 9, borderRadius: 8, overflow: 'hidden', flexShrink: 0 },
-  nextThumb: { width: '100%', height: '100%' },
-  nextThumbPlaceholder: { backgroundColor: '#def0fa', alignItems: 'center', justifyContent: 'center' },
-  nextInfo: { flex: 1 },
-  nextTitle: { fontSize: 13, fontWeight: '600', color: '#111827', lineHeight: 18 },
-  nextDuration: { fontSize: 11, color: '#9ca3af', marginTop: 3 },
-  nextChevron: { fontSize: 24, color: '#d1d5db' },
+  safe: { flex: 1, backgroundColor: '#f0f9ff' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#64748b' },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  notFound: { fontSize: 16, fontWeight: '700', color: '#475569', marginBottom: 16 },
+  backHomeBtn: { backgroundColor: '#1c90d8', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 10 },
+  backHomeText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
+
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0f2fe',
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  backBtnIcon: { fontSize: 24, fontWeight: '900', color: '#1c90d8', lineHeight: 26 },
+  backBtnText: { fontSize: 13, fontWeight: '700', color: '#1c90d8' },
+  playlistBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#e0f2fe',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    maxWidth: '60%',
+  },
+  playlistBadgeEmoji: { fontSize: 14 },
+  playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#0369a1' },
+
+  scroll: { padding: 14, gap: 14, paddingBottom: 32 },
+  playerCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#000000',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  infoCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  videoTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+    lineHeight: 22,
+  },
+  loveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fce7f3',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  loveBtnActive: { backgroundColor: '#f43f5e' },
+  loveEmoji: { fontSize: 14 },
+  loveText: { fontSize: 12, fontWeight: '800', color: '#be185d' },
+  loveTextActive: { color: '#ffffff' },
+
+  // Big Next Button
+  nextBigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fbbf24',
+    borderRadius: 20,
+    padding: 14,
+    shadowColor: '#d97706',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  nextBigIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  nextBigIcon: { fontSize: 20 },
+  nextBigTextBox: { flex: 1 },
+  nextBigLabel: { fontSize: 11, fontWeight: '800', color: '#78350f', textTransform: 'uppercase', letterSpacing: 0.6 },
+  nextBigTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginTop: 2 },
+  nextBigArrow: { fontSize: 28, fontWeight: '900', color: '#78350f', marginLeft: 8 },
+
+  // Carousel
+  carouselSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  carouselHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  carouselTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  carouselCounter: { fontSize: 12, fontWeight: '700', color: '#0284c7' },
+  carouselScroll: { paddingHorizontal: 14, gap: 12 },
+  thumbCard: {
+    width: 170,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  thumbCardActive: {
+    borderColor: '#1c90d8',
+    backgroundColor: '#f0f9ff',
+  },
+  thumbBox: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
+  thumbImg: { width: '100%', height: '100%' },
+  thumbPlaceholder: { backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
+  playingBadge: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(28, 144, 216, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playingText: { color: '#ffffff', fontSize: 11, fontWeight: '800' },
+  posBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  posBadgeText: { color: '#ffffff', fontSize: 10, fontWeight: '800' },
+  durBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  durBadgeText: { color: '#ffffff', fontSize: 9, fontWeight: '700' },
+  thumbTitle: { fontSize: 12, fontWeight: '700', color: '#0f172a', padding: 8, lineHeight: 16 },
 })

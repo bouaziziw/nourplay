@@ -136,6 +136,7 @@ export interface PlaylistSummary {
   visibility: string
   scheduledPublishAt: string | null
   _count: { playlistVideos: number }
+  playlistVideos?: { video: { id: string; title: string; thumbnailUrl: string | null } }[]
   importedVideoCount?: number
   pendingValidationCount?: number
   skippedVideoCount?: number

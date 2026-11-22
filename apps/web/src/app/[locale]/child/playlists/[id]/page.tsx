@@ -9,6 +9,7 @@ import { useChildSession } from '../../../../../hooks/useChildSession'
 import { useOfflinePlaylists, readOfflinePlaylist } from '../../../../../hooks/useOfflinePlaylists'
 import { api, PlaylistDetail } from '../../../../../lib/api'
 import { RemoteImage } from '../../../../../components/RemoteImage'
+import { getPlaylistTheme } from '../../../../../lib/channelTheme'
 
 const VIDEOS_PER_PAGE = 12
 
@@ -64,7 +65,7 @@ export default function ChildPlaylistPage() {
           setPlaylist(offline)
           setIsOfflineFallback(true)
         } else {
-          router.replace(`/${locale}/child`)
+          router.replace(`/${locale}/child/playlists`)
         }
       })
       .finally(() => setLoading(false))
@@ -109,137 +110,238 @@ export default function ChildPlaylistPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#1c90d8] border-t-transparent shadow-lg" />
+        <p className="text-base font-bold text-sky-800 animate-pulse">
+          Ouverture de la chaîne... 🎈
+        </p>
       </div>
     )
   }
 
   if (!playlist) return null
 
+  const theme = getPlaylistTheme(playlist.name, playlist.description)
+  const firstVideo = videos[0]?.video
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+    <div className="space-y-6 pb-12">
+      {/* Top Back Navigation Bar */}
+      <div className="flex items-center justify-between">
         <button
-          onClick={() => router.back()}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/80 text-gray-600 hover:bg-white transition-colors shadow-sm flex-shrink-0"
+          onClick={() => router.push(`/${locale}/child/playlists`)}
+          className="inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2.5 text-sm font-extrabold text-gray-700 shadow-sm transition hover:bg-white hover:text-sky-700 hover:shadow-md"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
+          <span>Toutes les chaînes</span>
         </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-gray-900 truncate">{playlist.name}</h1>
-          <p className="text-sm text-gray-500">{videos.length} vidéo{videos.length !== 1 ? 's' : ''}</p>
-        </div>
+
         {!isOfflineFallback && (
           <button
             onClick={handleToggleSave}
             disabled={saving}
             title={isSaved ? "Supprimer de l'accès hors ligne" : 'Enregistrer hors ligne'}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              saving ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
-              : isSaved ? 'bg-sky-100 text-[#1c90d8] hover:bg-sky-200'
-              : 'bg-white/80 text-gray-600 hover:bg-white border border-gray-200'
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-extrabold transition-all shadow-sm ${
+              saving
+                ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
+                : isSaved
+                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                : 'bg-white/90 text-gray-700 hover:bg-white border border-gray-200'
             }`}
           >
             {saving ? (
-              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             ) : isSaved ? (
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
+              <>
+                <span>💾</span>
+                <span>Enregistré hors-ligne</span>
+              </>
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
+              <>
+                <span>📥</span>
+                <span>Enregistrer hors-ligne</span>
+              </>
             )}
-            {isSaved ? 'Enregistré' : 'Enregistrer'}
           </button>
         )}
       </div>
 
-      {/* Offline fallback banner */}
+      {/* Hero Channel Showcase Banner */}
+      <section
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-xl"
+        style={{
+          background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+        }}
+      >
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start sm:items-center gap-5">
+            <div className="flex h-20 w-20 sm:h-24 sm:w-24 shrink-0 items-center justify-center rounded-3xl bg-white/20 backdrop-blur-md text-4xl sm:text-5xl shadow-inner border border-white/30">
+              {theme.emoji}
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3 py-1 text-xs font-black uppercase tracking-wider backdrop-blur-sm">
+                <span>{theme.illustration}</span>
+                <span>{theme.channelLabel}</span>
+              </div>
+              <h1 className="mt-2 text-2xl sm:text-4xl font-black tracking-tight drop-shadow-sm">
+                {playlist.name}
+              </h1>
+              {playlist.description && (
+                <p className="mt-1.5 text-sm sm:text-base font-medium text-white/90 max-w-2xl leading-relaxed">
+                  {playlist.description}
+                </p>
+              )}
+              <div className="mt-3 flex items-center gap-3 text-xs font-bold text-white/90">
+                <span className="rounded-lg bg-black/20 px-2.5 py-1">
+                  🎬 {videos.length} épisode{videos.length !== 1 ? 's' : ''}
+                </span>
+                {session?.displayName && (
+                  <span className="rounded-lg bg-black/20 px-2.5 py-1">
+                    👶 Pour {session.displayName}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action: Play All Button */}
+          {firstVideo && (
+            <div className="shrink-0">
+              <Link
+                href={`/${locale}/child/watch/${firstVideo.id}?playlist=${id}`}
+                className="inline-flex items-center gap-3 rounded-2xl bg-white px-6 py-4 text-base font-black text-gray-900 shadow-2xl transition hover:scale-105 active:scale-95"
+                style={{ color: theme.accentColor }}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full text-white shadow-md text-lg" style={{ backgroundColor: theme.accentColor }}>
+                  ▶
+                </span>
+                <span>Tout regarder</span>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Decorative background lights */}
+        <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-white/15 blur-2xl pointer-events-none" />
+        <div className="absolute right-1/4 -bottom-10 h-36 w-36 rounded-full bg-black/10 blur-xl pointer-events-none" />
+      </section>
+
+      {/* Offline fallback notice */}
       {isOfflineFallback && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 text-sm text-amber-700">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728M5.636 5.636a9 9 0 000 12.728M12 3v1m0 16v1M3 12h1m16 0h1" />
-          </svg>
-          Mode hors ligne — les vidéos nécessitent une connexion Internet.
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm font-semibold text-amber-800 shadow-sm">
+          <span className="text-xl">✈️</span>
+          <span>Mode hors ligne actif — les vidéos nécessitent une connexion pour la lecture en streaming.</span>
         </div>
       )}
 
+      {/* Videos Grid */}
       {videos.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-5xl mb-4">🎬</p>
-          <p className="text-gray-500">Aucune vidéo disponible pour le moment.</p>
+        <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white/70 p-16 text-center shadow-sm">
+          <span className="text-6xl">🎬</span>
+          <h3 className="mt-4 text-xl font-extrabold text-gray-800">Aucune vidéo dans cette chaîne</h3>
+          <p className="mt-1 text-sm font-medium text-gray-500">
+            Reviens bientôt ou demande à ton parent d'ajouter des épisodes.
+          </p>
         </div>
       ) : (
         <>
-          <div
-            aria-label="Vidéos de la playlist"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-          >
-          {visibleVideos.map(({ video, position }) => (
-            <Link
-              key={video.id}
-              href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
-              className="group overflow-hidden rounded-2xl bg-white/80 shadow-sm backdrop-blur-sm transition-all duration-200 hover:shadow-lg active:scale-[0.98] border border-transparent hover:border-sky-200"
-            >
-              {/* Thumbnail */}
-              <div className="relative w-full bg-gray-200" style={{ paddingBottom: '56.25%' }}>
-                {video.thumbnailUrl ? (
-                  <RemoteImage
-                    src={video.thumbnailUrl}
-                    alt={video.title}
-                    fill
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-50 to-blue-100">
-                    <span className="text-4xl">🎥</span>
-                  </div>
-                )}
-                {/* Big play button overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                  <div className="w-14 h-14 bg-white/95 rounded-full flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
-                    <svg className="w-6 h-6 text-[#1c90d8] ml-1" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </div>
-                </div>
-                {video.durationSec && (
-                  <span className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded-md font-medium">
-                    {formatDuration(video.durationSec)}
-                  </span>
-                )}
-                <span className="absolute top-2 left-2 bg-[#1c90d8] text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold shadow">
-                  {position}
-                </span>
-              </div>
-              {/* Title */}
-              <div className="p-3">
-                <p className="font-semibold text-gray-900 text-sm line-clamp-2 leading-snug group-hover:text-[#1c90d8] transition-colors">{video.title}</p>
-              </div>
-            </Link>
-          ))}
+          <div className="flex items-center justify-between pt-2">
+            <h2 className="text-xl font-extrabold text-gray-900">
+              Tous les épisodes 🍿
+            </h2>
+            <span className="text-xs font-bold text-gray-500">
+              {visibleVideos.length} sur {videos.length}
+            </span>
           </div>
 
-          {/* Infinite scroll sentinel & status */}
-          <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center gap-2">
+          <div
+            aria-label="Vidéos de la chaîne"
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          >
+            {visibleVideos.map(({ video, position }) => (
+              <Link
+                key={video.id}
+                href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
+                className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl border border-gray-100"
+              >
+                {/* 16:9 Thumbnail */}
+                <div
+                  className="relative w-full overflow-hidden bg-gray-100"
+                  style={{ aspectRatio: '16/9' }}
+                >
+                  {video.thumbnailUrl ? (
+                    <RemoteImage
+                      src={video.thumbnailUrl}
+                      alt={video.title}
+                      fill
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                    />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center text-4xl"
+                      style={{
+                        background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+                      }}
+                    >
+                      <span className="text-white drop-shadow">{theme.emoji}</span>
+                    </div>
+                  )}
+
+                  {/* Play overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#1c90d8] shadow-2xl transition-transform group-hover:scale-105">
+                      <span className="ml-1 text-xl font-black">▶</span>
+                    </div>
+                  </div>
+
+                  {/* Episode Position Badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-gray-900 shadow">
+                    <span>#{position}</span>
+                  </div>
+
+                  {/* Duration Badge */}
+                  {video.durationSec && (
+                    <div className="absolute bottom-2.5 right-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+                      {formatDuration(video.durationSec)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Video Info */}
+                <div className="flex flex-1 flex-col justify-between p-4">
+                  <h3 className="text-sm font-bold leading-snug text-gray-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
+                    {video.title}
+                  </h3>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
+                    <span className="text-xs font-bold text-sky-600">
+                      Regarder ›
+                    </span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-[#1c90d8] text-xs font-bold group-hover:bg-[#1c90d8] group-hover:text-white transition">
+                      ▶
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Infinite Scroll Sentinel */}
+          <div ref={sentinelRef} className="py-8 flex flex-col items-center justify-center gap-2">
             {loadingMore && (
-              <div className="flex items-center gap-2 text-sm text-[#1c90d8] font-medium">
-                <div className="animate-spin h-5 w-5 border-2 border-[#1c90d8] border-t-transparent rounded-full" />
+              <div className="flex items-center gap-2 text-sm font-bold text-[#1c90d8]">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1c90d8] border-t-transparent" />
                 <span>Chargement des vidéos suivantes…</span>
               </div>
             )}
             {!hasMore && videos.length > VIDEOS_PER_PAGE && (
-              <span className="text-xs text-gray-400 font-medium">
-                Toutes les {videos.length} vidéos sont affichées
+              <span className="text-xs font-bold text-gray-400">
+                🎉 Tous les épisodes sont affichés !
               </span>
             )}
           </div>

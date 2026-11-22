@@ -36,6 +36,19 @@ const PLAYLIST_SELECT = {
   createdAt: true,
   updatedAt: true,
   _count: { select: { playlistVideos: true } },
+  playlistVideos: {
+    take: 4,
+    orderBy: { position: 'asc' as const },
+    select: {
+      video: {
+        select: {
+          id: true,
+          title: true,
+          thumbnailUrl: true,
+        },
+      },
+    },
+  },
 }
 
 interface YouTubePlaylistVideo {

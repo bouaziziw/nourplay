@@ -50,3 +50,7 @@ apps/mobile/ios/
 
 # Uploads (never committed)
 uploads/
+
+# Android binaries
+*.aab
+*.apk

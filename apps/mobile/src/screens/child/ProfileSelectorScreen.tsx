@@ -102,8 +102,8 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.titleBlock}>
-        <Text style={styles.title}>Qui regarde ?</Text>
-        <Text style={styles.subtitle}>Choisissez votre profil pour commencer</Text>
+        <Text style={styles.title}>Qui regarde ? 🌈</Text>
+        <Text style={styles.subtitle}>Touche ton prénom pour commencer !</Text>
       </View>
 
       {loading ? (

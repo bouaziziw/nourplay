@@ -8,13 +8,13 @@ import { useChildSession } from "../../../../hooks/useChildSession";
 import { useOfflinePlaylists } from "../../../../hooks/useOfflinePlaylists";
 import {
   api,
-  PlaylistDetail,
   PlaylistSummary,
   VideoFavorite,
   VideoSummary,
 } from "../../../../lib/api";
 import { RemoteImage } from "../../../../components/RemoteImage";
 import { AddToPlaylistModal } from "../../../../components/AddToPlaylistModal";
+import { getPlaylistTheme } from "../../../../lib/channelTheme";
 
 type InProgressItem = {
   positionSec: number;
@@ -32,102 +32,29 @@ function formatDuration(seconds: number | null): string {
     : `${seconds} s`;
 }
 
-function Icon({
-  name,
-  className = "h-5 w-5",
-}: {
-  name: "heart" | "playlist" | "menu" | "close" | "arrow";
-  className?: string;
-}) {
-  if (name === "heart") {
-    return (
-      <svg
-        className={className}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A6 6 0 0116.5 3C19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-      </svg>
-    );
-  }
-  if (name === "playlist") {
-    return (
-      <svg
-        className={className}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        aria-hidden="true"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4 6h12M4 11h12M4 16h7m6-1v6m-3-3h6M19 4v5m-2.5-2.5h5"
-        />
-      </svg>
-    );
-  }
-  if (name === "menu") {
-    return (
-      <svg
-        className={className}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden="true"
-      >
-        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    );
-  }
-  if (name === "close") {
-    return (
-      <svg
-        className={className}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden="true"
-      >
-        <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-      </svg>
-    );
-  }
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}
+const FILTER_PILLS = [
+  { id: "all", label: "Toutes les chaînes", emoji: "⭐" },
+  { id: "stories", label: "Histoires & Contes", emoji: "🌙" },
+  { id: "animals", label: "Animaux & Nature", emoji: "🦁" },
+  { id: "fun", label: "Chansons & Fête", emoji: "🎵" },
+  { id: "learn", label: "Éveil & Découverte", emoji: "🔤" },
+  { id: "favorites", label: "Mes Favoris", emoji: "❤️" },
+  { id: "offline", label: "Hors ligne", emoji: "💾" },
+];
 
 export default function ChildPlaylistsPage() {
   const locale = useLocale();
   const { token } = useAuth();
   const { session } = useChildSession();
   const { saved: offlinePlaylists } = useOfflinePlaylists();
+
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [favorites, setFavorites] = useState<VideoFavorite[]>([]);
   const [inProgress, setInProgress] = useState<InProgressItem[]>([]);
-  const [selectedId, setSelectedId] = useState("favorites");
-  const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null);
+  const [activeFilter, setActiveFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [contentLoading, setContentLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [favoritePending, setFavoritePending] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(
-    null,
-  );
+  const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -148,10 +75,11 @@ export default function ChildPlaylistsPage() {
         setInProgress(nextInProgress);
       })
       .catch(() => {
-        if (active)
+        if (active) {
           setError(
-            "Impossible de charger vos playlists et favoris. Réessayez dans un instant.",
+            "Impossible de charger vos chaînes et favoris. Réessayez dans un instant."
           );
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -161,100 +89,15 @@ export default function ChildPlaylistsPage() {
     };
   }, [token, session?.profileId]);
 
-  useEffect(() => {
-    setContentLoading(false);
-    if (selectedId === "favorites") {
-      setPlaylist(null);
-      return;
-    }
-
-    const offlineId = selectedId.startsWith("offline:")
-      ? selectedId.slice("offline:".length)
-      : null;
-    const offlinePlaylist = offlineId
-      ? offlinePlaylists.find((item) => item.id === offlineId)
-      : null;
-    if (offlinePlaylist) {
-      setPlaylist({
-        id: offlinePlaylist.id,
-        name: offlinePlaylist.name,
-        description: offlinePlaylist.description,
-        visibility: "PRIVATE",
-        targetAgeGroup: [],
-        languages: [],
-        scheduledPublishAt: null,
-        createdAt: offlinePlaylist.savedAt,
-        playlistVideos: offlinePlaylist.videos.map((video, index) => ({
-          id: `${offlinePlaylist.id}-${video.id}`,
-          position: index + 1,
-          video,
-        })),
-      });
-      return;
-    }
-
-    if (!token || !selectedId) return;
-    let active = true;
-    setContentLoading(true);
-    setError("");
-    api.playlists
-      .getById(token, selectedId, session?.profileId)
-      .then((result) => {
-        if (active) setPlaylist(result);
-      })
-      .catch(() => {
-        if (active) {
-          setPlaylist(null);
-          setError("Impossible de charger cette playlist.");
-        }
-      })
-      .finally(() => {
-        if (active) setContentLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [selectedId, token, session?.profileId, offlinePlaylists]);
-
-  const videos = useMemo(() => {
-    if (selectedId === "favorites") {
-      return favorites.map((favorite) => ({
-        video: favorite.video,
-        position: null as number | null,
-      }));
-    }
-    return [...(playlist?.playlistVideos ?? [])]
-      .sort((a, b) => a.position - b.position)
-      .map((item) => ({ video: item.video, position: item.position }));
-  }, [favorites, playlist, selectedId]);
-
-  const currentTitle =
-    selectedId === "favorites"
-      ? "Mes favoris"
-      : (playlist?.name ??
-        playlists.find((item) => item.id === selectedId)?.name ??
-        offlinePlaylists.find((item) => `offline:${item.id}` === selectedId)
-          ?.name ??
-        "Playlist");
-
-  const selectItem = (id: string) => {
-    setSelectedId(id);
-    setSidebarOpen(false);
-    setError("");
-  };
-
   const toggleFavorite = async (video: VideoSummary) => {
     if (!token || !session?.profileId || favoritePending) return;
-    const existing = favorites.some(
-      (favorite) => favorite.videoId === video.id,
-    );
+    const existing = favorites.some((f) => f.videoId === video.id);
     const previous = favorites;
     setFavoritePending(video.id);
     setError("");
+
     if (existing) {
-      setFavorites(
-        previous.filter((favorite) => favorite.videoId !== video.id),
-      );
+      setFavorites(previous.filter((f) => f.videoId !== video.id));
     }
     try {
       if (existing) {
@@ -263,392 +106,524 @@ export default function ChildPlaylistsPage() {
         const favorite = await api.favorites.add(
           token,
           session.profileId,
-          video.id,
+          video.id
         );
-        setFavorites((current) => [
-          ...current.filter((item) => item.videoId !== video.id),
+        setFavorites((curr) => [
+          ...curr.filter((item) => item.videoId !== video.id),
           favorite,
         ]);
       }
     } catch {
       setFavorites(previous);
-      setError("Impossible de mettre à jour vos favoris. Veuillez réessayer.");
+      setError("Impossible de mettre à jour vos favoris.");
     } finally {
       setFavoritePending(null);
     }
   };
 
+  // Filtered Playlists
+  const filteredPlaylists = useMemo(() => {
+    if (activeFilter === "favorites") return [];
+    if (activeFilter === "offline") return [];
+    if (activeFilter === "all") return playlists;
+
+    return playlists.filter((pl) => {
+      const theme = getPlaylistTheme(pl.name, pl.description);
+      if (activeFilter === "stories")
+        return theme.emoji === "🌙" || theme.category === "stories";
+      if (activeFilter === "animals")
+        return theme.emoji === "🦁" || theme.category === "animals";
+      if (activeFilter === "fun")
+        return (
+          theme.emoji === "🎵" ||
+          theme.emoji === "🎨" ||
+          theme.category === "fun"
+        );
+      if (activeFilter === "learn")
+        return (
+          theme.emoji === "🔤" ||
+          theme.emoji === "🚀" ||
+          theme.category === "learn"
+        );
+      return false;
+    });
+  }, [playlists, activeFilter]);
+
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#1c90d8] border-t-transparent shadow-lg" />
+        <p className="text-base font-bold text-sky-800 animate-pulse">
+          Chargement de ton univers... 🎈
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setSidebarOpen((open) => !open)}
-          aria-expanded={sidebarOpen}
-          aria-controls="playlist-sidebar"
-          aria-label={
-            sidebarOpen
-              ? "Fermer le menu des playlists"
-              : "Ouvrir le menu des playlists"
-          }
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white bg-white text-gray-700 shadow-sm transition hover:bg-sky-50 lg:hidden"
-        >
-          <Icon name={sidebarOpen ? "close" : "menu"} />
-        </button>
-        <div>
-          <p className="text-sm font-medium text-[#1c90d8]">
-            Votre espace vidéo
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-            Playlists
-          </h1>
-        </div>
-      </div>
+    <div className="space-y-6 pb-12">
+      {/* Playful Welcome Header */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-600 p-6 sm:p-8 text-white shadow-xl">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md text-3xl sm:text-4xl shadow-inner border border-white/30">
+              🎈
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1 text-xs font-black tracking-wider uppercase backdrop-blur-sm">
+                <span>🌟</span>
+                <span>Espace Découverte</span>
+              </div>
+              <h1 className="mt-1 text-2xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm">
+                Coucou {session?.displayName || "toi"} !
+              </h1>
+              <p className="mt-1 text-sm sm:text-base font-medium text-sky-100 max-w-xl">
+                Choisis une chaîne pour regarder tes histoires, dessins animés et découvertes préférés !
+              </p>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="rounded-2xl bg-white/20 px-4 py-2 backdrop-blur-md border border-white/30 text-center">
+              <span className="block text-2xl font-black">
+                {playlists.length}
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-100">
+                Chaînes
+              </span>
+            </div>
+            <div className="rounded-2xl bg-white/20 px-4 py-2 backdrop-blur-md border border-white/30 text-center">
+              <span className="block text-2xl font-black">
+                {favorites.length}
+              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-pink-100">
+                Favoris
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Fun background decorative bubbles */}
+        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-xl pointer-events-none" />
+        <div className="absolute right-1/3 -bottom-10 h-32 w-32 rounded-full bg-sky-300/20 blur-lg pointer-events-none" />
+      </section>
+
+      {/* Kid-Friendly Category Filter Pills */}
+      <nav aria-label="Catégories de chaînes" className="flex items-center gap-2.5 overflow-x-auto pb-2 pt-1 no-scrollbar">
+        {FILTER_PILLS.map((pill) => {
+          const isActive = activeFilter === pill.id;
+          return (
+            <button
+              key={pill.id}
+              onClick={() => setActiveFilter(pill.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-extrabold transition-all duration-200 active:scale-95 shadow-sm ${
+                isActive
+                  ? "bg-[#1c90d8] text-white shadow-sky-200 shadow-md scale-105"
+                  : "bg-white/80 text-gray-700 hover:bg-white hover:text-sky-700 border border-gray-100"
+              }`}
+            >
+              <span className="text-base">{pill.emoji}</span>
+              <span>{pill.label}</span>
+              {pill.id === "favorites" && favorites.length > 0 && (
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-xs font-black ${
+                    isActive ? "bg-white/30 text-white" : "bg-pink-100 text-pink-700"
+                  }`}
+                >
+                  {favorites.length}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Error alert */}
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700 shadow-sm"
         >
           {error}
         </div>
       )}
 
-      <div className="relative flex min-h-[32rem] gap-5">
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Fermer le menu"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-gray-950/30 backdrop-blur-[1px] lg:hidden"
-          />
-        )}
-        <aside
-          id="playlist-sidebar"
-          className={`${
-            sidebarOpen
-              ? "fixed inset-y-0 left-0 z-40 w-[min(20rem,85vw)] overflow-y-auto rounded-r-3xl"
-              : "hidden"
-          } lg:relative lg:block lg:w-64 lg:shrink-0 lg:overflow-visible lg:rounded-3xl`}
-        >
-          <div className="h-full rounded-3xl border border-white/80 bg-white/80 p-4 shadow-sm backdrop-blur-xl">
-            <p className="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-              Bibliothèque
-            </p>
-            <nav aria-label="Playlists et favoris" className="space-y-1">
-              <button
-                type="button"
-                onClick={() => selectItem("favorites")}
-                aria-current={selectedId === "favorites" ? "page" : undefined}
-                className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
-                  selectedId === "favorites"
-                    ? "bg-pink-50 font-semibold text-pink-700 shadow-sm"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${selectedId === "favorites" ? "bg-white text-pink-500" : "bg-pink-50 text-pink-400"}`}
-                >
-                  <Icon name="heart" className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-sm">Favoris</span>
-                <span className="text-xs text-gray-400">
-                  {favorites.length}
-                </span>
-              </button>
-
-              <div className="px-3 pb-1 pt-5 text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-                Mes playlists
-              </div>
-              {playlists.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => selectItem(item.id)}
-                  aria-current={selectedId === item.id ? "page" : undefined}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
-                    selectedId === item.id
-                      ? "bg-sky-50 font-semibold text-[#1c90d8] shadow-sm"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <span
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${selectedId === item.id ? "bg-white text-[#1c90d8]" : "bg-sky-50 text-sky-400"}`}
-                  >
-                    <Icon name="playlist" className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {item.name}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {item._count.playlistVideos}
-                  </span>
-                </button>
-              ))}
-              {offlinePlaylists.length > 0 && (
-                <>
-                  <div className="px-3 pb-1 pt-5 text-xs font-bold uppercase tracking-[0.14em] text-gray-400">
-                    Disponibles hors ligne
-                  </div>
-                  {offlinePlaylists.map((item) => {
-                    const id = `offline:${item.id}`;
-                    return (
-                      <button
-                        type="button"
-                        key={id}
-                        onClick={() => selectItem(id)}
-                        aria-current={selectedId === id ? "page" : undefined}
-                        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
-                          selectedId === id
-                            ? "bg-sky-50 font-semibold text-[#1c90d8] shadow-sm"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                          <svg
-                            className="h-4 w-4"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                            aria-hidden="true"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                            />
-                          </svg>
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm">
-                          {item.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {item.videos.length}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-              {playlists.length === 0 && offlinePlaylists.length === 0 && (
-                <p className="px-3 py-3 text-sm leading-6 text-gray-400">
-                  Aucune playlist pour le moment.
-                </p>
-              )}
-            </nav>
-          </div>
-        </aside>
-
-        <section className="min-w-0 flex-1 rounded-3xl border border-white/80 bg-white/65 p-4 shadow-sm backdrop-blur-xl sm:p-6">
-          <div className="mb-5 flex items-end justify-between gap-3 border-b border-gray-100 pb-5">
-            <div className="min-w-0">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#1c90d8]">
-                {selectedId === "favorites"
-                  ? "À revoir encore"
-                  : "Votre sélection"}
-              </p>
-              <h2 className="truncate text-xl font-bold text-gray-900 sm:text-2xl">
-                {currentTitle}
+      {/* Continue Watching Section ("À reprendre") */}
+      {inProgress.length > 0 && activeFilter !== "offline" && (
+        <section aria-label="Reprendre le visionnage" className="rounded-3xl bg-white/70 p-5 shadow-sm backdrop-blur-md border border-white/80">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⏱️</span>
+              <h2 className="text-lg font-extrabold text-gray-900">
+                Continuer à regarder
               </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                {videos.length} vidéo{videos.length !== 1 ? "s" : ""}
+            </div>
+            <Link
+              href={`/${locale}/child/history`}
+              className="text-xs font-bold text-[#1c90d8] hover:underline"
+            >
+              Tout mon historique ›
+            </Link>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2 pt-1 no-scrollbar">
+            {inProgress.map(({ video, positionSec }) => {
+              const progress = video.durationSec
+                ? Math.min(
+                    100,
+                    Math.round((positionSec / video.durationSec) * 100)
+                  )
+                : 0;
+              return (
+                <Link
+                  key={video.id}
+                  href={`/${locale}/child/watch/${video.id}`}
+                  className="group relative w-56 shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md hover:-translate-y-1"
+                >
+                  <div
+                    className="relative w-full bg-gray-200 overflow-hidden"
+                    style={{ aspectRatio: "16/9" }}
+                  >
+                    {video.thumbnailUrl ? (
+                      <RemoteImage
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        fill
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-sky-100 to-indigo-100 text-3xl">
+                        🎬
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1c90d8] shadow-lg">
+                        ▶
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/30">
+                      <div
+                        className="h-full bg-sky-400"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-xs font-bold leading-snug text-gray-800 group-hover:text-[#1c90d8]">
+                      {video.title}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* VIEW 1: FAVORITES TAB */}
+      {activeFilter === "favorites" && (
+        <section aria-label="Mes vidéos favorites" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">
+                Mes Vidéos Préférées ❤️
+              </h2>
+              <p className="text-xs font-medium text-gray-500">
+                Toutes les vidéos que tu as aimées
               </p>
             </div>
-            <span className="hidden rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-[#1c90d8] sm:inline-flex">
-              NourPlay
+            <span className="rounded-xl bg-pink-50 px-3 py-1 text-xs font-extrabold text-pink-700">
+              {favorites.length} vidéo{favorites.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          {inProgress.length > 0 && selectedId === "favorites" && (
-            <section aria-label="Reprendre le visionnage" className="mb-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-800">
-                  À reprendre
-                </h3>
-                <Link
-                  href={`/${locale}/child/history`}
-                  className="text-xs font-semibold text-[#1c90d8] hover:text-[#1479be]"
-                >
-                  Tout voir
-                </Link>
-              </div>
-              <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-                {inProgress.map(({ video, positionSec }) => {
-                  const progress = video.durationSec
-                    ? Math.min(
-                        100,
-                        Math.round((positionSec / video.durationSec) * 100),
-                      )
-                    : 0;
-                  return (
-                    <Link
-                      key={video.id}
-                      href={`/${locale}/child/watch/${video.id}`}
-                      className="group w-44 shrink-0"
-                    >
-                      <div
-                        className="relative overflow-hidden rounded-xl bg-gray-100 shadow-sm"
-                        style={{ aspectRatio: "16/9" }}
-                      >
-                        {video.thumbnailUrl ? (
-                          <RemoteImage
-                            src={video.thumbnailUrl}
-                            alt={video.title}
-                            fill
-                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-3xl">
-                            🎥
-                          </div>
-                        )}
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/20">
-                          <div
-                            className="h-full bg-[#1c90d8]"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      </div>
-                      <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-gray-700">
-                        {video.title}
-                      </p>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {contentLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <div className="h-7 w-7 animate-spin rounded-full border-4 border-[#1c90d8] border-t-transparent" />
-            </div>
-          ) : videos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-white/60 px-5 py-14 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-2xl text-[#1c90d8]">
-                {selectedId === "favorites" ? "♡" : "♪"}
-              </div>
-              <h3 className="font-semibold text-gray-800">
-                {selectedId === "favorites"
-                  ? "Pas encore de favoris"
-                  : "Cette playlist est vide"}
+          {favorites.length === 0 ? (
+            <div className="rounded-3xl border-2 border-dashed border-pink-200 bg-white/70 p-12 text-center shadow-sm">
+              <span className="text-5xl">💖</span>
+              <h3 className="mt-3 text-lg font-extrabold text-gray-800">
+                Tu n'as pas encore de favoris !
               </h3>
-              <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-gray-500">
-                {selectedId === "favorites"
-                  ? "Ajoutez vos vidéos préférées en un clic et retrouvez-les ici."
-                  : "Les vidéos de cette playlist apparaîtront ici."}
+              <p className="mt-1 text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                Quand une vidéo te plaît, clique sur le cœur ❤️ pour la retrouver ici en un clin d'œil.
               </p>
+              <button
+                onClick={() => setActiveFilter("all")}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#1c90d8] px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#1472ad]"
+              >
+                <span>Découvrir des vidéos ⭐</span>
+              </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {videos.map(({ video, position }) => {
-                const isFavorite = favorites.some(
-                  (favorite) => favorite.videoId === video.id,
-                );
-                return (
-                  <article
-                    key={`${selectedId}-${video.id}`}
-                    className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {favorites.map(({ video }) => (
+                <article
+                  key={video.id}
+                  className="group relative overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-xl hover:-translate-y-1 border border-gray-100 flex flex-col"
+                >
+                  <Link
+                    href={`/${locale}/child/watch/${video.id}`}
+                    className="relative block w-full overflow-hidden bg-gray-100"
+                    style={{ aspectRatio: "16/9" }}
                   >
-                    <Link
-                      href={`/${locale}/child/watch/${video.id}${selectedId === "favorites" ? "" : `?playlist=${playlist?.id ?? selectedId}`}`}
-                      className="relative block overflow-hidden bg-gray-100"
-                      style={{ aspectRatio: "16/9" }}
-                    >
-                      {video.thumbnailUrl ? (
-                        <RemoteImage
-                          src={video.thumbnailUrl}
-                          alt={video.title}
-                          fill
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-100 to-blue-100 text-4xl">
-                          🎥
-                        </div>
-                      )}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/15">
-                        <span className="flex h-12 w-12 scale-90 items-center justify-center rounded-full bg-white/95 text-[#1c90d8] opacity-0 shadow-lg transition duration-200 group-hover:scale-100 group-hover:opacity-100">
-                          <svg
-                            className="ml-1 h-5 w-5"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            aria-hidden="true"
-                          >
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                        </span>
+                    {video.thumbnailUrl ? (
+                      <RemoteImage
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        fill
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-pink-100 to-rose-100 text-3xl">
+                        🎬
                       </div>
-                      {video.durationSec && (
-                        <span className="absolute bottom-2 right-2 rounded-md bg-gray-950/75 px-2 py-1 text-[11px] font-medium text-white">
-                          {formatDuration(video.durationSec)}
-                        </span>
-                      )}
-                      {position !== null && (
-                        <span className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-xs font-bold text-[#1c90d8] shadow-sm">
-                          {position}
-                        </span>
-                      )}
-                    </Link>
-                    <div className="p-3.5">
-                      <Link
-                        href={`/${locale}/child/watch/${video.id}${selectedId === "favorites" ? "" : `?playlist=${playlist?.id ?? selectedId}`}`}
-                        className="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-gray-900 hover:text-[#1c90d8]"
-                      >
-                        {video.title}
-                      </Link>
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleFavorite(video)}
-                          disabled={favoritePending === video.id}
-                          aria-label={
-                            isFavorite
-                              ? "Retirer des favoris"
-                              : "Ajouter aux favoris"
-                          }
-                          aria-pressed={isFavorite}
-                          className={`inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 ${
-                            isFavorite
-                              ? "bg-pink-50 text-pink-600 hover:bg-pink-100"
-                              : "bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-600"
-                          }`}
-                        >
-                          <Icon name="heart" className="h-4 w-4" />
-                          <span>{isFavorite ? "En favori" : "Favori"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelectedVideo({
-                              id: video.id,
-                              title: video.title,
-                            })
-                          }
-                          aria-label={`Ajouter ${video.title} à une playlist`}
-                          className="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-sky-50 px-2.5 py-2 text-xs font-semibold text-[#1c90d8] transition hover:-translate-y-0.5 hover:bg-sky-100"
-                        >
-                          <Icon name="playlist" className="h-4 w-4" />
-                          <span>Playlist</span>
-                        </button>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#1c90d8] shadow-xl">
+                        <span className="ml-0.5 text-base font-black">▶</span>
                       </div>
                     </div>
-                  </article>
+                    {video.durationSec && (
+                      <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-bold text-white">
+                        {formatDuration(video.durationSec)}
+                      </span>
+                    )}
+                  </Link>
+                  <div className="p-3.5 flex flex-col flex-1 justify-between gap-3">
+                    <Link
+                      href={`/${locale}/child/watch/${video.id}`}
+                      className="line-clamp-2 text-sm font-bold leading-snug text-gray-900 group-hover:text-[#1c90d8]"
+                    >
+                      {video.title}
+                    </Link>
+                    <div className="flex items-center justify-between gap-2 border-t border-gray-100 pt-2.5">
+                      <button
+                        onClick={() => toggleFavorite(video)}
+                        className="flex items-center gap-1.5 rounded-xl bg-pink-50 px-3 py-1.5 text-xs font-bold text-pink-600 hover:bg-pink-100 transition"
+                      >
+                        <span>❤️</span>
+                        <span>Retirer</span>
+                      </button>
+                      <Link
+                        href={`/${locale}/child/watch/${video.id}`}
+                        className="flex items-center gap-1 rounded-xl bg-sky-50 px-3 py-1.5 text-xs font-bold text-[#1c90d8] hover:bg-sky-100 transition"
+                      >
+                        <span>Regarder</span>
+                        <span>›</span>
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* VIEW 2: OFFLINE TAB */}
+      {activeFilter === "offline" && (
+        <section aria-label="Chaînes hors ligne" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">
+                Disponible Hors Ligne 💾
+              </h2>
+              <p className="text-xs font-medium text-gray-500">
+                Playlists enregistrées pour voyager sans connexion
+              </p>
+            </div>
+            <span className="rounded-xl bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">
+              {offlinePlaylists.length} playlist{offlinePlaylists.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {offlinePlaylists.length === 0 ? (
+            <div className="rounded-3xl border-2 border-dashed border-emerald-200 bg-white/70 p-12 text-center shadow-sm">
+              <span className="text-5xl">✈️</span>
+              <h3 className="mt-3 text-lg font-extrabold text-gray-800">
+                Aucune playlist hors ligne enregistrée
+              </h3>
+              <p className="mt-1 text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                Tu peux enregistrer tes playlists préférées pour les regarder en avion, en voiture ou sans wifi !
+              </p>
+              <button
+                onClick={() => setActiveFilter("all")}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#1c90d8] px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#1472ad]"
+              >
+                <span>Explorer les chaînes ⭐</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {offlinePlaylists.map((pl) => (
+                <Link
+                  key={pl.id}
+                  href={`/${locale}/child/playlists/${pl.id}`}
+                  className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-md transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl border border-gray-100"
+                >
+                  <div
+                    className="relative w-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center"
+                    style={{ aspectRatio: "16/9" }}
+                  >
+                    <span className="text-5xl">💾</span>
+                    <span className="absolute top-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-black text-emerald-800 shadow">
+                      ✈️ Hors-ligne
+                    </span>
+                    <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                      🎬 {pl.videos.length} vidéo{pl.videos.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-base font-extrabold text-gray-900 group-hover:text-emerald-700">
+                      {pl.name}
+                    </h3>
+                    {pl.description && (
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                        {pl.description}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* VIEW 3: CHANNELS & PLAYLISTS GRID (MAIN CHILD VIEW) */}
+      {activeFilter !== "favorites" && activeFilter !== "offline" && (
+        <section aria-label="Nos chaînes vidéos" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">
+                Toutes nos Chaînes 📺
+              </h2>
+              <p className="text-xs font-medium text-gray-500">
+                Clique sur une chaîne pour voir tous ses épisodes
+              </p>
+            </div>
+            <span className="rounded-xl bg-sky-50 px-3 py-1 text-xs font-extrabold text-[#1c90d8]">
+              {filteredPlaylists.length} chaîne{filteredPlaylists.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {filteredPlaylists.length === 0 ? (
+            <div className="rounded-3xl border-2 border-dashed border-sky-200 bg-white/70 p-12 text-center shadow-sm">
+              <span className="text-5xl">🎨</span>
+              <h3 className="mt-3 text-lg font-extrabold text-gray-800">
+                Pas encore de chaîne dans cette catégorie !
+              </h3>
+              <p className="mt-1 text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                Demande à ton parent d'ajouter de nouvelles playlists dans ton profil.
+              </p>
+              <button
+                onClick={() => setActiveFilter("all")}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#1c90d8] px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#1472ad]"
+              >
+                <span>Voir toutes les chaînes ⭐</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredPlaylists.map((pl) => {
+                const theme = getPlaylistTheme(pl.name, pl.description);
+                const firstThumb = pl.playlistVideos?.[0]?.video?.thumbnailUrl;
+                const videoCount = pl._count.playlistVideos;
+
+                return (
+                  <Link
+                    key={pl.id}
+                    href={`/${locale}/child/playlists/${pl.id}`}
+                    className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border border-gray-100"
+                  >
+                    {/* 16:9 Channel Cover */}
+                    <div
+                      className="relative w-full overflow-hidden"
+                      style={{
+                        aspectRatio: "16/9",
+                        background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+                      }}
+                    >
+                      {firstThumb ? (
+                        <RemoteImage
+                          src={firstThumb}
+                          alt={pl.name}
+                          fill
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white">
+                          <span className="text-5xl drop-shadow-md">
+                            {theme.emoji}
+                          </span>
+                          <span className="text-2xl opacity-75">
+                            {theme.illustration}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Dark overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-70 transition-opacity group-hover:opacity-85" />
+
+                      {/* Floating Channel Badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-xs font-black text-gray-900 shadow-md backdrop-blur-md">
+                        <span>{theme.emoji}</span>
+                        <span className="truncate max-w-[130px]">
+                          {theme.channelLabel}
+                        </span>
+                      </div>
+
+                      {/* Video Count Pill */}
+                      <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-bold text-white backdrop-blur-md">
+                        🎬 {videoCount} vidéo{videoCount !== 1 ? "s" : ""}
+                      </div>
+
+                      {/* Glowing Big Play Circle Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-[#1c90d8] shadow-2xl">
+                          <span className="ml-1 text-xl font-black">▶</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="flex flex-1 flex-col justify-between p-4 sm:p-5">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-extrabold text-gray-900 line-clamp-1 group-hover:text-[#1c90d8] transition-colors">
+                          {pl.name}
+                        </h3>
+                        {pl.description ? (
+                          <p className="mt-1 text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed">
+                            {pl.description}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs font-medium text-gray-400 italic">
+                            Chaîne jeunesse adaptée aux enfants
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-100">
+                        <span
+                          className="inline-flex items-center gap-1 text-xs font-extrabold"
+                          style={{ color: theme.accentColor }}
+                        >
+                          <span>Explorer la chaîne</span>
+                          <span className="text-sm">›</span>
+                        </span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-[#1c90d8] transition group-hover:bg-[#1c90d8] group-hover:text-white">
+                          ▶
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
                 );
               })}
             </div>
           )}
         </section>
-      </div>
+      )}
+
+      {/* Add To Playlist Modal */}
       {selectedVideo && token && (
         <AddToPlaylistModal
           videoId={selectedVideo.id}

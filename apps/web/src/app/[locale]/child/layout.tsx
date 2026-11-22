@@ -119,42 +119,54 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50">
       {/* Child header */}
       {token && (
-        <header className="bg-white/80 backdrop-blur-sm border-b border-white/50 px-4 h-14 flex items-center justify-between sticky top-0 z-40">
-          <div className="flex items-center gap-2">
+        <header className="bg-white/90 backdrop-blur-md border-b border-sky-100 px-4 h-16 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+          <div className="flex items-center gap-3">
             {session ? (
               <>
-                <Logo size="xs" showText={false} />
-                <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center text-sm font-bold text-primary">
-                  {session.displayName.slice(0, 2).toUpperCase()}
-                </div>
-                <span className="font-semibold text-gray-800 text-sm">{session.displayName}</span>
+                <Link href={`/${locale}/child/playlists`} className="flex items-center gap-2.5">
+                  <Logo size="xs" showText={false} />
+                  <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center text-sm font-black text-white shadow-sm">
+                    {session.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="font-extrabold text-gray-900 text-sm hidden sm:inline">{session.displayName}</span>
+                </Link>
               </>
             ) : (
               <Logo size="sm" subtitle="Enfant" />
             )}
-            {session && <>
-            <Link
-              href={`/${locale}/child/favorites`}
-              title="Mes favoris"
-              className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-pink-500 hover:bg-pink-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </Link>
-            <Link
-              href={`/${locale}/child/history`}
-              title="Mon historique"
-              className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </Link>
-            </>}
+            {session && (
+              <div className="flex items-center gap-1.5 ml-2 border-l border-gray-200 pl-3">
+                <Link
+                  href={`/${locale}/child/playlists`}
+                  title="Toutes les chaînes"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 text-[#1c90d8] font-black text-xs hover:bg-sky-100 transition-colors shadow-xs"
+                >
+                  <span>📺</span>
+                  <span className="hidden md:inline">Chaînes</span>
+                </Link>
+                <Link
+                  href={`/${locale}/child/favorites`}
+                  title="Mes favoris"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-pink-500 hover:bg-pink-50 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </Link>
+                <Link
+                  href={`/${locale}/child/history`}
+                  title="Mon historique"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </Link>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {session && (
               <ChildCountdownTimer
                 sessionLimitMin={session.sessionLimitMin}
@@ -172,16 +184,18 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
             )}
             <button
               onClick={() => setUnlockOpen(true)}
-              className="text-xs font-semibold text-[#1c90d8] hover:bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-sm"
+              className="text-xs font-black text-gray-700 hover:text-[#1c90d8] hover:bg-sky-50 border border-gray-200 hover:border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-xs flex items-center gap-1.5"
             >
-              Mode Parent
+              <span>🔒</span>
+              <span className="hidden sm:inline">Parents</span>
             </button>
             {session && (
               <button
                 onClick={() => { clear(); router.replace(`/${locale}/child`) }}
-                className="text-xs font-medium text-gray-500 hover:text-red-500 border border-gray-200 rounded-xl px-2.5 py-1.5 transition-colors"
+                className="text-xs font-bold text-gray-400 hover:text-rose-500 rounded-xl px-2 py-1.5 transition-colors"
+                title="Changer de profil"
               >
-                Changer de profil
+                👶
               </button>
             )}
           </div>

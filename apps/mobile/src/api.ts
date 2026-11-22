@@ -74,6 +74,7 @@ export interface PlaylistSummary {
   description: string | null
   visibility: string
   _count: { playlistVideos: number }
+  playlistVideos?: { video: { id: string; title: string; thumbnailUrl: string | null } }[]
 }
 
 export interface VideoSearchResult {

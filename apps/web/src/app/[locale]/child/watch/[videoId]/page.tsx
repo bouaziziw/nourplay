@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { useChildSession } from '../../../../../hooks/useChildSession'
@@ -10,7 +11,6 @@ import { RemoteImage } from '../../../../../components/RemoteImage'
 import { api, PlaylistDetail, VideoSummary, VideoSearchResult } from '../../../../../lib/api'
 
 const AGE_RATING_ORDER = ['ALL', 'AGE_4_PLUS', 'AGE_7_PLUS', 'AGE_10_PLUS', 'AGE_13_PLUS']
-const PLAYLIST_VIDEOS_PER_PAGE = 12
 const AGE_GROUP_MAX: Record<string, string> = {
   AGE_0_3: 'ALL', AGE_4_6: 'AGE_4_PLUS', AGE_7_9: 'AGE_7_PLUS',
   AGE_10_12: 'AGE_10_PLUS', AGE_13_15: 'AGE_13_PLUS',
@@ -159,12 +159,12 @@ export default function ChildWatchPage() {
   const video = playlistVideo ?? directVideo
   const supportsCC = !!(video && (video.embedUrl.includes('youtube.com') || video.embedUrl.includes('youtu.be') || video.embedUrl.includes('dailymotion.com')))
   const needsApproval = session && video && !isAgeAllowed(video.ageRating ?? 'ALL', session.ageGroup) && approvalStatus !== 'APPROVED'
-  const currentIndex = playlist?.playlistVideos.findIndex(pv => pv.video.id === videoId) ?? -1
+
   const sortedVideos = playlist
     ? [...playlist.playlistVideos].sort((a, b) => a.position - b.position)
     : []
   const currentSortedIndex = sortedVideos.findIndex(pv => pv.video.id === videoId)
-  const nextVideo = sortedVideos[currentSortedIndex + 1]?.video ?? null
+  const nextVideo = sortedVideos[currentSortedIndex + 1]?.video ?? (similarVideos[0] ?? null)
   const visiblePlaylistVideos = sortedVideos.slice(0, playlistVisibleCount)
   const hasMorePlaylist = playlistVisibleCount < sortedVideos.length
 
@@ -195,62 +195,81 @@ export default function ChildWatchPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
+      <div className="flex h-96 flex-col items-center justify-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#1c90d8] border-t-transparent shadow-lg" />
+        <p className="text-base font-bold text-sky-800 animate-pulse">
+          Préparation de ta vidéo... 🍿
+        </p>
       </div>
     )
   }
 
   if (!video) {
     return (
-      <div className="text-center py-16">
-        <p className="text-5xl mb-4">🎬</p>
-        <p className="text-gray-500 mb-4">Vidéo introuvable.</p>
+      <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white/70 p-16 text-center shadow-sm max-w-xl mx-auto my-12">
+        <p className="text-6xl mb-4">🎬</p>
+        <h2 className="text-xl font-extrabold text-gray-900 mb-2">Vidéo introuvable</h2>
+        <p className="text-sm font-medium text-gray-500 mb-6">
+          Cette vidéo n'est plus accessible ou a été retirée.
+        </p>
         <button
-          onClick={() => router.back()}
-          className="text-[#1c90d8] hover:underline text-sm font-medium"
+          onClick={() => router.push(`/${locale}/child/playlists`)}
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#1c90d8] px-6 py-3 text-sm font-extrabold text-white shadow-md hover:bg-[#1572ad]"
         >
-          ← Retour
+          <span>Retour aux chaînes ⭐</span>
         </button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
-      {/* Back button */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        {playlistId ? 'Retour à la playlist' : 'Retour'}
-      </button>
+    <div className="space-y-5 max-w-5xl mx-auto pb-12">
+      {/* Top Friendly Back Link */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => {
+            if (playlistId) {
+              router.push(`/${locale}/child/playlists/${playlistId}`)
+            } else {
+              router.push(`/${locale}/child/playlists`)
+            }
+          }}
+          className="inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 text-sm font-extrabold text-gray-700 shadow-sm transition hover:bg-white hover:text-sky-700 hover:shadow-md"
+        >
+          <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>{playlistId ? 'Retour à la chaîne' : 'Retour aux chaînes'}</span>
+        </button>
 
-      {/* Resume banner */}
+        {playlist && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3.5 py-1 text-xs font-black text-sky-800">
+            <span>📺</span>
+            <span>{playlist.name}</span>
+            {currentSortedIndex >= 0 && <span>(#{sortedVideos[currentSortedIndex]?.position})</span>}
+          </span>
+        )}
+      </div>
+
+      {/* Resume Banner */}
       {showResume && (
-        <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-xl px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-[#1c90d8] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-sky-800 font-medium">
+        <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-2xl px-5 py-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">⏱️</span>
+            <span className="text-sm text-sky-900 font-bold">
               Reprendre à {Math.floor(savedPosition / 60)}:{String(savedPosition % 60).padStart(2, '0')}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => { setStartAt(savedPosition); setShowResume(false) }}
-              className="h-7 px-3 bg-[#1c90d8] text-white text-xs font-semibold rounded-lg hover:bg-[#1572ab] transition-colors"
+              className="h-8 px-4 bg-[#1c90d8] text-white text-xs font-extrabold rounded-xl hover:bg-[#1572ab] transition-all shadow-sm"
             >
-              Reprendre
+              Reprendre ▶
             </button>
             <button
               onClick={() => { setStartAt(0); setShowResume(false) }}
-              className="h-7 px-3 text-xs text-[#1c90d8] hover:text-[#1572ab] border border-sky-200 rounded-lg transition-colors"
+              className="h-8 px-3 text-xs font-bold text-sky-700 hover:text-sky-900 bg-white border border-sky-200 rounded-xl transition-all"
             >
               Recommencer
             </button>
@@ -258,179 +277,243 @@ export default function ChildWatchPage() {
         </div>
       )}
 
-      {/* Player or approval gate */}
-      {needsApproval ? (
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 text-center shadow-sm space-y-4">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-            </svg>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Autorisation parentale requise</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Ce contenu est classé <strong>{video?.ageRating}</strong> et nécessite l&apos;accord d&apos;un parent.
-            </p>
-          </div>
-          {approvalStatus === 'PENDING' ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700 font-medium">
-              Demande envoyée — en attente de l&apos;accord d&apos;un parent
+      {/* Video Player or Approval Gate */}
+      <div className="relative overflow-hidden rounded-3xl bg-black shadow-2xl border border-white/20">
+        {needsApproval ? (
+          <div className="bg-white/95 p-8 text-center space-y-4">
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-3xl">
+              🛡️
             </div>
-          ) : approvalStatus === 'DENIED' ? (
-            <div className="space-y-3">
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-                Un parent a refusé cette demande.
+            <div>
+              <h2 className="text-xl font-extrabold text-gray-900">Accord parental requis</h2>
+              <p className="text-sm font-medium text-gray-500 mt-1">
+                Cette vidéo est réservée à la tranche <strong>{video?.ageRating}</strong>.
+              </p>
+            </div>
+            {approvalStatus === 'PENDING' ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-sm text-amber-800 font-bold">
+                Demande envoyée à ton parent ! ⏳
               </div>
+            ) : approvalStatus === 'DENIED' ? (
+              <div className="space-y-3">
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 text-sm font-bold text-rose-700">
+                  Un parent a refusé l'accès à ce contenu.
+                </div>
+                <button
+                  onClick={handleRequestApproval}
+                  disabled={requestingApproval}
+                  className="h-10 px-6 bg-[#1c90d8] text-white text-sm font-bold rounded-2xl hover:bg-[#1572ab] transition"
+                >
+                  {requestingApproval ? 'Envoi…' : 'Redemander l\'accord'}
+                </button>
+              </div>
+            ) : (
               <button
                 onClick={handleRequestApproval}
                 disabled={requestingApproval}
-                className="h-10 px-6 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] disabled:opacity-50 transition-colors shadow-sm"
+                className="h-11 px-8 bg-[#1c90d8] text-white text-sm font-extrabold rounded-2xl hover:bg-[#1572ab] transition shadow-md"
               >
-                {requestingApproval ? 'Envoi…' : 'Redemander l\'autorisation'}
+                {requestingApproval ? 'Demande en cours…' : 'Demander à mon parent 🙋'}
+              </button>
+            )}
+          </div>
+        ) : (
+          <VideoPlayer
+            key={`${videoId}-${startAt}-${ccEnabled}`}
+            embedUrl={video.embedUrl}
+            title={video.title}
+            startAt={startAt}
+            ccEnabled={ccEnabled}
+            onWatched={handleWatched}
+            onProgress={handleProgress}
+          />
+        )}
+      </div>
+
+      {/* Prominent Next Video Action Button */}
+      {nextVideo && (
+        <Link
+          href={`/${locale}/child/watch/${nextVideo.id}${playlistId ? `?playlist=${playlistId}` : ''}`}
+          className="group flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 sm:p-5 text-white shadow-xl transition-all duration-200 hover:scale-[1.01] hover:shadow-2xl active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-3.5 min-w-0">
+            <span className="flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl sm:text-3xl backdrop-blur-md shadow-inner">
+              ⏭️
+            </span>
+            <div className="min-w-0">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-100 backdrop-blur-sm">
+                <span>Épisode suivant</span>
+              </span>
+              <p className="mt-0.5 text-base sm:text-lg font-extrabold truncate drop-shadow-sm">
+                {nextVideo.title}
+              </p>
+            </div>
+          </div>
+
+          <span className="shrink-0 rounded-2xl bg-white px-5 py-3 text-xs sm:text-sm font-black text-emerald-800 shadow-lg group-hover:bg-emerald-50 transition">
+            Regarder ▶
+          </span>
+        </Link>
+      )}
+
+      {/* Controls & Title Row */}
+      <div className="rounded-3xl bg-white/90 p-5 shadow-sm backdrop-blur-md border border-white/80 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug">
+              {video.title}
+            </h1>
+            {playlist && (
+              <p className="mt-1 text-xs font-bold text-sky-600">
+                📺 {playlist.name}
+              </p>
+            )}
+          </div>
+
+          {/* Kid Love Button */}
+          {session?.profileId && (
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleRate('THUMBS_UP')}
+                className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 shadow-sm ${
+                  myRating === 'THUMBS_UP'
+                    ? 'bg-pink-500 text-white shadow-pink-200 shadow-md scale-105'
+                    : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                }`}
+              >
+                <span className="text-lg">❤️</span>
+                <span>{myRating === 'THUMBS_UP' ? "J'adore !" : "J'aime"}</span>
+              </button>
+              <button
+                onClick={() => handleRate('THUMBS_DOWN')}
+                title="Je n'aime pas"
+                className={`inline-flex items-center justify-center rounded-2xl h-10 w-10 text-sm font-extrabold transition-all duration-200 ${
+                  myRating === 'THUMBS_DOWN'
+                    ? 'bg-gray-700 text-white shadow'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                👎
               </button>
             </div>
-          ) : (
-            <button
-              onClick={handleRequestApproval}
-              disabled={requestingApproval}
-              className="h-10 px-6 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] disabled:opacity-50 transition-colors shadow-sm"
-            >
-              {requestingApproval ? 'Envoi en cours…' : 'Demander l\'autorisation'}
-            </button>
           )}
         </div>
-      ) : (
-        <VideoPlayer
-          key={`${videoId}-${startAt}-${ccEnabled}`}
-          embedUrl={video.embedUrl}
-          title={video.title}
-          startAt={startAt}
-          ccEnabled={ccEnabled}
-          onWatched={handleWatched}
-          onProgress={handleProgress}
-        />
-      )}
 
-      {/* Player controls row */}
-      {!needsApproval && (
-        <div className="flex items-center gap-2 px-1">
-          {/* CC toggle */}
-          <button
-            onClick={handleCCToggle}
-            disabled={!supportsCC}
-            title={
-              !supportsCC ? 'Sous-titres non disponibles pour cette source'
-              : ccEnabled ? 'Désactiver les sous-titres'
-              : 'Activer les sous-titres'
-            }
-            className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-bold transition-all ${
-              !supportsCC
-                ? 'opacity-30 cursor-not-allowed border-gray-200 text-gray-400'
-                : ccEnabled
-                ? 'bg-[#1c90d8] text-white border-[#1c90d8]'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-sky-300 hover:text-[#1c90d8]'
-            }`}
-          >
-            CC
-          </button>
-          {/* Reading mode toggle */}
-          <button
-            onClick={handleReadingModeToggle}
-            title={readingMode ? 'Quitter le mode lecture' : 'Mode lecture — afficher la description'}
-            className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-all ${
-              readingMode
-                ? 'bg-amber-500 text-white border-amber-500'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-amber-400 hover:text-amber-600'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            Lecture
-          </button>
-        </div>
-      )}
+        {/* Player accessibility options */}
+        {!needsApproval && (
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            {/* CC Toggle */}
+            <button
+              onClick={handleCCToggle}
+              disabled={!supportsCC}
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-xl border text-xs font-bold transition-all ${
+                !supportsCC
+                  ? 'opacity-30 cursor-not-allowed border-gray-200 text-gray-400'
+                  : ccEnabled
+                  ? 'bg-[#1c90d8] text-white border-[#1c90d8] shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-sky-300 hover:text-[#1c90d8]'
+              }`}
+            >
+              CC Sous-titres
+            </button>
 
-      {/* Video title + reading mode description */}
-      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm">
-        <h1 className="font-bold text-gray-900 text-lg leading-snug">{video.title}</h1>
-        {playlist && (
-          <p className="text-sm text-gray-500 mt-1">
-            {playlist.name}
-            {currentSortedIndex >= 0 && (
-              <span className="ml-2 text-xs text-gray-400">
-                · #{sortedVideos[currentSortedIndex]?.position}
-              </span>
-            )}
-          </p>
+            {/* Reading Mode Toggle */}
+            <button
+              onClick={handleReadingModeToggle}
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-xl border text-xs font-bold transition-all ${
+                readingMode
+                  ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-amber-400 hover:text-amber-600'
+              }`}
+            >
+              <span>📖</span>
+              <span>Mode Lecture</span>
+            </button>
+          </div>
         )}
+
+        {/* Reading Mode Text */}
         {Boolean(readingMode && ('description' in video) && video.description) && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-2 flex items-center gap-1">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              Mode lecture
+          <div className="mt-3 pt-3 border-t border-gray-100 bg-amber-50/60 rounded-2xl p-4">
+            <p className="text-xs font-black text-amber-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <span>📖</span>
+              <span>Histoire écrite & description</span>
             </p>
-            <p className="text-base leading-relaxed text-gray-700 whitespace-pre-line">{String(('description' in video) && video.description)}</p>
+            <p className="text-base leading-relaxed text-gray-800 whitespace-pre-line font-medium">
+              {String(('description' in video) && video.description)}
+            </p>
           </div>
         )}
       </div>
 
+      {/* Playlist Episodes Carousel / Grid */}
       {sortedVideos.length > 1 && playlistId && (
-        <section className="rounded-2xl bg-white/80 p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Vidéos de la playlist
-            </h2>
-            <span className="text-xs text-gray-400">
+        <section aria-label="Tous les épisodes de la chaîne" className="rounded-3xl bg-white/80 p-5 shadow-sm backdrop-blur-md border border-white/80 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📺</span>
+              <h2 className="text-lg font-extrabold text-gray-900">
+                Autres épisodes de cette chaîne
+              </h2>
+            </div>
+            <span className="text-xs font-bold text-gray-500">
               {currentSortedIndex + 1} / {sortedVideos.length}
             </span>
           </div>
-          <div
-            aria-label="Choisir une vidéo de la playlist"
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3"
-          >
-            {visiblePlaylistVideos.map(({ video: playlistItem, position }) => (
-              <button
-                key={playlistItem.id}
-                type="button"
-                aria-current={playlistItem.id === videoId ? 'true' : undefined}
-                onClick={() => router.push(`/${locale}/child/watch/${playlistItem.id}?playlist=${playlistId}`)}
-                className={`overflow-hidden rounded-xl border text-left transition-colors ${
-                  playlistItem.id === videoId
-                    ? 'border-[#1c90d8] bg-sky-50 ring-1 ring-[#1c90d8]'
-                    : 'border-gray-100 bg-white hover:border-sky-200'
-                }`}
-              >
-                <div className="relative aspect-video bg-gray-100">
-                  {playlistItem.thumbnailUrl ? (
-                    <RemoteImage
-                      src={playlistItem.thumbnailUrl}
-                      alt=""
-                      fill
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <span className="text-2xl">🎥</span>
-                    </div>
-                  )}
-                  <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#1c90d8] text-xs font-bold text-white shadow">
-                    {position}
-                  </span>
-                </div>
-                <span className="block p-2 text-xs font-semibold leading-snug text-gray-800 line-clamp-2">
-                  {playlistItem.title}
-                </span>
-              </button>
-            ))}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {visiblePlaylistVideos.map(({ video: item, position }) => {
+              const isCurrent = item.id === videoId
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => router.push(`/${locale}/child/watch/${item.id}?playlist=${playlistId}`)}
+                  className={`group overflow-hidden rounded-2xl border text-left transition-all duration-200 ${
+                    isCurrent
+                      ? 'border-[#1c90d8] bg-sky-50 ring-2 ring-[#1c90d8] shadow-md scale-[1.02]'
+                      : 'border-gray-100 bg-white hover:border-sky-300 hover:shadow'
+                  }`}
+                >
+                  <div className="relative aspect-video bg-gray-100 overflow-hidden">
+                    {item.thumbnailUrl ? (
+                      <RemoteImage
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        fill
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-3xl">
+                        🎬
+                      </div>
+                    )}
+                    <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#1c90d8] text-xs font-black text-white shadow">
+                      #{position}
+                    </span>
+                    {isCurrent && (
+                      <div className="absolute inset-0 bg-sky-600/20 flex items-center justify-center">
+                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black text-[#1c90d8] shadow">
+                          En cours ▶
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className={`line-clamp-2 text-xs font-bold leading-snug ${isCurrent ? 'text-[#1c90d8]' : 'text-gray-800'}`}>
+                      {item.title}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
-          {/* Infinite scroll sentinel for playlist */}
-          <div ref={playlistSentinelRef} className="py-3 flex flex-col items-center justify-center">
+
+          {/* Sentinel for infinite scroll */}
+          <div ref={playlistSentinelRef} className="py-2 flex justify-center">
             {loadingMorePlaylist && (
-              <div className="flex items-center gap-2 text-xs text-[#1c90d8] font-medium">
-                <div className="animate-spin h-4 w-4 border-2 border-[#1c90d8] border-t-transparent rounded-full" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1c90d8]">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#1c90d8] border-t-transparent" />
                 <span>Chargement de la suite…</span>
               </div>
             )}
@@ -438,100 +521,45 @@ export default function ChildWatchPage() {
         </section>
       )}
 
-      {/* Rating */}
-      {session?.profileId && (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm flex items-center justify-center gap-3">
-          <span className="text-sm text-gray-500">Tu as aimé ?</span>
-          <button
-            onClick={() => handleRate('THUMBS_UP')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              myRating === 'THUMBS_UP'
-                ? 'bg-[#1c90d8] text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" />
-            </svg>
-            J&apos;aime
-          </button>
-          <button
-            onClick={() => handleRate('THUMBS_DOWN')}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              myRating === 'THUMBS_DOWN'
-                ? 'bg-rose-500 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L10.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z" />
-            </svg>
-            Pas pour moi
-          </button>
-        </div>
-      )}
-
-      {/* Similar videos */}
-      {similarVideos.length > 0 && (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-3 font-medium">Vous pourriez aimer</p>
-          <div className="grid grid-cols-2 gap-3">
+      {/* Similar Videos if not in playlist */}
+      {!playlistId && similarVideos.length > 0 && (
+        <section aria-label="Tu pourrais aimer" className="rounded-3xl bg-white/80 p-5 shadow-sm backdrop-blur-md border border-white/80 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">✨</span>
+            <h2 className="text-lg font-extrabold text-gray-900">
+              Tu pourrais aimer aussi
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {similarVideos.map(sv => (
               <button
                 key={sv.id}
-                onClick={() => router.push(`/${locale}/child/watch/${sv.id}${playlistId ? `?playlist=${playlistId}` : ''}`)}
-                className="text-left group"
+                onClick={() => router.push(`/${locale}/child/watch/${sv.id}`)}
+                className="group overflow-hidden rounded-2xl bg-white border border-gray-100 text-left transition hover:shadow-md hover:-translate-y-1"
               >
-                <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-1.5" style={{ paddingBottom: '56.25%' }}>
+                <div className="relative aspect-video bg-gray-100 overflow-hidden">
                   {sv.thumbnailUrl ? (
-                    <RemoteImage src={sv.thumbnailUrl} alt={sv.title} fill className="absolute inset-0 w-full h-full object-cover" />
+                    <RemoteImage
+                      src={sv.thumbnailUrl}
+                      alt={sv.title}
+                      fill
+                      className="h-full w-full object-cover transition group-hover:scale-105"
+                    />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-2xl">🎥</span>
+                    <div className="flex h-full items-center justify-center text-3xl">
+                      🎬
                     </div>
                   )}
                 </div>
-                <p className="text-xs font-semibold text-gray-800 line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
-                  {sv.title}
-                </p>
+                <div className="p-2.5">
+                  <p className="line-clamp-2 text-xs font-bold text-gray-800 group-hover:text-[#1c90d8]">
+                    {sv.title}
+                  </p>
+                </div>
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Next video */}
-      {nextVideo && (
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-3 font-medium">Suivant</p>
-          <button
-            onClick={() => router.push(`/${locale}/child/watch/${nextVideo.id}?playlist=${playlistId}`)}
-            className="w-full flex items-center gap-3 text-left group"
-          >
-            <div className="w-24 flex-shrink-0 relative bg-gray-100 rounded-lg overflow-hidden" style={{ paddingBottom: '42%' }}>
-              {nextVideo.thumbnailUrl ? (
-                <RemoteImage
-                  src={nextVideo.thumbnailUrl}
-                  alt={nextVideo.title}
-                  fill
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl">🎥</span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
-                {nextVideo.title}
-              </p>
-            </div>
-            <svg className="w-5 h-5 text-gray-300 group-hover:text-[#1c90d8] flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+        </section>
       )}
     </div>
   )

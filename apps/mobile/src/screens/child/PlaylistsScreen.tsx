@@ -1,7 +1,7 @@
-import React, { useContext, useEffect, useState, useCallback } from 'react'
+import React, { useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Image, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -10,9 +10,18 @@ import { ChildSessionContext, isWithinSchedule } from '../../hooks/useChildSessi
 import { sendLocalScreenTimeNotification } from '../../hooks/usePushNotifications'
 import { api, PlaylistSummary } from '../../api'
 import { ChildCountdownTimer } from '../../components/ChildCountdownTimer'
+import { getPlaylistTheme } from '../../utils/channelTheme'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChildPlaylists'>
+
+const FILTER_PILLS = [
+  { id: 'all', label: 'Tout', emoji: '⭐' },
+  { id: 'stories', label: 'Histoires', emoji: '🌙' },
+  { id: 'animals', label: 'Animaux', emoji: '🦁' },
+  { id: 'fun', label: 'Chansons', emoji: '🎵' },
+  { id: 'learn', label: 'Éveil', emoji: '🔤' },
+]
 
 export default function ChildPlaylistsScreen({ navigation }: Props) {
   const auth = useContext(AuthContext)
@@ -21,6 +30,7 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
 
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState('all')
 
   const load = useCallback(() => {
     if (!auth?.token) return
@@ -74,16 +84,32 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
     ])
   }
 
+  const filteredPlaylists = useMemo(() => {
+    if (activeFilter === 'all') return playlists
+    return playlists.filter(pl => {
+      const theme = getPlaylistTheme(pl.name, pl.description)
+      if (activeFilter === 'stories' && (theme.emoji === '🌙' || theme.emoji === '📚')) return true
+      if (activeFilter === 'animals' && theme.emoji === '🦁') return true
+      if (activeFilter === 'fun' && (theme.emoji === '🎵' || theme.emoji === '🎨')) return true
+      if (activeFilter === 'learn' && (theme.emoji === '🔤' || theme.emoji === '🚀')) return true
+      return false
+    })
+  }, [playlists, activeFilter])
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
+      {/* Friendly Kid Top Bar */}
       <View style={styles.header}>
-        <View style={styles.profile}>
+        <View style={styles.profileBox}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{session?.displayName.slice(0, 2).toUpperCase()}</Text>
+            <Text style={styles.avatarEmoji}>👶</Text>
           </View>
-          <Text style={styles.profileName}>{session?.displayName}</Text>
+          <View>
+            <Text style={styles.helloText}>Coucou !</Text>
+            <Text style={styles.profileName} numberOfLines={1}>{session?.displayName}</Text>
+          </View>
         </View>
+
         <View style={styles.headerRight}>
           {session && (
             <ChildCountdownTimer
@@ -101,57 +127,121 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
               }}
             />
           )}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })}
-              style={styles.parentBtn}
-            >
-              <Text style={styles.parentText}>Parent</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleExit} style={styles.exitBtn}>
-              <Text style={styles.exitText}>Quitter</Text>
-            </TouchableOpacity>
-          </View>
+
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })}
+            style={styles.parentBtn}
+          >
+            <Text style={styles.parentText}>🔒 Parent</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <Text style={styles.pageTitle}>Mes playlists</Text>
+      {/* Category Pills for Kids */}
+      <View style={styles.pillsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScroll}>
+          {FILTER_PILLS.map(pill => {
+            const isActive = activeFilter === pill.id
+            return (
+              <TouchableOpacity
+                key={pill.id}
+                onPress={() => setActiveFilter(pill.id)}
+                style={[styles.pill, isActive && styles.pillActive]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.pillEmoji}>{pill.emoji}</Text>
+                <Text style={[styles.pillLabel, isActive && styles.pillLabelActive]}>{pill.label}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </ScrollView>
+      </View>
 
+      {/* Main Channels List */}
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 64 }} size="large" color="#1c90d8" />
-      ) : playlists.length === 0 ? (
+        <View style={styles.loaderCenter}>
+          <ActivityIndicator size="large" color="#1c90d8" />
+          <Text style={styles.loadingText}>Chargement de tes vidéos... 🎈</Text>
+        </View>
+      ) : filteredPlaylists.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📚</Text>
-          <Text style={styles.emptyText}>Aucune playlist disponible.</Text>
+          <Text style={styles.emptyEmoji}>🎬</Text>
+          <Text style={styles.emptyTitle}>Pas encore de vidéos ici !</Text>
+          <Text style={styles.emptySub}>Demande à ton parent d'ajouter de chouettes playlists depuis son espace.</Text>
+          <TouchableOpacity onPress={() => setActiveFilter('all')} style={styles.resetFilterBtn}>
+            <Text style={styles.resetFilterText}>Voir toutes les playlists ⭐</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={playlists}
+          data={filteredPlaylists}
           keyExtractor={pl => pl.id}
           contentContainerStyle={styles.list}
           onRefresh={load}
           refreshing={loading}
-          renderItem={({ item: pl }) => (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.7}
-              onPress={() => navigation.push('ChildPlaylistDetail', { playlistId: pl.id, playlistName: pl.name })}
-            >
-              <View style={styles.cardIcon}>
-                <Text style={styles.cardIconText}>📋</Text>
-              </View>
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{pl.name}</Text>
-                {pl.description ? (
-                  <Text style={styles.cardDesc} numberOfLines={1}>{pl.description}</Text>
-                ) : null}
-                <Text style={styles.cardCount}>
-                  {pl._count.playlistVideos} vidéo{pl._count.playlistVideos !== 1 ? 's' : ''}
-                </Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item: pl }) => {
+            const theme = getPlaylistTheme(pl.name, pl.description)
+            const firstThumb = pl.playlistVideos?.[0]?.video?.thumbnailUrl
+
+            return (
+              <TouchableOpacity
+                style={styles.channelCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.push('ChildPlaylistDetail', { playlistId: pl.id, playlistName: pl.name })}
+              >
+                {/* 16:9 Cover Thumbnail / Channel Header */}
+                <View style={[styles.coverContainer, { backgroundColor: theme.gradient[0] }]}>
+                  {firstThumb ? (
+                    <Image source={{ uri: firstThumb }} style={styles.coverImage} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.coverFallback}>
+                      <Text style={styles.fallbackEmoji}>{theme.emoji}</Text>
+                      <Text style={styles.fallbackIllustration}>{theme.illustration}</Text>
+                    </View>
+                  )}
+
+                  {/* Gradient shadow overlay for contrast */}
+                  <View style={styles.coverOverlay} />
+
+                  {/* Floating Channel Badge */}
+                  <View style={styles.channelBadgePill}>
+                    <Text style={styles.channelBadgeEmoji}>{theme.emoji}</Text>
+                    <Text style={styles.channelBadgeText}>{theme.channelLabel}</Text>
+                  </View>
+
+                  {/* Video count pill */}
+                  <View style={styles.videoCountPill}>
+                    <Text style={styles.videoCountText}>
+                      🎬 {pl._count.playlistVideos} vidéo{pl._count.playlistVideos !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+
+                  {/* Big Play Button on Image */}
+                  <View style={styles.centerPlayBtn}>
+                    <View style={styles.playCircle}>
+                      <Text style={styles.playArrow}>▶</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Card Bottom / Channel Title & Action */}
+                <View style={styles.cardFooter}>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardTitle} numberOfLines={2}>{pl.name}</Text>
+                    {pl.description ? (
+                      <Text style={styles.cardDesc} numberOfLines={1}>{pl.description}</Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.watchActionBtn}>
+                    <Text style={styles.watchActionText}>Regarder</Text>
+                    <Text style={styles.watchActionArrow}>›</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )
+          }}
         />
       )}
     </SafeAreaView>
@@ -159,30 +249,199 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f8fd' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.85)', borderBottomWidth: 1, borderBottomColor: 'rgba(28,144,216,0.1)' },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 12, fontWeight: '700', color: '#1c90d8' },
-  profileName: { fontSize: 14, fontWeight: '600', color: '#1f2937' },
+  safe: { flex: 1, backgroundColor: '#f0f9ff' },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0f2fe',
+    shadowColor: '#0284c7',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  profileBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#e0f2fe',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#38bdf8',
+  },
+  avatarEmoji: { fontSize: 22 },
+  helloText: { fontSize: 11, fontWeight: '700', color: '#0284c7', textTransform: 'uppercase', letterSpacing: 0.5 },
+  profileName: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  parentBtn: { borderWidth: 1, borderColor: '#bae6fd', borderRadius: 9, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f0f9ff' },
-  parentText: { fontSize: 12, color: '#1c90d8', fontWeight: '700' },
-  remaining: { fontSize: 12, color: '#64748b', fontWeight: '600' },
-  exitBtn: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  exitText: { fontSize: 12, color: '#64748b' },
-  pageTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a', marginHorizontal: 16, marginTop: 20, marginBottom: 12 },
-  list: { paddingHorizontal: 16, paddingBottom: 24 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: '#1c90d8', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  cardIcon: { width: 52, height: 52, backgroundColor: '#e0f2fe', borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  cardIconText: { fontSize: 24 },
-  cardBody: { flex: 1 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  cardDesc: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  cardCount: { fontSize: 12, color: '#9ca3af', marginTop: 4 },
-  chevron: { fontSize: 24, color: '#cbd5e1', marginLeft: 8 },
-  emptyState: { alignItems: 'center', marginTop: 80 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 15, color: '#6b7280' },
+  parentBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1.5,
+    borderColor: '#cbd5e1',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  parentText: { fontSize: 12, fontWeight: '800', color: '#475569' },
+
+  // Category Pills
+  pillsContainer: { paddingVertical: 10, backgroundColor: '#ffffff' },
+  pillsScroll: { paddingHorizontal: 14, gap: 8 },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  pillActive: {
+    backgroundColor: '#1c90d8',
+    borderColor: '#1c90d8',
+    shadowColor: '#1c90d8',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  pillEmoji: { fontSize: 15 },
+  pillLabel: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  pillLabelActive: { color: '#ffffff' },
+
+  // Content
+  list: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 32, gap: 18 },
+  channelCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
+  },
+  coverContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    position: 'relative',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverImage: { width: '100%', height: '100%' },
+  coverOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
+  },
+  coverFallback: { alignItems: 'center', justifyContent: 'center' },
+  fallbackEmoji: { fontSize: 56 },
+  fallbackIllustration: { fontSize: 24, marginTop: 4 },
+
+  // Badges floating
+  channelBadgePill: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  channelBadgeEmoji: { fontSize: 14 },
+  channelBadgeText: { fontSize: 11, fontWeight: '800', color: '#0f172a' },
+
+  videoCountPill: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  videoCountText: { fontSize: 11, fontWeight: '700', color: '#ffffff' },
+
+  // Center Play button
+  centerPlayBtn: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  playArrow: { fontSize: 24, color: '#1c90d8', marginLeft: 4 },
+
+  // Card Footer
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#ffffff',
+  },
+  cardInfo: { flex: 1, paddingRight: 12 },
+  cardTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', lineHeight: 22 },
+  cardDesc: { fontSize: 12, color: '#64748b', marginTop: 4 },
+
+  watchActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1.5,
+    borderColor: '#bae6fd',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+  },
+  watchActionText: { fontSize: 13, fontWeight: '800', color: '#1c90d8' },
+  watchActionArrow: { fontSize: 18, fontWeight: '800', color: '#1c90d8' },
+
+  // Loader / Empty
+  loaderCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 80 },
+  loadingText: { fontSize: 15, fontWeight: '700', color: '#64748b', marginTop: 12 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', padding: 32, marginTop: 40 },
+  emptyEmoji: { fontSize: 56, marginBottom: 12 },
+  emptyTitle: { fontSize: 19, fontWeight: '800', color: '#0f172a', textAlign: 'center' },
+  emptySub: { fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  resetFilterBtn: {
+    marginTop: 20,
+    backgroundColor: '#1c90d8',
+    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  resetFilterText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
 })
