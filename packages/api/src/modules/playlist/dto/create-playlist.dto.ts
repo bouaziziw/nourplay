@@ -36,7 +36,7 @@ export class CreatePlaylistDto {
   @IsBoolean()
   importExternalPlaylist?: boolean
 
-  @ApiProperty({ required: false, description: 'URL d’une playlist ou chaîne YouTube publique' })
+  @ApiProperty({ required: false, description: 'URL d’une playlist, chaîne ou vidéo (YouTube, Vimeo, Dailymotion)' })
   @IsOptional()
   @IsString()
   @Length(1, 2048)

@@ -48,6 +48,50 @@ interface YouTubePlaylistVideo {
   thumbnails?: Record<string, { url: string }>
 }
 
+export interface ExternalPlaylistItem {
+  sourceSlug: 'youtube' | 'vimeo' | 'dailymotion'
+  externalId: string
+  title: string
+  description?: string
+  embedUrl: string
+  thumbnailUrl?: string
+  language?: string
+  publishedAt?: string
+}
+
+const SOURCE_CONFIGS = {
+  youtube: {
+    name: 'YouTube',
+    slug: 'youtube',
+    baseUrl: 'https://www.youtube.com',
+    embedPolicy: {
+      embedUrl: 'https://www.youtube.com/embed/{id}',
+      allowFullscreen: true,
+      requiresConsent: false,
+    },
+  },
+  vimeo: {
+    name: 'Vimeo',
+    slug: 'vimeo',
+    baseUrl: 'https://vimeo.com',
+    embedPolicy: {
+      embedUrl: 'https://player.vimeo.com/video/{id}',
+      allowFullscreen: true,
+      requiresConsent: false,
+    },
+  },
+  dailymotion: {
+    name: 'Dailymotion',
+    slug: 'dailymotion',
+    baseUrl: 'https://www.dailymotion.com',
+    embedPolicy: {
+      embedUrl: 'https://www.dailymotion.com/embed/video/{id}',
+      allowFullscreen: true,
+      requiresConsent: false,
+    },
+  },
+} as const
+
 @Injectable()
 export class PlaylistService {
   private readonly logger = new Logger(PlaylistService.name)
@@ -102,9 +146,9 @@ export class PlaylistService {
 
     if (dto.importExternalPlaylist) {
       if (!dto.externalPlaylistUrl) {
-        throw new BadRequestException('URL de playlist YouTube requise pour l’import')
+        throw new BadRequestException('URL de playlist requise pour l’import')
       }
-      return this.createWithYouTubePlaylist(userId, dto, dto.externalPlaylistUrl)
+      return this.createWithExternalPlaylist(userId, dto, dto.externalPlaylistUrl)
     }
 
     return this.prisma.playlist.create({
@@ -121,30 +165,44 @@ export class PlaylistService {
   }
 
   private async createWithYouTubePlaylist(userId: string, dto: CreatePlaylistDto, externalPlaylistUrl: string) {
-    const playlistItems = await this.fetchYouTubePlaylist(externalPlaylistUrl)
-    let source = await this.prisma.videoSource.findFirst({
-      where: { slug: 'youtube', embedAllowed: true, isActive: true },
-      select: { id: true },
-    })
-    if (!source) {
-      source = await this.prisma.videoSource.upsert({
-        where: { slug: 'youtube' },
-        update: { embedAllowed: true, isActive: true },
-        create: {
-          name: 'YouTube',
-          slug: 'youtube',
-          baseUrl: 'https://www.youtube.com',
-          embedAllowed: true,
-          cguVersion: '2024-01',
-          cguCheckedAt: new Date(),
-          embedPolicy: {
-            embedUrl: 'https://www.youtube.com/embed/{id}',
-            allowFullscreen: true,
-            requiresConsent: false,
-          },
-        },
+    return this.createWithExternalPlaylist(userId, dto, externalPlaylistUrl)
+  }
+
+  private async createWithExternalPlaylist(userId: string, dto: CreatePlaylistDto, externalPlaylistUrl: string) {
+    const rawItems = await this.fetchExternalPlaylist(externalPlaylistUrl)
+    if (rawItems.length === 0) {
+      throw new BadRequestException('Cette playlist ou chaîne ne contient aucune vidéo accessible')
+    }
+
+    const playlistItems = [...new Map(rawItems.map(item => [`${item.sourceSlug}:${item.externalId}`, item])).values()]
+
+    // Upsert any missing video source
+    const uniqueSlugs = [...new Set(playlistItems.map(item => item.sourceSlug))]
+    const sourceMap = new Map<string, string>()
+
+    for (const slug of uniqueSlugs) {
+      let source = await this.prisma.videoSource.findFirst({
+        where: { slug, embedAllowed: true, isActive: true },
         select: { id: true },
       })
+      if (!source) {
+        const config = SOURCE_CONFIGS[slug]
+        source = await this.prisma.videoSource.upsert({
+          where: { slug },
+          update: { embedAllowed: true, isActive: true },
+          create: {
+            name: config.name,
+            slug: config.slug,
+            baseUrl: config.baseUrl,
+            embedAllowed: true,
+            cguVersion: '2024-01',
+            cguCheckedAt: new Date(),
+            embedPolicy: config.embedPolicy,
+          },
+          select: { id: true },
+        })
+      }
+      sourceMap.set(slug, source.id)
     }
 
     const result = await this.prisma.$transaction(async tx => {
@@ -161,37 +219,47 @@ export class PlaylistService {
       })
 
       await tx.video.createMany({
-        data: playlistItems.map(item => {
-          const thumbnails = item.thumbnails ?? {}
-          return {
-            sourceId: source.id,
-            externalId: item.externalId,
-            embedUrl: `https://www.youtube.com/embed/${item.externalId}?rel=0&modestbranding=1`,
-            title: item.title || `Vidéo ${item.externalId}`,
-            description: item.description,
-            thumbnailUrl: thumbnails.maxres?.url ?? thumbnails.standard?.url
-              ?? thumbnails.high?.url ?? thumbnails.medium?.url ?? thumbnails.default?.url,
-            language: item.defaultAudioLanguage ?? item.defaultLanguage,
-            publishedAt: item.publishedAt ? new Date(item.publishedAt) : undefined,
-            submittedById: userId,
-            validationStatus: 'PENDING',
-          }
-        }),
+        data: playlistItems.map(item => ({
+          sourceId: sourceMap.get(item.sourceSlug)!,
+          externalId: item.externalId,
+          embedUrl: item.embedUrl,
+          title: item.title || `Vidéo ${item.externalId}`,
+          description: item.description,
+          thumbnailUrl: item.thumbnailUrl,
+          language: item.language,
+          publishedAt: item.publishedAt ? new Date(item.publishedAt) : undefined,
+          submittedById: userId,
+          validationStatus: 'PENDING',
+        })),
         skipDuplicates: true,
       })
 
       const importedIds = playlistItems.map(item => item.externalId)
+      const orConditions = playlistItems.map(item => ({
+        sourceId: sourceMap.get(item.sourceSlug)!,
+        externalId: item.externalId,
+      }))
       const videos = await tx.video.findMany({
-        where: { sourceId: source.id, externalId: { in: importedIds } },
-        select: { id: true, externalId: true, validationStatus: true, submittedById: true, submitterApprovedAt: true },
+        where: uniqueSlugs.length === 1
+          ? { sourceId: sourceMap.get(uniqueSlugs[0])!, externalId: { in: importedIds } }
+          : { OR: orConditions },
+        select: { id: true, sourceId: true, externalId: true, validationStatus: true, submittedById: true, submitterApprovedAt: true },
       })
+
       const availableVideos = videos.filter(video =>
         video.validationStatus !== 'REJECTED'
         && (video.validationStatus === 'APPROVED' || video.submittedById === userId),
       )
-      const videoIdByExternalId = new Map(availableVideos.map(video => [video.externalId, video.id]))
-      const playlistVideos = importedIds.flatMap((externalId, position) => {
-        const videoId = videoIdByExternalId.get(externalId)
+      const videoIdByKey = new Map<string, string>()
+      for (const video of availableVideos) {
+        if (video.sourceId) {
+          videoIdByKey.set(`${video.sourceId}:${video.externalId}`, video.id)
+        }
+        videoIdByKey.set(video.externalId, video.id)
+      }
+      const playlistVideos = playlistItems.flatMap((item, position) => {
+        const sourceId = sourceMap.get(item.sourceSlug)!
+        const videoId = videoIdByKey.get(`${sourceId}:${item.externalId}`) ?? videoIdByKey.get(item.externalId)
         return videoId ? [{ playlistId: playlist.id, videoId, position, addedById: userId }] : []
       })
 
@@ -250,25 +318,127 @@ export class PlaylistService {
   }
 
   private async fetchYouTubePlaylist(url: string): Promise<YouTubePlaylistVideo[]> {
+    const items = await this.fetchExternalPlaylist(url)
+    return items.map(item => ({
+      externalId: item.externalId,
+      title: item.title,
+      description: item.description,
+      defaultAudioLanguage: item.language,
+      defaultLanguage: item.language,
+      publishedAt: item.publishedAt,
+      thumbnails: item.thumbnailUrl ? { high: { url: item.thumbnailUrl } } : undefined,
+    }))
+  }
+
+  async fetchExternalPlaylist(url: string): Promise<ExternalPlaylistItem[]> {
     let parsedUrl: URL
     try {
-      parsedUrl = new URL(url)
+      parsedUrl = new URL(url.trim())
     } catch {
-      throw new BadRequestException('URL de playlist YouTube invalide')
+      throw new BadRequestException('URL de playlist invalide')
     }
 
-    const allowedHosts = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com']
-    if (parsedUrl.protocol !== 'https:' || !allowedHosts.includes(parsedUrl.hostname.toLowerCase())) {
-      throw new BadRequestException('Seules les playlists YouTube publiques sont prises en charge')
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      throw new BadRequestException('Seules les URLs sécurisées (https) sont acceptées')
     }
 
+    const hostname = parsedUrl.hostname.toLowerCase()
+
+    if (['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'www.youtu.be'].includes(hostname)) {
+      return this.fetchYouTubePlaylistOrVideo(parsedUrl)
+    }
+
+    if (['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'].includes(hostname)) {
+      return this.fetchVimeoPlaylistOrVideo(parsedUrl)
+    }
+
+    if (['dailymotion.com', 'www.dailymotion.com', 'dai.ly'].includes(hostname)) {
+      return this.fetchDailymotionPlaylistOrVideo(parsedUrl)
+    }
+
+    throw new BadRequestException(
+      'Fournisseur non pris en charge. Fournisseurs acceptés : YouTube, Vimeo, Dailymotion.',
+    )
+  }
+
+  private async fetchYouTubePlaylistOrVideo(parsedUrl: URL): Promise<ExternalPlaylistItem[]> {
     const apiKey = process.env.YOUTUBE_API_KEY
     if (!apiKey) {
       throw new ServiceUnavailableException('L’import YouTube nécessite la configuration de YOUTUBE_API_KEY')
     }
 
+    const rawSegments = parsedUrl.pathname.split('/').filter(Boolean)
+    const pathSegments = rawSegments.map(seg => {
+      try {
+        return decodeURIComponent(seg)
+      } catch {
+        return seg
+      }
+    })
+
+    const hostname = parsedUrl.hostname.toLowerCase()
+    const hasList = parsedUrl.searchParams.has('list')
+
+    // Single video check if no list parameter is specified
+    if (!hasList) {
+      let singleVideoId: string | undefined
+      if (hostname.endsWith('youtu.be')) {
+        singleVideoId = pathSegments[0]
+      } else if (parsedUrl.pathname === '/watch') {
+        singleVideoId = parsedUrl.searchParams.get('v') || undefined
+      } else if (['shorts', 'embed', 'live', 'v'].includes(pathSegments[0] ?? '')) {
+        singleVideoId = pathSegments[1]
+      }
+
+      if (singleVideoId && /^[a-zA-Z0-9_-]{11}$/.test(singleVideoId)) {
+        const apiUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
+        apiUrl.searchParams.set('part', 'snippet')
+        apiUrl.searchParams.set('id', singleVideoId)
+        apiUrl.searchParams.set('key', apiKey)
+
+        let response: FetchResult
+        try {
+          response = await safeFetch(apiUrl)
+        } catch {
+          throw new BadGatewayException('Impossible de joindre l’API YouTube pour récupérer la vidéo')
+        }
+        if (!response.ok) {
+          throw new BadGatewayException('Vidéo YouTube inaccessible ou inexistante')
+        }
+
+        const data = await response.json() as {
+          items?: Array<{
+            snippet?: {
+              title?: string
+              description?: string
+              thumbnails?: Record<string, { url?: string }>
+              defaultAudioLanguage?: string
+              defaultLanguage?: string
+              publishedAt?: string
+            }
+          }>
+        }
+        const item = data.items?.[0]
+        if (!item?.snippet) {
+          throw new BadRequestException('Vidéo YouTube introuvable ou privée')
+        }
+        const snippet = item.snippet
+        const thumbs = snippet.thumbnails ?? {}
+        return [{
+          sourceSlug: 'youtube',
+          externalId: singleVideoId,
+          title: snippet.title || `Vidéo ${singleVideoId}`,
+          description: snippet.description,
+          embedUrl: `https://www.youtube.com/embed/${singleVideoId}?rel=0&modestbranding=1`,
+          thumbnailUrl: thumbs.maxres?.url ?? thumbs.standard?.url ?? thumbs.high?.url ?? thumbs.medium?.url ?? thumbs.default?.url,
+          language: snippet.defaultAudioLanguage ?? snippet.defaultLanguage,
+          publishedAt: snippet.publishedAt,
+        }]
+      }
+    }
+
     const playlistId = await this.resolveYouTubePlaylistId(parsedUrl, apiKey)
-    const items: YouTubePlaylistVideo[] = []
+    const items: ExternalPlaylistItem[] = []
     const pageTokens = new Set<string>()
     let pageToken: string | undefined
 
@@ -294,7 +464,15 @@ export class PlaylistService {
 
       let data: {
         items?: Array<{
-          snippet?: Omit<YouTubePlaylistVideo, 'externalId'> & { resourceId?: { videoId?: string } }
+          snippet?: {
+            title?: string
+            description?: string
+            defaultLanguage?: string
+            defaultAudioLanguage?: string
+            publishedAt?: string
+            resourceId?: { videoId?: string }
+            thumbnails?: Record<string, { url?: string }>
+          }
         }>
         nextPageToken?: string
       }
@@ -308,7 +486,17 @@ export class PlaylistService {
         const snippet = item.snippet
         const externalId = snippet?.resourceId?.videoId
         if (!snippet || !externalId) return []
-        return [{ ...snippet, externalId }]
+        const thumbs = snippet.thumbnails ?? {}
+        return [{
+          sourceSlug: 'youtube' as const,
+          externalId,
+          title: snippet.title || `Vidéo ${externalId}`,
+          description: snippet.description,
+          embedUrl: `https://www.youtube.com/embed/${externalId}?rel=0&modestbranding=1`,
+          thumbnailUrl: thumbs.maxres?.url ?? thumbs.standard?.url ?? thumbs.high?.url ?? thumbs.medium?.url ?? thumbs.default?.url,
+          language: snippet.defaultAudioLanguage ?? snippet.defaultLanguage,
+          publishedAt: snippet.publishedAt,
+        }]
       }))
       pageToken = data.nextPageToken
       if (pageToken) {
@@ -334,10 +522,31 @@ export class PlaylistService {
       return playlistId
     }
 
-    const pathSegments = url.pathname.split('/').filter(Boolean)
-    const handle = pathSegments[0]?.match(/^@([a-zA-Z0-9._-]{3,30})$/)?.[1]
-    const channelId = pathSegments[0] === 'channel' ? pathSegments[1] : undefined
-    if (!handle && (!channelId || !/^UC[a-zA-Z0-9_-]{22}$/.test(channelId))) {
+    const rawSegments = url.pathname.split('/').filter(Boolean)
+    const pathSegments = rawSegments.map(seg => {
+      try {
+        return decodeURIComponent(seg)
+      } catch {
+        return seg
+      }
+    })
+
+    const firstSegment = pathSegments[0] ?? ''
+    let handle: string | undefined
+    let channelId: string | undefined
+    let username: string | undefined
+
+    if (firstSegment.startsWith('@')) {
+      handle = firstSegment.slice(1)
+    } else if (firstSegment === 'channel' && pathSegments[1]) {
+      channelId = pathSegments[1]
+    } else if (firstSegment === 'user' && pathSegments[1]) {
+      username = pathSegments[1]
+    } else if (firstSegment === 'c' && pathSegments[1]) {
+      handle = pathSegments[1]
+    }
+
+    if (!handle && (!channelId || !/^UC[a-zA-Z0-9_-]{22}$/.test(channelId)) && !username) {
       throw new BadRequestException(
         'Collez une URL de playlist YouTube ou une URL de chaîne comme https://www.youtube.com/@playlistname',
       )
@@ -347,7 +556,8 @@ export class PlaylistService {
     apiUrl.searchParams.set('part', 'contentDetails')
     apiUrl.searchParams.set('key', apiKey)
     if (handle) apiUrl.searchParams.set('forHandle', handle)
-    else apiUrl.searchParams.set('id', channelId!)
+    else if (channelId) apiUrl.searchParams.set('id', channelId)
+    else if (username) apiUrl.searchParams.set('forUsername', username)
 
     let response: FetchResult
     try {
@@ -366,11 +576,220 @@ export class PlaylistService {
       throw new BadGatewayException('Réponse invalide reçue de l’API YouTube')
     }
 
+    // Fallback: If handle without @ returned no items, try with @
+    if ((!data.items || data.items.length === 0) && handle) {
+      const fallbackUrl = new URL('https://www.googleapis.com/youtube/v3/channels')
+      fallbackUrl.searchParams.set('part', 'contentDetails')
+      fallbackUrl.searchParams.set('key', apiKey)
+      fallbackUrl.searchParams.set('forHandle', `@${handle}`)
+      try {
+        const fallbackRes = await safeFetch(fallbackUrl)
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json() as typeof data
+        }
+      } catch {
+        // ignore fallback network error
+      }
+    }
+
     const uploadsPlaylistId = data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
     if (!uploadsPlaylistId) {
       throw new BadRequestException('La chaîne YouTube est introuvable ou ne contient aucune vidéo publique')
     }
     return uploadsPlaylistId
+  }
+
+  private async fetchVimeoPlaylistOrVideo(url: URL): Promise<ExternalPlaylistItem[]> {
+    const pathSegments = url.pathname.split('/').filter(Boolean)
+    if (pathSegments.length === 0) {
+      throw new BadRequestException('URL Vimeo invalide')
+    }
+
+    // 1. Channel
+    if (pathSegments[0] === 'channels' && pathSegments[1]) {
+      const channelId = pathSegments[1]
+      const apiUrl = `https://vimeo.com/api/v2/channel/${encodeURIComponent(channelId)}/videos.json`
+      return this.fetchVimeoVideoList(apiUrl, 'la chaîne Vimeo')
+    }
+
+    // 2. Showcase / Album
+    if ((pathSegments[0] === 'showcase' || pathSegments[0] === 'album') && pathSegments[1]) {
+      const albumId = pathSegments[1]
+      const apiUrl = `https://vimeo.com/api/v2/album/${encodeURIComponent(albumId)}/videos.json`
+      return this.fetchVimeoVideoList(apiUrl, 'l’album Vimeo')
+    }
+
+    // 3. User
+    if (pathSegments[0] === 'user' && pathSegments[1]) {
+      const user = pathSegments[1]
+      const apiUrl = `https://vimeo.com/api/v2/${encodeURIComponent(user)}/videos.json`
+      return this.fetchVimeoVideoList(apiUrl, 'l’utilisateur Vimeo')
+    }
+
+    // 4. Single Video
+    const videoId = pathSegments.find(segment => /^\d{5,15}$/.test(segment))
+    if (videoId) {
+      const oembedUrl = `https://vimeo.com/api/oembed.json?url=https://vimeo.com/${videoId}`
+      let res: FetchResult
+      try {
+        res = await safeFetch(oembedUrl)
+      } catch {
+        throw new BadGatewayException('Impossible de joindre l’API Vimeo pour récupérer la vidéo')
+      }
+      if (!res.ok) {
+        throw new BadGatewayException('Vidéo Vimeo inaccessible ou introuvable')
+      }
+      const data = await res.json() as {
+        title?: string
+        description?: string
+        thumbnail_url?: string
+      }
+      return [{
+        sourceSlug: 'vimeo',
+        externalId: videoId,
+        title: data.title || `Vidéo Vimeo ${videoId}`,
+        description: data.description,
+        embedUrl: `https://player.vimeo.com/video/${videoId}?title=0&byline=0&portrait=0`,
+        thumbnailUrl: data.thumbnail_url,
+      }]
+    }
+
+    // 5. Default username fallback (e.g. vimeo.com/username)
+    if (pathSegments.length === 1 && !/^\d+$/.test(pathSegments[0])) {
+      const apiUrl = `https://vimeo.com/api/v2/${encodeURIComponent(pathSegments[0])}/videos.json`
+      return this.fetchVimeoVideoList(apiUrl, 'l’utilisateur Vimeo')
+    }
+
+    throw new BadRequestException('URL Vimeo non reconnue (chaîne, album, showcase ou vidéo)')
+  }
+
+  private async fetchVimeoVideoList(apiUrl: string, contextLabel: string): Promise<ExternalPlaylistItem[]> {
+    let res: FetchResult
+    try {
+      res = await safeFetch(apiUrl)
+    } catch {
+      throw new BadGatewayException(`Impossible de joindre l’API Vimeo pour récupérer ${contextLabel}`)
+    }
+    if (!res.ok) {
+      throw new BadGatewayException(`${contextLabel} est inaccessible ou introuvable`)
+    }
+    const data = await res.json() as Array<{
+      id: number | string
+      title?: string
+      description?: string
+      thumbnail_large?: string
+      thumbnail_medium?: string
+      thumbnail_small?: string
+      upload_date?: string
+    }>
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new BadRequestException(`Aucune vidéo trouvée pour ${contextLabel}`)
+    }
+    return data.map(item => ({
+      sourceSlug: 'vimeo',
+      externalId: String(item.id),
+      title: item.title || `Vidéo ${item.id}`,
+      description: item.description,
+      embedUrl: `https://player.vimeo.com/video/${item.id}?title=0&byline=0&portrait=0`,
+      thumbnailUrl: item.thumbnail_large ?? item.thumbnail_medium ?? item.thumbnail_small,
+      publishedAt: item.upload_date,
+    }))
+  }
+
+  private async fetchDailymotionPlaylistOrVideo(url: URL): Promise<ExternalPlaylistItem[]> {
+    const hostname = url.hostname.toLowerCase()
+    const pathSegments = url.pathname.split('/').filter(Boolean)
+
+    // Short URL: dai.ly/{id}
+    if (hostname.endsWith('dai.ly') && pathSegments[0]) {
+      return this.fetchDailymotionSingleVideo(pathSegments[0])
+    }
+
+    // Single video: dailymotion.com/video/{id}
+    if (pathSegments[0] === 'video' && pathSegments[1]) {
+      return this.fetchDailymotionSingleVideo(pathSegments[1])
+    }
+
+    // Playlist: dailymotion.com/playlist/{id}
+    if (pathSegments[0] === 'playlist' && pathSegments[1]) {
+      const playlistId = pathSegments[1]
+      const apiUrl = `https://api.dailymotion.com/playlist/${encodeURIComponent(playlistId)}/videos?fields=id,title,description,thumbnail_url,created_time&limit=100`
+      return this.fetchDailymotionVideoList(apiUrl, 'la playlist Dailymotion')
+    }
+
+    // User / Channel: dailymotion.com/{user} or dailymotion.com/channel/{user}
+    const userOrChannel = pathSegments[0] === 'channel' ? pathSegments[1] : pathSegments[0]
+    if (userOrChannel) {
+      const apiUrl = `https://api.dailymotion.com/user/${encodeURIComponent(userOrChannel)}/videos?fields=id,title,description,thumbnail_url,created_time&limit=100`
+      return this.fetchDailymotionVideoList(apiUrl, 'la chaîne Dailymotion')
+    }
+
+    throw new BadRequestException('URL Dailymotion non reconnue (playlist, chaîne ou vidéo)')
+  }
+
+  private async fetchDailymotionSingleVideo(videoId: string): Promise<ExternalPlaylistItem[]> {
+    const apiUrl = `https://api.dailymotion.com/video/${encodeURIComponent(videoId)}?fields=id,title,description,thumbnail_url,created_time`
+    let res: FetchResult
+    try {
+      res = await safeFetch(apiUrl)
+    } catch {
+      throw new BadGatewayException('Impossible de joindre l’API Dailymotion pour récupérer la vidéo')
+    }
+    if (!res.ok) {
+      throw new BadGatewayException('Vidéo Dailymotion inaccessible ou introuvable')
+    }
+    const data = await res.json() as {
+      id?: string
+      title?: string
+      description?: string
+      thumbnail_url?: string
+      created_time?: number
+    }
+    if (!data.id) {
+      throw new BadRequestException('Vidéo Dailymotion introuvable')
+    }
+    return [{
+      sourceSlug: 'dailymotion',
+      externalId: data.id,
+      title: data.title || `Vidéo ${data.id}`,
+      description: data.description,
+      embedUrl: `https://www.dailymotion.com/embed/video/${data.id}`,
+      thumbnailUrl: data.thumbnail_url,
+      publishedAt: data.created_time ? new Date(data.created_time * 1000).toISOString() : undefined,
+    }]
+  }
+
+  private async fetchDailymotionVideoList(apiUrl: string, contextLabel: string): Promise<ExternalPlaylistItem[]> {
+    let res: FetchResult
+    try {
+      res = await safeFetch(apiUrl)
+    } catch {
+      throw new BadGatewayException(`Impossible de joindre l’API Dailymotion pour récupérer ${contextLabel}`)
+    }
+    if (!res.ok) {
+      throw new BadGatewayException(`${contextLabel} est inaccessible ou introuvable`)
+    }
+    const data = await res.json() as {
+      list?: Array<{
+        id: string
+        title?: string
+        description?: string
+        thumbnail_url?: string
+        created_time?: number
+      }>
+    }
+    if (!Array.isArray(data.list) || data.list.length === 0) {
+      throw new BadRequestException(`Aucune vidéo trouvée pour ${contextLabel}`)
+    }
+    return data.list.map(item => ({
+      sourceSlug: 'dailymotion',
+      externalId: item.id,
+      title: item.title || `Vidéo ${item.id}`,
+      description: item.description,
+      embedUrl: `https://www.dailymotion.com/embed/video/${item.id}`,
+      thumbnailUrl: item.thumbnail_url,
+      publishedAt: item.created_time ? new Date(item.created_time * 1000).toISOString() : undefined,
+    }))
   }
 
   async findOne(userId: string, playlistId: string, profileId?: string) {

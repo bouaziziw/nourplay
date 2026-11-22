@@ -117,7 +117,7 @@ describe('PlaylistService', () => {
       expect(prisma.playlist.create).toHaveBeenCalled()
     })
 
-    it('rejects non-YouTube URLs before making an external request', async () => {
+    it('rejects unsupported provider URLs before making an external request', async () => {
       await expect(service.create('user-1', {
         name: 'External',
         importExternalPlaylist: true,
@@ -225,6 +225,154 @@ describe('PlaylistService', () => {
         vi.unstubAllGlobals()
         if (previousApiKey === undefined) delete process.env.YOUTUBE_API_KEY
         else process.env.YOUTUBE_API_KEY = previousApiKey
+      }
+    })
+
+    it('correctly handles accented/URL-encoded YouTube channel handles like @Ma%C3%AEtreLucas', async () => {
+      const previousApiKey = process.env.YOUTUBE_API_KEY
+      process.env.YOUTUBE_API_KEY = 'test-key'
+      const fetchMock = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [{ contentDetails: { relatedPlaylists: { uploads: 'UUjFUgrwzuqiiTEmCWnXkqwg' } } }],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [{
+              snippet: {
+                title: 'Vidéo Maître Lucas',
+                resourceId: { videoId: 'lucas123456' },
+              },
+            }],
+          }),
+        })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const createdPlaylist = { id: 'pl-lucas', name: 'Lucas', _count: { playlistVideos: 0 } }
+      const tx = {
+        playlist: { create: vi.fn().mockResolvedValue(createdPlaylist) },
+        video: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'vid-lucas', externalId: 'lucas123456', validationStatus: 'PENDING', submittedById: 'user-1' },
+          ]),
+        },
+        playlistVideo: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      }
+      prisma.videoSource.findFirst.mockResolvedValue({ id: 'source-youtube' })
+      prisma.$transaction.mockImplementation(callback => callback(tx as never))
+
+      try {
+        const result = await service.create('user-1', {
+          name: 'Maître Lucas',
+          visibility: 'PRIVATE',
+          importExternalPlaylist: true,
+          externalPlaylistUrl: 'https://www.youtube.com/@Ma%C3%AEtreLucas',
+        } as never)
+
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        const channelRequest = new URL(fetchMock.mock.calls[0][0] as URL)
+        expect(channelRequest.searchParams.get('forHandle')).toBe('MaîtreLucas')
+        expect(result).toMatchObject({ id: 'pl-lucas', importedVideoCount: 1 })
+      } finally {
+        vi.unstubAllGlobals()
+        if (previousApiKey === undefined) delete process.env.YOUTUBE_API_KEY
+        else process.env.YOUTUBE_API_KEY = previousApiKey
+      }
+    })
+
+    it('imports videos from a Vimeo channel URL', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            id: 12345678,
+            title: 'Vimeo Nature',
+            description: 'A great nature video',
+            thumbnail_large: 'https://i.vimeocdn.com/video/123_640.jpg',
+            upload_date: '2024-01-01 00:00:00',
+          },
+        ],
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const createdPlaylist = { id: 'pl-vimeo', name: 'Vimeo Pl', _count: { playlistVideos: 0 } }
+      const tx = {
+        playlist: { create: vi.fn().mockResolvedValue(createdPlaylist) },
+        video: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'vid-vim', externalId: '12345678', validationStatus: 'PENDING', submittedById: 'user-1' },
+          ]),
+        },
+        playlistVideo: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      }
+      prisma.videoSource.findFirst.mockResolvedValue({ id: 'source-vimeo' })
+      prisma.$transaction.mockImplementation(callback => callback(tx as never))
+
+      try {
+        const result = await service.create('user-1', {
+          name: 'Vimeo Pl',
+          visibility: 'PRIVATE',
+          importExternalPlaylist: true,
+          externalPlaylistUrl: 'https://vimeo.com/channels/staffpicks',
+        } as never)
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(fetchMock.mock.calls[0][0]).toContain('https://vimeo.com/api/v2/channel/staffpicks/videos.json')
+        expect(result).toMatchObject({ id: 'pl-vimeo', importedVideoCount: 1 })
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+    it('imports videos from a Dailymotion user URL', async () => {
+      const fetchMock = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          list: [
+            {
+              id: 'x7tgad0',
+              title: 'Midnight Sun',
+              description: 'Iceland sun',
+              thumbnail_url: 'https://s2.dmcdn.net/v/SBL5q1gwavF_Eofok',
+              created_time: 1573000000,
+            },
+          ],
+        }),
+      })
+      vi.stubGlobal('fetch', fetchMock)
+
+      const createdPlaylist = { id: 'pl-dm', name: 'DM Pl', _count: { playlistVideos: 0 } }
+      const tx = {
+        playlist: { create: vi.fn().mockResolvedValue(createdPlaylist) },
+        video: {
+          createMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findMany: vi.fn().mockResolvedValue([
+            { id: 'vid-dm', externalId: 'x7tgad0', validationStatus: 'PENDING', submittedById: 'user-1' },
+          ]),
+        },
+        playlistVideo: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      }
+      prisma.videoSource.findFirst.mockResolvedValue({ id: 'source-dailymotion' })
+      prisma.$transaction.mockImplementation(callback => callback(tx as never))
+
+      try {
+        const result = await service.create('user-1', {
+          name: 'DM Pl',
+          visibility: 'PRIVATE',
+          importExternalPlaylist: true,
+          externalPlaylistUrl: 'https://www.dailymotion.com/franceinfo',
+        } as never)
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(fetchMock.mock.calls[0][0]).toContain('https://api.dailymotion.com/user/franceinfo/videos')
+        expect(result).toMatchObject({ id: 'pl-dm', importedVideoCount: 1 })
+      } finally {
+        vi.unstubAllGlobals()
       }
     })
   })

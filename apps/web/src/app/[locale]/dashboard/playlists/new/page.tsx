@@ -172,7 +172,7 @@ export default function NewPlaylistPage() {
 
         <div className="space-y-2">
           <label htmlFor="external-playlist-url" className="block text-sm font-medium text-gray-700">
-            URL d’une playlist ou chaîne YouTube <span className="text-gray-400 font-normal">(optionnel)</span>
+            URL d’une playlist, chaîne ou vidéo (YouTube, Vimeo, Dailymotion...) <span className="text-gray-400 font-normal">(optionnel)</span>
           </label>
           <input
             id="external-playlist-url"
@@ -182,7 +182,7 @@ export default function NewPlaylistPage() {
               setExternalPlaylistUrl(e.target.value)
               if (!e.target.value.trim()) setImportExternalPlaylist(false)
             }}
-            placeholder="https://www.youtube.com/@playlistname"
+            placeholder="https://www.youtube.com/@chaine ou lien de playlist/vidéo"
             className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
           {externalPlaylistUrl.trim() && (
@@ -194,7 +194,7 @@ export default function NewPlaylistPage() {
                 className="mt-0.5 accent-indigo-600"
               />
               <span>
-                Importer toutes les vidéos de cette playlist ou chaîne
+                Importer les vidéos de cette playlist, chaîne ou vidéo
                 <span className="block text-xs text-gray-400 mt-0.5">
                   Chaque vidéo importée sera envoyée automatiquement en validation prioritaire.
                 </span>
