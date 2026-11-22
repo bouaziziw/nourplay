@@ -41,6 +41,13 @@ export class ModerationController {
     return this.moderationService.reviewVideo(actor.sub, actor.role, id, dto)
   }
 
+  @Patch('approve-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approuver toutes les vidéos en attente de modération' })
+  approveAllPending(@CurrentUser() actor: JwtPayload) {
+    return this.moderationService.approveAllPending(actor.sub, actor.role)
+  }
+
   // ── Signalements ──────────────────────────────────────────────
 
   @Get('reports')

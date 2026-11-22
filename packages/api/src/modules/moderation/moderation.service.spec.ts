@@ -162,6 +162,34 @@ describe('ModerationService', () => {
     })
   })
 
+  describe('approveAllPending', () => {
+    it('approuve toutes les vidéos en attente et enregistre un audit', async () => {
+      prisma.video.updateMany.mockResolvedValue({ count: 7 })
+
+      const result = await service.approveAllPending(ACTOR.id, ACTOR.role)
+
+      expect(prisma.video.updateMany).toHaveBeenCalledWith({
+        where: {
+          validationStatus: {
+            in: [VideoValidationStatus.PENDING, VideoValidationStatus.NEEDS_REVIEW],
+          },
+        },
+        data: {
+          validationStatus: VideoValidationStatus.APPROVED,
+        },
+      })
+      expect(result).toEqual({ updated: 7 })
+      expect(audit.log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: ACTOR.id,
+          actorRole: ACTOR.role,
+          action: 'video.bulk_approve_all',
+          metadata: { count: 7 },
+        }),
+      )
+    })
+  })
+
   describe('resolveReport', () => {
     it('résout un signalement et écrit un audit log', async () => {
       prisma.videoReport.findUnique.mockResolvedValue({

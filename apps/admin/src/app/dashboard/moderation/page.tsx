@@ -226,6 +226,8 @@ export default function ModerationQueuePage() {
   const [queueError, setQueueError] = useState('')
   const [revalidating, setRevalidating] = useState(false)
   const [revalidationResult, setRevalidationResult] = useState('')
+  const [approvingAll, setApprovingAll] = useState(false)
+  const [approvalResult, setApprovalResult] = useState('')
   const LIMIT = 10
 
   const load = useCallback((p = 1) => {
@@ -255,11 +257,36 @@ export default function ModerationQueuePage() {
     setTotal(count => Math.max(0, count - 1))
   }
 
+  const handleApproveAll = async () => {
+    if (!token) return
+    const message = total > 0
+      ? `Voulez-vous vraiment approuver l'ensemble des ${total} vidéo${total > 1 ? 's' : ''} en attente de modération ?`
+      : 'Voulez-vous approuver toutes les vidéos en attente ?'
+    if (!window.confirm(message)) return
+
+    setApprovingAll(true)
+    setQueueError('')
+    setApprovalResult('')
+    setRevalidationResult('')
+    try {
+      const { updated } = await api.moderation.approveAll(token)
+      setApprovalResult(`${updated} vidéo${updated !== 1 ? 's ont été approuvées' : ' a été approuvée'} avec succès.`)
+      setVideos([])
+      setTotal(0)
+      load(1)
+    } catch (error) {
+      setQueueError(error instanceof Error ? error.message : 'Impossible d’approuver toutes les vidéos.')
+    } finally {
+      setApprovingAll(false)
+    }
+  }
+
   const handleRevalidateAllPending = async () => {
     if (!token || !window.confirm('Relancer en priorité la validation automatique de toutes les vidéos en attente ?')) return
     setRevalidating(true)
     setQueueError('')
     setRevalidationResult('')
+    setApprovalResult('')
     try {
       const { queued } = await api.moderation.revalidateAllPending(token)
       setRevalidationResult(`${queued} vidéo${queued === 1 ? '' : 's'} envoyée${queued === 1 ? '' : 's'} en validation prioritaire.`)
@@ -283,6 +310,14 @@ export default function ModerationQueuePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleApproveAll}
+            disabled={approvingAll || total === 0}
+            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 shadow-sm flex items-center gap-1.5"
+            title="Approuver l'ensemble des vidéos en attente de modération"
+          >
+            {approvingAll ? 'Approbation en cours…' : '✓ Approuver tout'}
+          </button>
           {user?.role === 'ADMIN' && (
             <button
               onClick={handleRevalidateAllPending}
@@ -297,6 +332,13 @@ export default function ModerationQueuePage() {
           </button>
         </div>
       </div>
+
+      {approvalResult && (
+        <div role="status" className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-300 flex items-center justify-between">
+          <span>✓ {approvalResult}</span>
+          <button onClick={() => setApprovalResult('')} className="text-green-400 hover:text-green-200 text-xs ml-4">✕</button>
+        </div>
+      )}
 
       {revalidationResult && (
         <p role="status" className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-300">

@@ -256,6 +256,12 @@ export const api = {
     deleteVideo: (token: string, videoId: string) =>
       request<{ id: string }>(`/videos/admin/${videoId}`, { method: 'DELETE', ...bearer(token) }),
 
+    approveAll: (token: string) =>
+      request<{ updated: number }>('/moderation/approve-all', {
+        method: 'PATCH',
+        ...bearer(token),
+      }),
+
     revalidateAllPending: (token: string) =>
       request<{ queued: number }>('/videos/admin/revalidate-pending', {
         method: 'POST',

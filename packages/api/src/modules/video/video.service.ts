@@ -525,6 +525,33 @@ export class VideoService implements OnModuleInit {
     return { updated: result.count }
   }
 
+  async approveAllPending(actorId?: string, actorRole?: string) {
+    const result = await this.prisma.video.updateMany({
+      where: {
+        validationStatus: {
+          in: ['PENDING' as never, 'NEEDS_REVIEW' as never],
+        },
+      },
+      data: {
+        validationStatus: 'APPROVED' as never,
+      },
+    })
+
+    if (actorId && actorRole && result.count > 0) {
+      await this.audit.log({
+        actorId,
+        actorRole,
+        action: 'video.bulk_approve_all',
+        resourceType: 'Video',
+        metadata: { count: result.count },
+      }).catch(err => {
+        this.logger.error('Failed to log audit for approveAllPending', err)
+      })
+    }
+
+    return { updated: result.count }
+  }
+
   async getRatingsSummary(videoId: string) {
     const [thumbsUp, thumbsDown] = await Promise.all([
       this.prisma.videoRating.count({ where: { videoId, rating: 'THUMBS_UP' as never } }),

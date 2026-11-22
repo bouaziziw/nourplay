@@ -79,6 +79,16 @@ export class VideoController {
     return this.videoService.bulkUpdateStatus(dto.ids, dto.action, dto.rejectionReason)
   }
 
+  @Post('admin/approve-all')
+  @Patch('admin/approve-all')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '[Admin] Approuver toutes les vidéos en attente' })
+  approveAllPending(@CurrentUser() user: JwtPayload) {
+    return this.videoService.approveAllPending(user.sub, user.role)
+  }
+
   @Post('admin/revalidate-pending')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)

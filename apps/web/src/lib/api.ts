@@ -724,6 +724,12 @@ export const api = {
         ...bearer(token),
       }),
 
+    approveAll: (token: string) =>
+      request<{ updated: number }>('/videos/admin/approve-all', {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
     listSources: (token: string) =>
       request<VideoSource[]>('/videos/sources', bearer(token)),
 

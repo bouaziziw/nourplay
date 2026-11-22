@@ -184,6 +184,33 @@ export class ModerationService {
     return updated
   }
 
+  async approveAllPending(actorId: string, actorRole: string) {
+    const result = await this.prisma.video.updateMany({
+      where: {
+        validationStatus: {
+          in: [VideoValidationStatus.PENDING, VideoValidationStatus.NEEDS_REVIEW],
+        },
+      },
+      data: {
+        validationStatus: VideoValidationStatus.APPROVED,
+      },
+    })
+
+    if (result.count > 0) {
+      await this.audit.log({
+        actorId,
+        actorRole,
+        action: 'video.bulk_approve_all',
+        resourceType: 'Video',
+        metadata: { count: result.count },
+      }).catch(err => {
+        this.logger.error('Failed to log audit for approveAllPending', err)
+      })
+    }
+
+    return { updated: result.count }
+  }
+
   // ── Signalements ──────────────────────────────────────────────
 
   async getReports(query: QueryReportsDto) {
