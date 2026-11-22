@@ -4,8 +4,10 @@ import {
   UnauthorizedException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common'
 import * as argon2 from 'argon2'
+import type { Prisma } from '@nourplay/db'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { SubscriptionService } from '../subscription/subscription.service'
 import { EmailService } from '../../common/email/email.service'
@@ -13,6 +15,8 @@ import { NotificationService } from '../notification/notification.service'
 import { CreateProfileDto } from './dto/create-profile.dto'
 import { UpdateProfileDto } from './dto/update-profile.dto'
 import { RecordWatchDto } from './dto/record-watch.dto'
+import { UpdateUserDto } from './dto/update-user.dto'
+import { ChangePasswordDto } from './dto/change-password.dto'
 
 const PIN_SELECT = {
   id: true,
@@ -57,6 +61,100 @@ export class UserService {
     }
     const { parentPinHash, ...safeUser } = user
     return { ...safeUser, parentPinConfigured: Boolean(parentPinHash) }
+  }
+
+  async updateMe(userId: string, dto: UpdateUserDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    })
+    if (!user) throw new NotFoundException('Utilisateur introuvable')
+
+    const data: Prisma.UserUpdateInput = {}
+
+    if (dto.locale !== undefined) {
+      const VALID = ['fr', 'en', 'ar', 'es']
+      if (!VALID.includes(dto.locale)) throw new BadRequestException('Locale invalide')
+      data.locale = dto.locale
+    }
+
+    if (dto.weeklyDigestEnabled !== undefined) {
+      data.weeklyDigestEnabled = dto.weeklyDigestEnabled
+    }
+
+    if (dto.email !== undefined) {
+      const normalizedEmail = dto.email.trim().toLowerCase()
+      if (normalizedEmail !== user.email.toLowerCase()) {
+        const existing = await this.prisma.user.findFirst({
+          where: {
+            email: { equals: normalizedEmail, mode: 'insensitive' },
+            id: { not: userId },
+            deletedAt: null,
+          },
+        })
+        if (existing) {
+          throw new ConflictException('Cette adresse email est déjà utilisée par un autre compte')
+        }
+        data.email = normalizedEmail
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        locale: true,
+        weeklyDigestEnabled: true,
+        emailVerified: true,
+        twoFactorEnabled: true,
+        parentPinHash: true,
+        createdAt: true,
+      },
+    })
+    const { parentPinHash, ...safeUser } = updated
+    return { ...safeUser, parentPinConfigured: Boolean(parentPinHash) }
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { id: true, email: true, passwordHash: true },
+    })
+    if (!user) throw new NotFoundException('Utilisateur introuvable')
+
+    if (user.passwordHash) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Le mot de passe actuel est requis')
+      }
+      const valid = await argon2.verify(user.passwordHash, dto.currentPassword)
+      if (!valid) {
+        throw new BadRequestException('Le mot de passe actuel est incorrect')
+      }
+    }
+
+    if (!dto.newPassword || dto.newPassword.length < 8) {
+      throw new BadRequestException('Le nouveau mot de passe doit comporter au moins 8 caractères')
+    }
+
+    if (dto.currentPassword && dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException('Le nouveau mot de passe doit être différent de l’actuel')
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    })
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    })
+
+    return { success: true, message: 'Mot de passe modifié avec succès' }
   }
 
   async updateDigestPreference(userId: string, enabled: boolean) {

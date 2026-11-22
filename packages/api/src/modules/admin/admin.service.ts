@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common'
+import * as argon2 from 'argon2'
 import { PrismaService } from '../../common/prisma/prisma.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { QueryUsersDto } from './dto/query-users.dto'
@@ -86,11 +87,42 @@ export class AdminService {
     if (dto.banned === true) data.deletedAt = new Date()
     if (dto.banned === false) data.deletedAt = null
 
-    const updated = await this.prisma.user.update({ where: { id: userId }, data })
-
     const changes: Record<string, unknown> = {}
     if (dto.role !== undefined) changes.role = { from: existing.role, to: dto.role }
     if (dto.banned !== undefined) changes.banned = dto.banned
+
+    if (dto.email !== undefined) {
+      const normalized = dto.email.trim().toLowerCase()
+      if (normalized !== existing.email.toLowerCase()) {
+        const conflict = await this.prisma.user.findFirst({
+          where: {
+            email: { equals: normalized, mode: 'insensitive' },
+            id: { not: userId },
+            deletedAt: null,
+          },
+        })
+        if (conflict) {
+          throw new ConflictException('Cette adresse email est déjà utilisée')
+        }
+        data.email = normalized
+        changes.email = { from: existing.email, to: normalized }
+      }
+    }
+
+    if (dto.password) {
+      if (dto.password.length < 8) {
+        throw new BadRequestException('Le mot de passe doit comporter au moins 8 caractères')
+      }
+      data.passwordHash = await argon2.hash(dto.password, {
+        type: argon2.argon2id,
+        memoryCost: 65536,
+        timeCost: 3,
+        parallelism: 4,
+      })
+      changes.passwordReset = true
+    }
+
+    const updated = await this.prisma.user.update({ where: { id: userId }, data })
 
     await this.audit.log({
       actorId, actorRole, action: 'user.update',

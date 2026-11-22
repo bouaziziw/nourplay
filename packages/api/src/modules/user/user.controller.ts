@@ -26,6 +26,8 @@ import { UpdateProfileDto } from './dto/update-profile.dto'
 import { VerifyPinDto } from './dto/verify-pin.dto'
 import { ChangePinDto } from './dto/change-pin.dto'
 import { RecordWatchDto } from './dto/record-watch.dto'
+import { UpdateUserDto } from './dto/update-user.dto'
+import { ChangePasswordDto } from './dto/change-password.dto'
 
 @ApiTags('Users & Profils')
 @ApiBearerAuth()
@@ -40,6 +42,19 @@ export class UserController {
   @ApiOperation({ summary: 'Profil du compte connecté' })
   getMe(@CurrentUser() user: JwtPayload) {
     return this.userService.findById(user.sub)
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Mettre à jour les informations du compte connecté' })
+  updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateUserDto) {
+    return this.userService.updateMe(user.sub, dto)
+  }
+
+  @Patch('me/password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Modifier le mot de passe du compte connecté' })
+  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+    return this.userService.changePassword(user.sub, dto)
   }
 
   // ── Langue ───────────────────────────────────────────────────

@@ -223,6 +223,46 @@ export class AuthService {
     return { configured: true }
   }
 
+  async changePassword(userId: string, currentPassword?: string, newPassword?: string): Promise<{ success: true; message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { id: true, passwordHash: true },
+    })
+    if (!user) throw new NotFoundException('Utilisateur introuvable')
+
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        throw new BadRequestException('Le mot de passe actuel est requis')
+      }
+      const valid = await argon2.verify(user.passwordHash, currentPassword)
+      if (!valid) {
+        throw new BadRequestException('Le mot de passe actuel est incorrect')
+      }
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException('Le nouveau mot de passe doit comporter au moins 8 caractères')
+    }
+
+    if (currentPassword && currentPassword === newPassword) {
+      throw new BadRequestException('Le nouveau mot de passe doit être différent de l’actuel')
+    }
+
+    const passwordHash = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    })
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    })
+
+    return { success: true, message: 'Mot de passe modifié avec succès' }
+  }
+
   async verifyParentPin(userId: string, pin: string): Promise<{ verified: true }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, deletedAt: null },

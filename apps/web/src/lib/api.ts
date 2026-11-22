@@ -449,6 +449,20 @@ export const api = {
     me: (token: string) =>
       request<{ id: string; email: string; role: string; locale: string; weeklyDigestEnabled: boolean; twoFactorEnabled: boolean }>('/users/me', bearer(token)),
 
+    updateMe: (token: string, data: { email?: string; locale?: string; weeklyDigestEnabled?: boolean }) =>
+      request<{ id: string; email: string; role: string; locale: string; weeklyDigestEnabled: boolean; twoFactorEnabled: boolean }>('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
+    changePassword: (token: string, data: { currentPassword?: string; newPassword: string }) =>
+      request<{ success: boolean; message: string }>('/users/me/password', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+
     updateLocale: (token: string, locale: string) =>
       request<{ id: string; locale: string }>('/users/me/locale', { method: 'PATCH', body: JSON.stringify({ locale }), ...bearer(token) }),
 

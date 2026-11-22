@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException, ConflictException } from '@nestjs/common'
 import { UserService } from './user.service'
 
 vi.mock('argon2', () => ({
@@ -9,7 +9,11 @@ vi.mock('argon2', () => ({
 }))
 
 const makePrisma = () => ({
-  user: { findUnique: vi.fn() },
+  user: {
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+  },
   childProfile: {
     findMany: vi.fn(),
     findFirst: vi.fn(),
@@ -85,6 +89,126 @@ describe('UserService', () => {
     it('throws NotFoundException when user does not exist', async () => {
       prisma.user.findUnique.mockResolvedValue(null)
       await expect(service.findById('missing')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── updateMe ──────────────────────────────────────────────────
+
+  describe('updateMe', () => {
+    it('updates user email, locale and weeklyDigestEnabled', async () => {
+      const existingUser = { id: 'u-1', email: 'old@test.com', role: 'PARENT' }
+      prisma.user.findUnique.mockResolvedValue(existingUser)
+      prisma.user.findFirst.mockResolvedValue(null)
+      const updatedUser = {
+        id: 'u-1',
+        email: 'new@test.com',
+        role: 'PARENT',
+        locale: 'en',
+        weeklyDigestEnabled: false,
+        parentPinHash: null,
+      }
+      prisma.user.update.mockResolvedValue(updatedUser)
+
+      const result = await service.updateMe('u-1', {
+        email: 'new@test.com',
+        locale: 'en',
+        weeklyDigestEnabled: false,
+      })
+
+      expect(result).toMatchObject({
+        id: 'u-1',
+        email: 'new@test.com',
+        locale: 'en',
+        weeklyDigestEnabled: false,
+        parentPinConfigured: false,
+      })
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u-1' },
+        data: {
+          email: 'new@test.com',
+          locale: 'en',
+          weeklyDigestEnabled: false,
+        },
+        select: expect.any(Object),
+      })
+    })
+
+    it('throws ConflictException when new email is already in use by another account', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u-1', email: 'current@test.com' })
+      prisma.user.findFirst.mockResolvedValue({ id: 'u-2', email: 'taken@test.com' })
+
+      await expect(service.updateMe('u-1', { email: 'taken@test.com' })).rejects.toThrow(ConflictException)
+    })
+
+    it('throws BadRequestException for invalid locale', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u-1', email: 'current@test.com' })
+
+      await expect(service.updateMe('u-1', { locale: 'invalid-lang' })).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws NotFoundException when user is not found', async () => {
+      prisma.user.findUnique.mockResolvedValue(null)
+
+      await expect(service.updateMe('missing', { email: 'any@test.com' })).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── changePassword ────────────────────────────────────────────
+
+  describe('changePassword', () => {
+    it('successfully changes password when current password matches', async () => {
+      const user = { id: 'u-1', email: 'a@test.com', passwordHash: '$argon2id$old' }
+      prisma.user.findUnique.mockResolvedValue(user)
+      prisma.user.update.mockResolvedValue({})
+
+      const result = await service.changePassword('u-1', {
+        currentPassword: 'OldPassword123!',
+        newPassword: 'NewPassword123!',
+      })
+
+      expect(result).toEqual({ success: true, message: 'Mot de passe modifié avec succès' })
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u-1' },
+        data: { passwordHash: '$argon2id$hashed_pin' },
+      })
+    })
+
+    it('throws BadRequestException when current password is missing', async () => {
+      const user = { id: 'u-1', email: 'a@test.com', passwordHash: '$argon2id$old' }
+      prisma.user.findUnique.mockResolvedValue(user)
+
+      await expect(
+        service.changePassword('u-1', { newPassword: 'NewPassword123!' }),
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws BadRequestException when current password is wrong', async () => {
+      const argon2 = await import('argon2')
+      vi.mocked(argon2.verify).mockResolvedValueOnce(false)
+      const user = { id: 'u-1', email: 'a@test.com', passwordHash: '$argon2id$old' }
+      prisma.user.findUnique.mockResolvedValue(user)
+
+      await expect(
+        service.changePassword('u-1', { currentPassword: 'WrongPassword!', newPassword: 'NewPassword123!' }),
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws BadRequestException when new password is identical to current password', async () => {
+      const user = { id: 'u-1', email: 'a@test.com', passwordHash: '$argon2id$old' }
+      prisma.user.findUnique.mockResolvedValue(user)
+
+      await expect(
+        service.changePassword('u-1', { currentPassword: 'SamePassword123!', newPassword: 'SamePassword123!' }),
+      ).rejects.toThrow(BadRequestException)
+    })
+
+    it('throws BadRequestException when new password is less than 8 characters', async () => {
+      const user = { id: 'u-1', email: 'a@test.com', passwordHash: '$argon2id$old' }
+      prisma.user.findUnique.mockResolvedValue(user)
+
+      await expect(
+        service.changePassword('u-1', { currentPassword: 'OldPassword123!', newPassword: 'short' }),
+      ).rejects.toThrow(BadRequestException)
     })
   })
 

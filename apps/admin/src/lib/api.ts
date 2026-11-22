@@ -194,7 +194,7 @@ export const api = {
     getUserById: (token: string, id: string) =>
       request<AdminUser>(`/admin/users/${id}`, bearer(token)),
 
-    updateUser: (token: string, id: string, data: { role?: string; banned?: boolean }) =>
+    updateUser: (token: string, id: string, data: { role?: string; banned?: boolean; email?: string; password?: string }) =>
       request<AdminUser>(`/admin/users/${id}`, {
         method: 'PATCH', body: JSON.stringify(data), ...bearer(token),
       }),

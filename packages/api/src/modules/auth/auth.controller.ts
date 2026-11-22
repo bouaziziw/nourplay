@@ -20,6 +20,7 @@ import { MagicLinkDto } from './dto/magic-link.dto'
 import { SetParentPinDto } from './dto/set-parent-pin.dto'
 import { VerifyParentPinDto } from './dto/verify-parent-pin.dto'
 import { VerifyParentPasswordDto } from './dto/verify-parent-password.dto'
+import { ChangePasswordDto } from '../user/dto/change-password.dto'
 import { LocalAuthGuard } from './guards/local-auth.guard'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { Public } from '../../common/decorators/public.decorator'
@@ -120,6 +121,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Vérifier le code PIN avant de déverrouiller le mode parent' })
   verifyParentPin(@CurrentUser() user: JwtPayload, @Body() dto: VerifyParentPinDto) {
     return this.authService.verifyParentPin(user.sub, dto.pin)
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Modifier le mot de passe du compte' })
+  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.sub, dto.currentPassword, dto.newPassword)
   }
 
   @Public()

@@ -26,13 +26,63 @@ export default function UserDetailPage() {
   const [roleSaved, setRoleSaved] = useState(false)
   const [error, setError] = useState('')
 
+  const [emailInput, setEmailInput] = useState('')
+  const [savingEmail, setSavingEmail] = useState(false)
+  const [emailSaved, setEmailSaved] = useState(false)
+
+  const [newPassword, setNewPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
+
   useEffect(() => {
     if (!token) return
     api.admin.getUserById(token, id)
-      .then(u => { setUser(u); setSelectedRole(u.role) })
+      .then(u => {
+        setUser(u)
+        setSelectedRole(u.role)
+        setEmailInput(u.email)
+      })
       .catch(() => router.replace('/dashboard/users'))
       .finally(() => setLoading(false))
   }, [token, id, router])
+
+  const handleEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !user || !emailInput || emailInput === user.email) return
+    setSavingEmail(true)
+    setError('')
+    try {
+      const updated = await api.admin.updateUser(token, id, { email: emailInput.trim().toLowerCase() })
+      setUser(updated)
+      setEmailSaved(true)
+      setTimeout(() => setEmailSaved(false), 2500)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de la modification de l’email.')
+    } finally {
+      setSavingEmail(false)
+    }
+  }
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !user || !newPassword) return
+    if (newPassword.length < 8) {
+      setError('Le mot de passe doit comporter au moins 8 caractères.')
+      return
+    }
+    setSavingPassword(true)
+    setError('')
+    try {
+      await api.admin.updateUser(token, id, { password: newPassword })
+      setPasswordSaved(true)
+      setNewPassword('')
+      setTimeout(() => setPasswordSaved(false), 2500)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de la réinitialisation du mot de passe.')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
 
   const handleRoleChange = async () => {
     if (!token || !user || selectedRole === user.role) return
@@ -144,6 +194,56 @@ export default function UserDetailPage() {
               </p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Edit email & password */}
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 space-y-5">
+        <h2 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Modifier les informations & mot de passe</h2>
+
+        {/* Change email */}
+        <form onSubmit={handleEmailChange} className="space-y-2">
+          <label className="block text-xs font-medium text-gray-400">Adresse email</label>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={emailInput}
+              onChange={e => setEmailInput(e.target.value)}
+              required
+              className="flex-1 h-9 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              type="submit"
+              disabled={savingEmail || !emailInput || emailInput === user.email}
+              className="h-9 px-4 bg-primary hover:bg-primary-600 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+            >
+              {savingEmail ? 'Enregistrement…' : emailSaved ? '✓ Email modifié' : 'Modifier l’email'}
+            </button>
+          </div>
+        </form>
+
+        <div className="border-t border-gray-700/60 pt-4">
+          {/* Change password */}
+          <form onSubmit={handlePasswordReset} className="space-y-2">
+            <label className="block text-xs font-medium text-gray-400">Réinitialiser le mot de passe</label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Nouveau mot de passe (min 8 caractères)"
+                minLength={8}
+                className="flex-1 h-9 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="submit"
+                disabled={savingPassword || !newPassword || newPassword.length < 8}
+                className="h-9 px-4 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+              >
+                {savingPassword ? 'Modification…' : passwordSaved ? '✓ Mot de passe réinitialisé' : 'Réinitialiser le mot de passe'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 

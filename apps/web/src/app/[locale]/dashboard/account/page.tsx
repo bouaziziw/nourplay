@@ -36,12 +36,80 @@ function RequestStatus({ req }: { req: GdprRequest }) {
 export default function AccountPage() {
   const locale = useLocale()
   const router = useRouter()
-  const { user, token, logout } = useAuth()
+  const { user, token, logout, reloadUser } = useAuth()
   const [exportReq, setExportReq] = useState<GdprRequest | null>(null)
   const [deleteReq, setDeleteReq] = useState<GdprRequest | null>(null)
   const [requesting, setRequesting] = useState<'export' | 'delete' | null>(null)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Profile info editing state
+  const [emailInput, setEmailInput] = useState('')
+  const [savingInfo, setSavingInfo] = useState(false)
+  const [emailSuccess, setEmailSuccess] = useState('')
+  const [emailError, setEmailError] = useState('')
+
+  useEffect(() => {
+    if (user?.email) setEmailInput(user.email)
+  }, [user?.email])
+
+  const handleUpdateInfo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token) return
+    setSavingInfo(true)
+    setEmailError('')
+    setEmailSuccess('')
+    try {
+      await api.users.updateMe(token, { email: emailInput.trim().toLowerCase() })
+      await reloadUser()
+      setEmailSuccess('Vos informations ont été mises à jour avec succès.')
+      setTimeout(() => setEmailSuccess(''), 4000)
+    } catch (err: unknown) {
+      setEmailError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.')
+    } finally {
+      setSavingInfo(false)
+    }
+  }
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPasswords, setShowPasswords] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token) return
+    if (newPassword.length < 8) {
+      setPasswordError('Le nouveau mot de passe doit comporter au moins 8 caractères.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Les nouveaux mots de passe ne correspondent pas.')
+      return
+    }
+    setSavingPassword(true)
+    setPasswordError('')
+    setPasswordSuccess('')
+    try {
+      const res = await api.users.changePassword(token, {
+        currentPassword: currentPassword || undefined,
+        newPassword,
+      })
+      setPasswordSuccess(res.message || 'Votre mot de passe a été modifié avec succès.')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPasswordSuccess(''), 4000)
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : 'Erreur lors du changement de mot de passe.')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
 
   const { permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications(token)
 
@@ -158,18 +226,132 @@ export default function AccountPage() {
       </div>
 
       {/* Profile info */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
-        <h2 className="font-semibold text-gray-900">Informations</h2>
-        <div className="text-sm space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Email</span>
-            <span className="text-gray-900 font-medium">{user?.email}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Rôle</span>
-            <span className="text-gray-900 font-medium capitalize">{user?.role?.toLowerCase()}</span>
-          </div>
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">Informations du compte</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Consultez et modifiez les informations associées à votre compte.</p>
         </div>
+
+        {emailSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
+            {emailSuccess}
+          </div>
+        )}
+        {emailError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+            {emailError}
+          </div>
+        )}
+
+        <form onSubmit={handleUpdateInfo} className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Adresse email</label>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                required
+                placeholder="votre.email@exemple.com"
+                className="flex-1 h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                disabled={savingInfo || !emailInput || emailInput === user?.email}
+                className="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                {savingInfo ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-100">
+            <span className="text-gray-500">Rôle sur la plateforme</span>
+            <span className="text-gray-900 font-medium capitalize px-2.5 py-0.5 rounded-full bg-gray-100 text-xs">
+              {user?.role?.toLowerCase()}
+            </span>
+          </div>
+        </form>
+      </div>
+
+      {/* Security — Mot de passe */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">Mot de passe</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Modifiez le mot de passe utilisé pour vous connecter à NourPlay.</p>
+        </div>
+
+        {passwordSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm text-green-700">
+            {passwordSuccess}
+          </div>
+        )}
+        {passwordError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+            {passwordError}
+          </div>
+        )}
+
+        <form onSubmit={handleChangePassword} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+            <input
+              type={showPasswords ? 'text' : 'password'}
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+              className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Au moins 8 caractères"
+                required
+                minLength={8}
+                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Confirmer le nouveau mot de passe</label>
+              <input
+                type={showPasswords ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Confirmez le mot de passe"
+                required
+                minLength={8}
+                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
+            <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showPasswords}
+                onChange={e => setShowPasswords(e.target.checked)}
+                className="rounded text-indigo-600 accent-indigo-600"
+              />
+              Afficher les mots de passe
+            </label>
+
+            <button
+              type="submit"
+              disabled={savingPassword || !newPassword || !confirmPassword}
+              className="h-10 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {savingPassword ? 'Modification…' : 'Mettre à jour le mot de passe'}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Security — 2FA */}

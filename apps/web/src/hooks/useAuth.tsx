@@ -24,6 +24,7 @@ interface AuthContext extends AuthState {
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
   setToken: (token: string) => Promise<void>
+  reloadUser: () => Promise<void>
   unlockParentMode: (password: string) => Promise<void>
   lockParentMode: () => void
 }
@@ -101,6 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadUser(token)
   }, [loadUser])
 
+  const reloadUser = useCallback(async () => {
+    if (state.token) {
+      await loadUser(state.token)
+    }
+  }, [state.token, loadUser])
+
   const unlockParentMode = useCallback(async (password: string) => {
     let currentToken = state.token
     if (!currentToken) {
@@ -134,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthCtx.Provider value={{ ...state, login, logout, refreshToken, setToken, unlockParentMode, lockParentMode }}>
+    <AuthCtx.Provider value={{ ...state, login, logout, refreshToken, setToken, reloadUser, unlockParentMode, lockParentMode }}>
       {children}
     </AuthCtx.Provider>
   )
