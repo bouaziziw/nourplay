@@ -90,12 +90,15 @@ for (const origin of [apiOrigin, adminOrigin].filter(Boolean)) {
 const nextConfig = {
   output: process.platform === 'win32' ? undefined : 'standalone',
   reactStrictMode: true,
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     if (!apiOrigin || !adminOrigin) return []
     return {
       beforeFiles: [
         { source: '/api/:path*', destination: `${apiOrigin}/api/:path*` },
-        { source: '/admin/:path*', destination: `${adminOrigin}/admin/:path*` },
+        { source: '/admin', destination: `${adminOrigin}/admin` },
+        { source: '/admin/', destination: `${adminOrigin}/admin` },
+        { source: '/admin/:path+', destination: `${adminOrigin}/admin/:path+` },
       ],
     }
   },

@@ -8,7 +8,9 @@ test('external rewrites preserve the API and admin paths', async () => {
   const rewrites = await config.rewrites()
   assert.deepEqual(rewrites.beforeFiles, [
     { source: '/api/:path*', destination: 'https://api-origin.example/api/:path*' },
-    { source: '/admin/:path*', destination: 'https://admin-origin.example/admin/:path*' },
+    { source: '/admin', destination: 'https://admin-origin.example/admin' },
+    { source: '/admin/', destination: 'https://admin-origin.example/admin' },
+    { source: '/admin/:path+', destination: 'https://admin-origin.example/admin/:path+' },
   ])
 })
 
@@ -37,6 +39,7 @@ test('admin base path is opt-in and rejects unsupported values', async () => {
   const deployed = await import('../../admin/next.config.mjs?deployed')
   assert.equal(deployed.default.basePath, '/admin')
   assert.deepEqual(await deployed.default.redirects(), [
+    { source: '/', destination: '/admin', basePath: false, permanent: false },
     { source: '/', destination: '/dashboard', permanent: false },
   ])
   process.env.ADMIN_BASE_PATH = '/other'

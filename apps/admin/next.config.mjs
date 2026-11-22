@@ -42,7 +42,10 @@ const nextConfig = {
     ]
   },
   async redirects() {
-    return [{ source: '/', destination: '/dashboard', permanent: false }]
+    return [
+      ...(basePath ? [{ source: '/', destination: basePath, basePath: false, permanent: false }] : []),
+      { source: '/', destination: '/dashboard', permanent: false },
+    ]
   },
   images: {
     remotePatterns: [
