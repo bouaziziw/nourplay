@@ -33,7 +33,37 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } })
-    if (existing) throw new ConflictException('Un compte avec cet email existe déjà')
+    if (existing) {
+      if (this.isSuperAdminEmail(dto.email) || this.isModeratorEmail(dto.email)) {
+        const passwordHash = await argon2.hash(dto.password, {
+          type: argon2.argon2id,
+          memoryCost: 65536,
+          timeCost: 3,
+          parallelism: 1,
+        })
+        const updated = await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            passwordHash,
+            role: this.isSuperAdminEmail(dto.email) ? 'ADMIN' : 'MODERATOR',
+            locale: dto.locale,
+            emailVerified: true,
+          },
+          select: { id: true, email: true, role: true, locale: true, createdAt: true },
+        })
+        this.logger.log(`Admin/Moderator user password updated on register: ${updated.email} (${updated.role})`)
+        return updated
+      }
+      throw new ConflictException('Un compte avec cet email existe déjà')
+    }
+
+    const assignedRole = this.isSuperAdminEmail(dto.email)
+      ? 'ADMIN'
+      : this.isModeratorEmail(dto.email)
+        ? 'MODERATOR'
+        : dto.role
+
+    const isAutoVerified = this.isSuperAdminEmail(dto.email) || this.isModeratorEmail(dto.email)
 
     const passwordHash = await argon2.hash(dto.password, {
       type: argon2.argon2id,
@@ -43,14 +73,22 @@ export class AuthService {
     })
 
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, role: dto.role, locale: dto.locale },
+      data: {
+        email: dto.email,
+        passwordHash,
+        role: assignedRole,
+        locale: dto.locale,
+        emailVerified: isAutoVerified,
+      },
       select: { id: true, email: true, role: true, locale: true, createdAt: true },
     })
 
-    try {
-      await this.sendVerificationEmail(user.id, dto.email, dto.locale)
-    } catch (err) {
-      this.logger.error(`Failed to send verification email to ${dto.email}: ${err instanceof Error ? err.message : err}`)
+    if (!isAutoVerified) {
+      try {
+        await this.sendVerificationEmail(user.id, dto.email, dto.locale)
+      } catch (err) {
+        this.logger.error(`Failed to send verification email to ${dto.email}: ${err instanceof Error ? err.message : err}`)
+      }
     }
     this.logger.log(`New user registered: ${user.email} (${user.role})`)
     return user

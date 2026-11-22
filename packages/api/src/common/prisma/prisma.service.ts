@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common'
 import { PrismaClient } from '@nourplay/db'
+import * as argon2 from 'argon2'
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -21,7 +22,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.ensureAdminRoles()
   }
 
-  private async ensureAdminRoles() {
+  public async ensureAdminRoles() {
     try {
       const adminEmails = ['bouaziziw@gmail.com']
       for (const email of adminEmails) {
@@ -29,12 +30,31 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           where: { email },
           select: { id: true, role: true },
         })
-        if (user && user.role !== 'ADMIN') {
-          await this.user.update({
-            where: { id: user.id },
-            data: { role: 'ADMIN', emailVerified: true },
+        if (user) {
+          if (user.role !== 'ADMIN') {
+            await this.user.update({
+              where: { id: user.id },
+              data: { role: 'ADMIN', emailVerified: true },
+            })
+            this.logger.log(`Promoted user ${email} to ADMIN`)
+          }
+        } else {
+          const passwordHash = await argon2.hash('Admin1234!', {
+            type: argon2.argon2id,
+            memoryCost: 65536,
+            timeCost: 3,
+            parallelism: 1,
           })
-          this.logger.log(`Promoted user ${email} to ADMIN`)
+          await this.user.create({
+            data: {
+              email,
+              passwordHash,
+              role: 'ADMIN',
+              locale: 'fr',
+              emailVerified: true,
+            },
+          })
+          this.logger.log(`Created admin user ${email}`)
         }
       }
 
@@ -44,12 +64,31 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           where: { email },
           select: { id: true, role: true },
         })
-        if (user && user.role !== 'MODERATOR' && user.role !== 'ADMIN') {
-          await this.user.update({
-            where: { id: user.id },
-            data: { role: 'MODERATOR', emailVerified: true },
+        if (user) {
+          if (user.role !== 'MODERATOR') {
+            await this.user.update({
+              where: { id: user.id },
+              data: { role: 'MODERATOR', emailVerified: true },
+            })
+            this.logger.log(`Promoted user ${email} to MODERATOR`)
+          }
+        } else {
+          const passwordHash = await argon2.hash('Moderator1234!', {
+            type: argon2.argon2id,
+            memoryCost: 65536,
+            timeCost: 3,
+            parallelism: 1,
           })
-          this.logger.log(`Promoted user ${email} to MODERATOR`)
+          await this.user.create({
+            data: {
+              email,
+              passwordHash,
+              role: 'MODERATOR',
+              locale: 'fr',
+              emailVerified: true,
+            },
+          })
+          this.logger.log(`Created moderator user ${email}`)
         }
       }
     } catch (err) {
