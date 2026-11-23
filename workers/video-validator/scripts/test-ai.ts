@@ -99,18 +99,37 @@ async function run() {
   console.log(`   Violations    : ${test4.log.violations.length}`)
   console.log(`   Résumé        : ${test4.log.summary}`)
 
+  // TEST 5 : Cosplay romantique baiser avec tag #hot sur compte 7+ (Doit être REJECTED)
+  console.log('\n--- TEST 5 : Cosplay romantique baiser avec tag #hot ("Miraculous Ladybug Cosplay #hot", AGE_7_PLUS) ---')
+  const test5 = await validateVideo({
+    videoId: '65fbcc72-cf91-4d25-abbf-bf155ec96d8c',
+    title: 'Miraculous Ladybug Cosplay #hot',
+    description: 'Vidéo de cosplay romantique montrant un baiser entre personnages.',
+    language: 'fr',
+    requestedAgeRating: 'AGE_7_PLUS',
+    tags: ['cosplay', '#hot', 'miraculous'],
+  })
+  console.log(`   Statut obtenu : ${test5.status}`)
+  console.log(`   Score         : ${test5.score}`)
+  console.log(`   Décision IA   : ${test5.log.decision}`)
+  console.log(`   Tranche d’âge : ${test5.log.age_rating}`)
+  console.log(`   Violations    : ${test5.log.violations.length}`)
+  console.log(`   Résumé        : ${test5.log.summary}`)
+
   console.log('\n====================================================')
   const test1Ok = test1.status === 'APPROVED'
   const test2Ok = test2.status === 'NEEDS_REVIEW' || test2.status === 'REJECTED'
   const test3Ok = test3.status === 'REJECTED'
   const test4Ok = test4.status === 'REJECTED'
+  const test5Ok = test5.status === 'REJECTED'
 
   console.log(`Test 1 (Enfant sain approuvé)               : ${test1Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test1.status + ')'}`)
   console.log(`Test 2 (Horreur < 13 ans bloquée)            : ${test2Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test2.status + ')'}`)
   console.log(`Test 3 (Violence extrême rejetée)            : ${test3Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test3.status + ')'}`)
   console.log(`Test 4 (Baisers / Romance < 13 ans rejetés)  : ${test4Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test4.status + ')'}`)
+  console.log(`Test 5 (Cosplay baiser #hot 7+ rejeté)      : ${test5Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test5.status + ')'}`)
 
-  if (test1Ok && test2Ok && test3Ok && test4Ok) {
+  if (test1Ok && test2Ok && test3Ok && test4Ok && test5Ok) {
     console.log('\n🎉 TOUS LES TESTS DE VALIDATION IA ONT RÉUSSI !')
     console.log('Les règles renforcées protègent efficacement les moins de 13 ans.')
   } else {
