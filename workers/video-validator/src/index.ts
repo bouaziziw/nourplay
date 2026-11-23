@@ -29,6 +29,8 @@ console.log(`[validator] Initializing with Redis: ${REDIS_URL.replace(/:\/\/[^@]
 const connectionOptions = {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  retryStrategy: (times: number) => Math.min(times * 1000, 15000),
+  tls: REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
 }
 
 const connection = new Redis(REDIS_URL, connectionOptions)
@@ -111,6 +113,15 @@ const worker = new Worker(
       })),
     })
 
+    const assessedAgeRatingMap: Record<string, 'ALL' | 'AGE_4_PLUS' | 'AGE_7_PLUS' | 'AGE_10_PLUS' | 'AGE_13_PLUS'> = {
+      all_ages: 'ALL',
+      '7_plus': 'AGE_7_PLUS',
+      '13_plus': 'AGE_13_PLUS',
+      '16_plus': 'AGE_13_PLUS',
+      '18_plus': 'AGE_13_PLUS',
+    }
+    const evaluatedAgeRating = assessedAgeRatingMap[result.log.age_rating] ?? 'ALL'
+
     const updated = await prisma.$transaction(async tx => {
       const statusUpdate = await tx.video.updateMany({
         where: { id: videoId, validationStatus: 'PENDING' },
@@ -118,6 +129,7 @@ const worker = new Worker(
           validationStatus: result.status,
           validationScore: result.score,
           validationLog: result.log as never,
+          ...(result.status === 'APPROVED' && evaluatedAgeRating ? { ageRating: evaluatedAgeRating } : {}),
         },
       })
       if (statusUpdate.count === 0) return false
