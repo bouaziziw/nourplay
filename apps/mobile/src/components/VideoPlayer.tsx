@@ -10,6 +10,8 @@ interface Props {
   onWatched?: (durationSec: number, completed: boolean) => void
   autoMarkCompleteAfterSec?: number
   onNext?: () => void
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
 }
 
 function buildSafeEmbedUrl(raw: string): string {
@@ -82,14 +84,50 @@ const INJECTED_START_AND_PAUSE_JS = `
   true;
 `
 
-export function VideoPlayer({ embedUrl, title, onWatched, autoMarkCompleteAfterSec = 300, onNext }: Props) {
+export function VideoPlayer({
+  embedUrl,
+  title,
+  onWatched,
+  autoMarkCompleteAfterSec = 300,
+  onNext,
+  isFullscreen: externalFullscreen,
+  onToggleFullscreen,
+}: Props) {
   const webViewRef = useRef<any>(null)
   const startTimeRef = useRef(Date.now())
   const firedRef = useRef(false)
   const completedRef = useRef(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [internalFullscreen, setInternalFullscreen] = useState(false)
+  const isFullscreen = externalFullscreen !== undefined ? externalFullscreen : internalFullscreen
   const isTV = Platform.isTV
+
+  const toggleFullscreen = () => {
+    const next = !isFullscreen
+    if (onToggleFullscreen) {
+      onToggleFullscreen()
+    } else {
+      setInternalFullscreen(next)
+    }
+
+    webViewRef.current?.injectJavaScript(`
+      (function(){
+        var v = document.querySelector('video');
+        if (v) {
+          if (${next}) {
+            if (v.requestFullscreen) v.requestFullscreen();
+            else if (v.webkitRequestFullscreen) v.webkitRequestFullscreen();
+            else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+          } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          }
+        }
+      })();
+      true;
+    `)
+  }
 
   const fireWatched = useCallback((completed: boolean) => {
     if (firedRef.current) return
@@ -159,9 +197,9 @@ export function VideoPlayer({ embedUrl, title, onWatched, autoMarkCompleteAfterS
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isFullscreen && styles.containerFullscreen]}>
       {/* 16:9 Video Canvas */}
-      <View style={styles.wrapper}>
+      <View style={[styles.wrapper, isFullscreen && styles.wrapperFullscreen]}>
         <WebView
           ref={webViewRef as any}
           source={{
@@ -225,6 +263,16 @@ export function VideoPlayer({ embedUrl, title, onWatched, autoMarkCompleteAfterS
           )}
 
           <TouchableOpacity
+            style={[styles.btnSecondary, isTV && styles.tvBtn]}
+            onPress={toggleFullscreen}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnSecondaryText}>
+              {isFullscreen ? '🗗 Réduire' : '⛶ Plein écran'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.btnIconOnly, isTV && styles.tvBtn]}
             onPress={toggleMute}
             activeOpacity={0.8}
@@ -249,10 +297,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 8,
   },
+  containerFullscreen: {
+    borderRadius: 0,
+    flex: 1,
+    height: '100%',
+  },
   wrapper: {
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: '#000',
+  },
+  wrapperFullscreen: {
+    flex: 1,
+    aspectRatio: undefined,
   },
   webview: {
     flex: 1,
