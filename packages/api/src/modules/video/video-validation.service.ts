@@ -23,6 +23,15 @@ export interface ValidateResult {
   log: Record<string, unknown>
 }
 
+interface HttpResponse {
+  ok: boolean
+  status: number
+  headers: { get(name: string): string | null }
+  arrayBuffer(): Promise<ArrayBuffer>
+  json(): Promise<unknown>
+  text(): Promise<string>
+}
+
 interface AIConfig {
   provider: 'gemini' | 'openai' | 'groq' | 'custom'
   apiKey: string
@@ -142,13 +151,13 @@ export class VideoValidationService {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
-      const res = await fetch(imageUrl, {
+      const res = await (fetch(imageUrl as never, {
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; NourPlayBot/1.0)',
           'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         },
-      })
+      } as never) as unknown as Promise<HttpResponse>)
       if (!res.ok) return null
       const contentType = res.headers.get('content-type') || 'image/jpeg'
       const buffer = await res.arrayBuffer()
@@ -266,7 +275,7 @@ export class VideoValidationService {
           ? cleanBaseUrl
           : `${cleanBaseUrl}/chat/completions`
 
-        const response = await fetch(endpoint, {
+        const response = await (fetch(endpoint as never, {
           method: 'POST',
           signal: controller.signal,
           headers: {
@@ -283,7 +292,7 @@ export class VideoValidationService {
             max_tokens: 3500,
             temperature: 0.1,
           }),
-        })
+        } as never) as unknown as Promise<HttpResponse>)
 
         if (!response.ok) {
           const errText = await response.text().catch(() => '')
