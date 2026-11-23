@@ -61,7 +61,7 @@ export default function WatchScreen({ route, navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1c90d8" />
+        <ActivityIndicator size="large" color="#38bdf8" />
         <Text style={styles.loadingText}>Lancement de la vidéo... 🍿</Text>
       </View>
     )
@@ -125,99 +125,98 @@ export default function WatchScreen({ route, navigation }: Props) {
 
         {!isFullscreen && (
           <>
-
-        {/* Video Info & Kid Actions */}
-        <View style={styles.infoCard}>
-          <View style={styles.titleRow}>
-            <Text style={styles.videoTitle}>{video.title}</Text>
-            <TouchableOpacity
-              onPress={() => setIsLoved(!isLoved)}
-              style={[styles.loveBtn, isLoved && styles.loveBtnActive]}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.loveEmoji}>{isLoved ? '❤️' : '🤍'}</Text>
-              <Text style={[styles.loveText, isLoved && styles.loveTextActive]}>
-                {isLoved ? 'J\'adore !' : 'J\'aime'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Big "Vidéo Suivante" Button (Children love this!) */}
-        {nextVideo && (
-          <TouchableOpacity
-            style={styles.nextBigButton}
-            activeOpacity={0.85}
-            onPress={() => navigation.replace('Watch', { videoId: nextVideo.id, playlistId })}
-          >
-            <View style={styles.nextBigIconBox}>
-              <Text style={styles.nextBigIcon}>⏭️</Text>
-            </View>
-            <View style={styles.nextBigTextBox}>
-              <Text style={styles.nextBigLabel}>Vidéo suivante</Text>
-              <Text style={styles.nextBigTitle} numberOfLines={1}>{nextVideo.title}</Text>
-            </View>
-            <Text style={styles.nextBigArrow}>›</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Horizontal Carousel of other videos in this playlist */}
-        {sorted.length > 1 && (
-          <View style={styles.carouselSection}>
-            <View style={styles.carouselHeader}>
-              <Text style={styles.carouselTitle}>Toutes les vidéos ({sorted.length})</Text>
-              <Text style={styles.carouselCounter}>{currentIdx + 1} / {sorted.length}</Text>
+            {/* Video Info & Kid Actions */}
+            <View style={styles.infoCard}>
+              <View style={styles.titleRow}>
+                <Text style={styles.videoTitle}>{video.title}</Text>
+                <TouchableOpacity
+                  onPress={() => setIsLoved(!isLoved)}
+                  style={[styles.loveBtn, isLoved && styles.loveBtnActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.loveEmoji}>{isLoved ? '❤️' : '🤍'}</Text>
+                  <Text style={[styles.loveText, isLoved && styles.loveTextActive]}>
+                    {isLoved ? 'J\'adore !' : 'J\'aime'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.carouselScroll}
-            >
-              {sorted.map((item, index) => {
-                const isActive = item.video.id === videoId
-                return (
-                  <TouchableOpacity
-                    key={item.video.id}
-                    style={[styles.thumbCard, isActive && styles.thumbCardActive]}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      if (!isActive) navigation.replace('Watch', { videoId: item.video.id, playlistId })
-                    }}
-                  >
-                    <View style={styles.thumbBox}>
-                      {item.video.thumbnailUrl ? (
-                        <Image source={{ uri: item.video.thumbnailUrl }} style={styles.thumbImg} resizeMode="cover" />
-                      ) : (
-                        <View style={styles.thumbPlaceholder}>
-                          <Text style={{ fontSize: 24 }}>🎥</Text>
+            {/* Big "Vidéo Suivante" Button (Children love this!) */}
+            {nextVideo && (
+              <TouchableOpacity
+                style={styles.nextBigButton}
+                activeOpacity={0.85}
+                onPress={() => navigation.replace('Watch', { videoId: nextVideo.id, playlistId })}
+              >
+                <View style={styles.nextBigIconBox}>
+                  <Text style={styles.nextBigIcon}>⏭️</Text>
+                </View>
+                <View style={styles.nextBigTextBox}>
+                  <Text style={styles.nextBigLabel}>Vidéo suivante</Text>
+                  <Text style={styles.nextBigTitle} numberOfLines={1}>{nextVideo.title}</Text>
+                </View>
+                <Text style={styles.nextBigArrow}>›</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Horizontal Carousel of other videos in this playlist */}
+            {sorted.length > 1 && (
+              <View style={styles.carouselSection}>
+                <View style={styles.carouselHeader}>
+                  <Text style={styles.carouselTitle}>Toutes les vidéos ({sorted.length})</Text>
+                  <Text style={styles.carouselCounter}>{currentIdx + 1} / {sorted.length}</Text>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.carouselScroll}
+                >
+                  {sorted.map((item, index) => {
+                    const isActive = item.video.id === videoId
+                    return (
+                      <TouchableOpacity
+                        key={item.video.id}
+                        style={[styles.thumbCard, isActive && styles.thumbCardActive]}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          if (!isActive) navigation.replace('Watch', { videoId: item.video.id, playlistId })
+                        }}
+                      >
+                        <View style={styles.thumbBox}>
+                          {item.video.thumbnailUrl ? (
+                            <Image source={{ uri: item.video.thumbnailUrl }} style={styles.thumbImg} resizeMode="cover" />
+                          ) : (
+                            <View style={styles.thumbPlaceholder}>
+                              <Text style={{ fontSize: 24 }}>🎥</Text>
+                            </View>
+                          )}
+
+                          {isActive && (
+                            <View style={styles.playingBadge}>
+                              <Text style={styles.playingText}>En cours ▶</Text>
+                            </View>
+                          )}
+
+                          <View style={styles.posBadge}>
+                            <Text style={styles.posBadgeText}>{index + 1}</Text>
+                          </View>
+
+                          {item.video.durationSec ? (
+                            <View style={styles.durBadge}>
+                              <Text style={styles.durBadgeText}>{formatDuration(item.video.durationSec)}</Text>
+                            </View>
+                          ) : null}
                         </View>
-                      )}
 
-                      {isActive && (
-                        <View style={styles.playingBadge}>
-                          <Text style={styles.playingText}>En cours ▶</Text>
-                        </View>
-                      )}
-
-                      <View style={styles.posBadge}>
-                        <Text style={styles.posBadgeText}>{index + 1}</Text>
-                      </View>
-
-                      {item.video.durationSec ? (
-                        <View style={styles.durBadge}>
-                          <Text style={styles.durBadgeText}>{formatDuration(item.video.durationSec)}</Text>
-                        </View>
-                      ) : null}
-                    </View>
-
-                    <Text style={styles.thumbTitle} numberOfLines={2}>{item.video.title}</Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </ScrollView>
-          </View>
-        )}
+                        <Text style={styles.thumbTitle} numberOfLines={2}>{item.video.title}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -226,13 +225,13 @@ export default function WatchScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f9ff' },
+  safe: { flex: 1, backgroundColor: '#0b1120' },
   safeFullscreen: { backgroundColor: '#000000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#64748b' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#0b1120' },
+  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#94a3b8' },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  notFound: { fontSize: 16, fontWeight: '700', color: '#475569', marginBottom: 16 },
-  backHomeBtn: { backgroundColor: '#1c90d8', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 10 },
+  notFound: { fontSize: 16, fontWeight: '700', color: '#f1f5f9', marginBottom: 16 },
+  backHomeBtn: { backgroundColor: '#0284c7', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 10 },
   backHomeText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
 
   topBar: {
@@ -241,33 +240,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#070d18',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0f2fe',
+    borderBottomColor: '#1e293b',
   },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  backBtnIcon: { fontSize: 24, fontWeight: '900', color: '#1c90d8', lineHeight: 26 },
-  backBtnText: { fontSize: 13, fontWeight: '700', color: '#1c90d8' },
+  backBtnIcon: { fontSize: 24, fontWeight: '900', color: '#38bdf8', lineHeight: 26 },
+  backBtnText: { fontSize: 13, fontWeight: '700', color: '#f1f5f9' },
   playlistBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 6,
     maxWidth: '60%',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
   playlistBadgeEmoji: { fontSize: 14 },
-  playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#0369a1' },
+  playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#38bdf8' },
 
   scroll: { padding: 14, gap: 14, paddingBottom: 32 },
   scrollFullscreen: { padding: 0, flex: 1 },
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#000000',
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
@@ -288,11 +289,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   infoCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0f172a',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e0f2fe',
+    borderColor: '#1e293b',
   },
   titleRow: {
     flexDirection: 'row',
@@ -304,31 +305,33 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '800',
-    color: '#0f172a',
+    color: '#f8fafc',
     lineHeight: 22,
   },
   loveBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#fce7f3',
+    backgroundColor: 'rgba(244, 63, 94, 0.15)',
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 63, 94, 0.3)',
   },
-  loveBtnActive: { backgroundColor: '#f43f5e' },
+  loveBtnActive: { backgroundColor: '#f43f5e', borderColor: '#f43f5e' },
   loveEmoji: { fontSize: 14 },
-  loveText: { fontSize: 12, fontWeight: '800', color: '#be185d' },
+  loveText: { fontSize: 12, fontWeight: '800', color: '#fb7185' },
   loveTextActive: { color: '#ffffff' },
 
   // Big Next Button
   nextBigButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#f59e0b',
     borderRadius: 20,
     padding: 14,
-    shadowColor: '#d97706',
+    shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -338,24 +341,24 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   nextBigIcon: { fontSize: 20 },
   nextBigTextBox: { flex: 1 },
-  nextBigLabel: { fontSize: 11, fontWeight: '800', color: '#78350f', textTransform: 'uppercase', letterSpacing: 0.6 },
+  nextBigLabel: { fontSize: 11, fontWeight: '800', color: '#451a03', textTransform: 'uppercase', letterSpacing: 0.6 },
   nextBigTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginTop: 2 },
-  nextBigArrow: { fontSize: 28, fontWeight: '900', color: '#78350f', marginLeft: 8 },
+  nextBigArrow: { fontSize: 28, fontWeight: '900', color: '#451a03', marginLeft: 8 },
 
   // Carousel
   carouselSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0f172a',
     borderRadius: 20,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#e0f2fe',
+    borderColor: '#1e293b',
   },
   carouselHeader: {
     flexDirection: 'row',
@@ -364,27 +367,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
-  carouselTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
-  carouselCounter: { fontSize: 12, fontWeight: '700', color: '#0284c7' },
+  carouselTitle: { fontSize: 15, fontWeight: '800', color: '#f8fafc' },
+  carouselCounter: { fontSize: 12, fontWeight: '700', color: '#38bdf8' },
   carouselScroll: { paddingHorizontal: 14, gap: 12 },
   thumbCard: {
     width: 170,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: '#1e293b',
+    backgroundColor: '#1e293b',
   },
   thumbCardActive: {
-    borderColor: '#1c90d8',
-    backgroundColor: '#f0f9ff',
+    borderColor: '#38bdf8',
+    backgroundColor: '#0c4a6e',
   },
   thumbBox: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
   thumbImg: { width: '100%', height: '100%' },
-  thumbPlaceholder: { backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
+  thumbPlaceholder: { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
   playingBadge: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(28, 144, 216, 0.7)',
+    backgroundColor: 'rgba(2, 132, 199, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -411,5 +414,5 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   durBadgeText: { color: '#ffffff', fontSize: 9, fontWeight: '700' },
-  thumbTitle: { fontSize: 12, fontWeight: '700', color: '#0f172a', padding: 8, lineHeight: 16 },
+  thumbTitle: { fontSize: 12, fontWeight: '700', color: '#f1f5f9', padding: 8, lineHeight: 16 },
 })

@@ -234,7 +234,7 @@ export default function ChildWatchPage() {
               router.push(`/${locale}/child/playlists`)
             }
           }}
-          className="tv-btn inline-flex items-center gap-2 rounded-2xl bg-white/95 px-5 py-2.5 text-sm font-extrabold text-gray-800 shadow-sm transition hover:bg-white hover:text-sky-700 hover:shadow-md border border-white/40"
+          className="tv-btn inline-flex items-center gap-2 rounded-2xl bg-[#1e293b]/90 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-[#28384f] border border-white/10"
         >
           <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -243,7 +243,7 @@ export default function ChildWatchPage() {
         </button>
 
         {playlist && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3.5 py-1.5 text-xs font-black text-sky-800 shadow-xs">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-950/80 px-3.5 py-1.5 text-xs font-black text-sky-300 border border-sky-800/40 shadow-xs">
             <span>📺</span>
             <span className="truncate max-w-[200px] sm:max-w-xs">{playlist.name}</span>
             {currentSortedIndex >= 0 && <span>(#{sortedVideos[currentSortedIndex]?.position})</span>}
@@ -364,14 +364,14 @@ export default function ChildWatchPage() {
           )}
 
           {/* Video Title & Interactive Controls Card */}
-          <div className="rounded-3xl bg-white/95 p-6 shadow-sm backdrop-blur-md border border-white/80 space-y-4">
+          <div className="rounded-3xl bg-slate-900 p-6 shadow-xl border border-white/10 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 leading-snug">
+                <h1 className="text-xl sm:text-2xl font-black text-white leading-snug">
                   {video.title}
                 </h1>
                 {playlist && (
-                  <p className="mt-1.5 text-xs font-bold text-sky-600 flex items-center gap-1.5">
+                  <p className="mt-1.5 text-xs font-bold text-sky-400 flex items-center gap-1.5">
                     <span>📺</span>
                     <span>{playlist.name}</span>
                     {currentSortedIndex >= 0 && <span className="text-gray-400">• Épisode {currentSortedIndex + 1} sur {sortedVideos.length}</span>}
@@ -482,16 +482,16 @@ export default function ChildWatchPage() {
           {sortedVideos.length > 1 && playlistId && (
             <section
               aria-label="Tous les épisodes de la chaîne"
-              className="rounded-3xl bg-white/95 p-5 shadow-sm backdrop-blur-md border border-white/80 space-y-3"
+              className="rounded-3xl bg-slate-900 p-5 shadow-xl border border-white/10 space-y-3"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">📺</span>
-                  <h2 className="text-base font-extrabold text-gray-900">
+                  <h2 className="text-base font-extrabold text-white">
                     Épisodes de la chaîne
                   </h2>
                 </div>
-                <span className="text-xs font-black text-sky-800 bg-sky-100 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-black text-sky-300 bg-sky-950 px-2.5 py-1 rounded-full border border-sky-800/40">
                   {currentSortedIndex + 1} / {sortedVideos.length}
                 </span>
               </div>
@@ -506,11 +506,11 @@ export default function ChildWatchPage() {
                       onClick={() => router.push(`/${locale}/child/watch/${item.id}?playlist=${playlistId}`)}
                       className={`w-full group flex items-center gap-3 p-2.5 rounded-2xl border text-left transition-all duration-200 ${
                         isCurrent
-                          ? 'border-[#1c90d8] bg-sky-50 ring-2 ring-[#1c90d8] shadow-sm'
-                          : 'border-gray-100 bg-white hover:border-sky-300 hover:shadow-xs'
+                          ? 'border-[#1c90d8] bg-sky-950/60 ring-2 ring-[#1c90d8] shadow-sm'
+                          : 'border-white/10 bg-slate-800/60 hover:border-sky-400 hover:bg-slate-800 text-white'
                       }`}
                     >
-                      <div className="relative w-28 sm:w-32 aspect-video rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                      <div className="relative w-28 sm:w-32 aspect-video rounded-xl bg-gray-800 overflow-hidden shrink-0">
                         {item.thumbnailUrl ? (
                           <RemoteImage
                             src={item.thumbnailUrl}
@@ -535,7 +535,7 @@ export default function ChildWatchPage() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`line-clamp-2 text-xs font-bold leading-snug ${isCurrent ? 'text-[#1c90d8]' : 'text-gray-800'}`}>
+                        <p className={`line-clamp-2 text-xs font-bold leading-snug ${isCurrent ? 'text-sky-300' : 'text-gray-200 group-hover:text-white'}`}>
                           {item.title}
                         </p>
                       </div>

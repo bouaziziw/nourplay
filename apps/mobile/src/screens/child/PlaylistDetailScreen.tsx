@@ -58,7 +58,7 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#1c90d8" />
+        <ActivityIndicator size="large" color="#38bdf8" />
         <Text style={styles.loadingText}>Ouverture de la playlist... 🎬</Text>
       </View>
     )
@@ -83,8 +83,8 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
         </View>
       </View>
 
-      {/* Playlist Hero Banner */}
-      <View style={[styles.heroBanner, { backgroundColor: theme.gradient[0] }]}>
+      {/* Playlist Hero Banner - dark deep navy matching mockups */}
+      <View style={styles.heroBanner}>
         <View style={styles.heroContent}>
           <Text style={styles.heroTitle} numberOfLines={2}>{playlistName}</Text>
           <Text style={styles.heroCount}>🎬 {videos.length} vidéo{videos.length !== 1 ? 's' : ''}</Text>
@@ -118,7 +118,7 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
           onEndReachedThreshold={0.4}
           ListFooterComponent={hasMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color="#1c90d8" />
+              <ActivityIndicator size="small" color="#38bdf8" />
             </View>
           ) : undefined}
           renderItem={({ item: pv, index }) => (
@@ -165,37 +165,41 @@ export default function ChildPlaylistDetailScreen({ route, navigation }: Props) 
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f9ff' },
+  safe: { flex: 1, backgroundColor: '#0b1120' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#070d18',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  backArrow: { fontSize: 24, fontWeight: '900', color: '#1c90d8', lineHeight: 26 },
-  backText: { fontSize: 13, fontWeight: '700', color: '#1c90d8' },
+  backArrow: { fontSize: 24, fontWeight: '900', color: '#38bdf8', lineHeight: 26 },
+  backText: { fontSize: 13, fontWeight: '700', color: '#f1f5f9' },
   channelPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#e0f2fe',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
   channelEmoji: { fontSize: 15 },
-  channelLabel: { fontSize: 12, fontWeight: '800', color: '#0369a1' },
+  channelLabel: { fontSize: 12, fontWeight: '800', color: '#38bdf8' },
 
   heroBanner: {
     paddingHorizontal: 20,
@@ -203,74 +207,77 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 10,
     marginBottom: 14,
-    borderRadius: 24,
+    borderRadius: 20,
+    backgroundColor: '#16325c',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
   heroContent: { gap: 6 },
   heroTitle: { fontSize: 22, fontWeight: '900', color: '#ffffff', lineHeight: 28 },
-  heroCount: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
+  heroCount: { fontSize: 13, fontWeight: '700', color: '#94a3b8' },
   playAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#f59e0b',
     alignSelf: 'flex-start',
     marginTop: 8,
     borderRadius: 18,
     paddingHorizontal: 18,
     paddingVertical: 10,
     shadowColor: '#000',
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
   playAllIcon: { fontSize: 16, color: '#0f172a' },
-  playAllText: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  playAllText: { fontSize: 14, fontWeight: '900', color: '#0f172a' },
 
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#64748b' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#0b1120' },
+  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#94a3b8' },
   emptyEmoji: { fontSize: 52, marginBottom: 12 },
-  emptyText: { fontSize: 15, color: '#64748b', textAlign: 'center' },
+  emptyText: { fontSize: 15, color: '#94a3b8', textAlign: 'center' },
 
   list: { paddingHorizontal: 12, paddingBottom: 32 },
   row: { gap: 12 },
   card: {
     flex: 1,
     marginBottom: 14,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#0284c7',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#e0f2fe',
+    borderColor: '#1e293b',
   },
   thumbWrapper: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
   thumb: { width: '100%', height: '100%' },
-  thumbPlaceholder: { backgroundColor: '#def0fa', alignItems: 'center', justifyContent: 'center' },
+  thumbPlaceholder: { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' },
   playOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+    backgroundColor: 'rgba(11, 17, 32, 0.3)',
   },
   playBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(2, 132, 199, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playBtnIcon: { fontSize: 16, color: '#1c90d8', marginLeft: 3 },
+  playBtnIcon: { fontSize: 16, color: '#ffffff', marginLeft: 2 },
   positionBadge: {
     position: 'absolute',
     top: 8,
@@ -278,7 +285,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#1c90d8',
+    backgroundColor: '#0284c7',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -287,13 +294,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   durationText: { fontSize: 10, color: '#fff', fontWeight: '700' },
   info: { padding: 12 },
-  videoTitle: { fontSize: 13, fontWeight: '700', color: '#0f172a', lineHeight: 18 },
+  videoTitle: { fontSize: 13, fontWeight: '700', color: '#f1f5f9', lineHeight: 18 },
   footerLoader: { paddingVertical: 16, alignItems: 'center' },
 })

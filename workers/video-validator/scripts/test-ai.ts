@@ -44,6 +44,7 @@ async function run() {
   console.log(`   Décision IA   : ${test1.log.decision}`)
   console.log(`   Tranche d’âge : ${test1.log.age_rating}`)
   console.log(`   Violations    : ${test1.log.violations.length}`)
+  console.log(`   Violations obj: ${JSON.stringify(test1.log.violations)}`)
   console.log(`   Résumé        : ${test1.log.summary}`)
   console.log(`   Raisons       : ${JSON.stringify(test1.log.reasons)}`)
 
@@ -81,16 +82,35 @@ async function run() {
   console.log(`   Violations    : ${test3.log.violations.length}`)
   console.log(`   Résumé        : ${test3.log.summary}`)
 
+  // TEST 4 : Baisers intimes / bisous sur compte 7+ (Doit être REJECTED)
+  console.log('\n--- TEST 4 : Baisers intimes / bisous sur compte 7+ ("deux femme font des bizou", AGE_7_PLUS) ---')
+  const test4 = await validateVideo({
+    videoId: 'test-sexual-kiss-04',
+    title: 'deux femme font des bizou',
+    description: 'Scène intime où deux femmes s\'embrassent amoureusement avec des bisous.',
+    language: 'fr',
+    requestedAgeRating: 'AGE_7_PLUS',
+    tags: ['romance', 'bisous', 'femmes'],
+  })
+  console.log(`   Statut obtenu : ${test4.status}`)
+  console.log(`   Score         : ${test4.score}`)
+  console.log(`   Décision IA   : ${test4.log.decision}`)
+  console.log(`   Tranche d’âge : ${test4.log.age_rating}`)
+  console.log(`   Violations    : ${test4.log.violations.length}`)
+  console.log(`   Résumé        : ${test4.log.summary}`)
+
   console.log('\n====================================================')
   const test1Ok = test1.status === 'APPROVED'
   const test2Ok = test2.status === 'NEEDS_REVIEW' || test2.status === 'REJECTED'
   const test3Ok = test3.status === 'REJECTED'
+  const test4Ok = test4.status === 'REJECTED'
 
   console.log(`Test 1 (Enfant sain approuvé)               : ${test1Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test1.status + ')'}`)
   console.log(`Test 2 (Horreur < 13 ans bloquée)            : ${test2Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test2.status + ')'}`)
   console.log(`Test 3 (Violence extrême rejetée)            : ${test3Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test3.status + ')'}`)
+  console.log(`Test 4 (Baisers / Romance < 13 ans rejetés)  : ${test4Ok ? '✅ SUCCÈS' : '❌ ÉCHEC (' + test4.status + ')'}`)
 
-  if (test1Ok && test2Ok && test3Ok) {
+  if (test1Ok && test2Ok && test3Ok && test4Ok) {
     console.log('\n🎉 TOUS LES TESTS DE VALIDATION IA ONT RÉUSSI !')
     console.log('Les règles renforcées protègent efficacement les moins de 13 ans.')
   } else {

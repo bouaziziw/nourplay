@@ -40,7 +40,7 @@ export default function AppNavigator() {
   const isTV = Platform.isTV
   const navigationKey = !auth.token
     ? 'auth'
-    : auth.parentModeUnlocked && !isTV
+    : auth.parentModeUnlocked
       ? 'parent'
       : childCtx.session || isTV
         ? 'child-active'
@@ -50,7 +50,7 @@ export default function AppNavigator() {
     <Stack.Navigator
       key={navigationKey}
       initialRouteName={
-        auth.parentModeUnlocked && !isTV
+        auth.parentModeUnlocked
           ? 'ParentTabs'
           : auth.token && (childCtx.session || isTV)
             ? 'ChildPlaylists'
@@ -93,7 +93,7 @@ export default function AppNavigator() {
               headerTitle: '',
               headerBackTitle: 'Retour',
               headerRight: () => (
-                !Platform.isTV ? (
+                Platform.isTV ? (
                   <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
                 ) : null
               ),
@@ -108,7 +108,7 @@ export default function AppNavigator() {
               headerBackTitle: 'Retour',
               headerTransparent: true,
               headerRight: () => (
-                !Platform.isTV ? (
+                Platform.isTV ? (
                   <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
                 ) : null
               ),

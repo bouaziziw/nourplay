@@ -75,38 +75,38 @@ export default function ChildHistoryPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Historique</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">Mon Historique ⏱️</h1>
           {!loading && history.length > 0 && (
-            <p className="text-xs text-gray-400 mt-0.5">{history.length} vidéo{history.length > 1 ? 's' : ''} regardée{history.length > 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400 mt-1">{history.length} vidéo{history.length > 1 ? 's' : ''} regardée{history.length > 1 ? 's' : ''}</p>
           )}
         </div>
 
         {history.length > 0 && !confirmClear && (
           <button
             onClick={() => setConfirmClear(true)}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+            className="text-xs font-bold text-gray-400 hover:text-red-400 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 transition-colors"
           >
             Tout effacer
           </button>
         )}
 
         {confirmClear && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">Effacer tout ?</span>
+          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-white/10">
+            <span className="text-xs text-gray-300">Effacer tout ?</span>
             <button
               onClick={handleClear}
               disabled={clearing}
-              className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
+              className="text-xs font-bold text-red-400 hover:text-red-300 disabled:opacity-50"
             >
               {clearing ? 'En cours…' : 'Oui'}
             </button>
             <button
               onClick={() => setConfirmClear(false)}
-              className="text-xs text-gray-400 hover:text-gray-600"
+              className="text-xs text-gray-400 hover:text-gray-200"
             >
               Annuler
             </button>
@@ -120,18 +120,18 @@ export default function ChildHistoryPage() {
           <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
         </div>
       ) : history.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-900/60 rounded-3xl border border-white/10">
           <span className="text-5xl mb-4">📺</span>
-          <p className="text-gray-500 font-medium">Aucune vidéo regardée pour l&apos;instant.</p>
+          <p className="text-white font-bold">Aucune vidéo regardée pour l&apos;instant.</p>
           <button
             onClick={() => router.push(`/${locale}/child/playlists`)}
-            className="mt-4 h-9 px-4 bg-[#1c90d8] text-white text-sm font-semibold rounded-xl hover:bg-[#1572ab] transition-colors shadow-sm"
+            className="mt-5 h-10 px-5 bg-amber-400 text-slate-950 text-sm font-black rounded-xl hover:bg-amber-300 transition-colors shadow-md"
           >
-            Découvrir des vidéos
+            Découvrir des vidéos ⭐
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {history.map(entry => {
             const progress = entry.video.durationSec
               ? Math.min(100, Math.round((entry.durationWatchedSec / entry.video.durationSec) * 100))
@@ -141,16 +141,16 @@ export default function ChildHistoryPage() {
               <button
                 key={entry.id}
                 onClick={() => router.push(`/${locale}/child/watch/${entry.video.id}`)}
-                className="w-full flex items-center gap-3 bg-white/80 backdrop-blur-sm rounded-2xl p-3 shadow-sm hover:shadow-md hover:bg-white transition-all text-left group"
+                className="w-full flex items-center gap-3 bg-slate-900 border border-white/10 rounded-2xl p-3 shadow-md hover:border-sky-400 hover:scale-[1.01] transition-all text-left group"
               >
                 {/* Thumbnail */}
-                <div className="relative w-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ paddingBottom: '42%' }}>
+                <div className="relative w-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-800" style={{ aspectRatio: '16/9' }}>
                   {entry.video.thumbnailUrl ? (
                     <RemoteImage
                       src={entry.video.thumbnailUrl}
                       alt={entry.video.title}
                       fill
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="object-cover"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -160,9 +160,9 @@ export default function ChildHistoryPage() {
 
                   {/* Progress bar */}
                   {progress !== null && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
                       <div
-                        className="h-full bg-[#1c90d8]"
+                        className="h-full bg-sky-400"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -170,7 +170,7 @@ export default function ChildHistoryPage() {
 
                   {/* Completed badge */}
                   {entry.completed && (
-                    <div className="absolute top-1 right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                    <div className="absolute top-1 right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
                       <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
@@ -180,26 +180,23 @@ export default function ChildHistoryPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors leading-snug">
+                  <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-sky-300 transition-colors leading-snug">
                     {entry.video.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs text-gray-400">{timeAgo(entry.watchedAt)}</span>
                     {entry.durationWatchedSec > 0 && (
                       <>
-                        <span className="text-gray-300">·</span>
-                        <span className="text-xs text-gray-400">{formatDuration(entry.durationWatchedSec)}</span>
+                        <span className="text-gray-600">·</span>
+                        <span className="text-xs text-sky-400 font-bold">{formatDuration(entry.durationWatchedSec)}</span>
                       </>
                     )}
                   </div>
                 </div>
 
-                <svg
-                  className="w-5 h-5 text-gray-300 group-hover:text-[#1c90d8] flex-shrink-0 transition-colors"
-                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                <span className="text-lg font-bold text-sky-400 group-hover:translate-x-1 transition-transform">
+                  ›
+                </span>
               </button>
             )
           })}

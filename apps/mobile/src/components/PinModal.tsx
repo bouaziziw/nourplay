@@ -65,7 +65,7 @@ export function PinModal({ visible, profileName, onSubmit, onClose }: Props) {
             maxLength={6}
             textAlign="center"
             placeholder="• • • •"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#64748b"
             autoFocus
           />
 
@@ -90,31 +90,33 @@ export function PinModal({ visible, profileName, onSubmit, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.75)' },
   centerer: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center', justifyContent: 'center', padding: 32,
   },
   card: {
-    width: '100%', backgroundColor: '#fff', borderRadius: 24,
+    width: '100%', maxWidth: 360, backgroundColor: '#0f172a', borderRadius: 24,
     padding: 28, alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 12,
+    borderWidth: 1, borderColor: '#1e293b',
+    shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6 },
-  subtitle: { fontSize: 14, color: '#6b7280', marginBottom: 20, textAlign: 'center' },
-  name: { fontWeight: '600', color: '#1c90d8' },
-  errorBox: { backgroundColor: '#fef2f2', borderRadius: 8, padding: 10, marginBottom: 12, width: '100%' },
-  errorText: { color: '#b91c1c', fontSize: 13, textAlign: 'center' },
+  title: { fontSize: 20, fontWeight: '800', color: '#f8fafc', marginBottom: 6 },
+  subtitle: { fontSize: 14, color: '#94a3b8', marginBottom: 20, textAlign: 'center' },
+  name: { fontWeight: '700', color: '#38bdf8' },
+  errorBox: { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.4)', borderRadius: 10, padding: 10, marginBottom: 14, width: '100%' },
+  errorText: { color: '#f87171', fontSize: 13, textAlign: 'center', fontWeight: '600' },
   pinInput: {
-    width: '100%', height: 56, borderWidth: 2, borderColor: '#e5e7eb', borderRadius: 14,
-    fontSize: 24, fontWeight: '700', letterSpacing: 8, color: '#111827', marginBottom: 20,
+    width: '100%', height: 56, borderWidth: 1.5, borderColor: '#334155', borderRadius: 14,
+    backgroundColor: '#1e293b',
+    fontSize: 24, fontWeight: '700', letterSpacing: 8, color: '#f8fafc', marginBottom: 20,
   },
   btn: {
-    width: '100%', height: 48, backgroundColor: '#1c90d8', borderRadius: 12,
+    width: '100%', height: 48, backgroundColor: '#0284c7', borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnDisabled: { opacity: 0.5 },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  btnDisabled: { opacity: 0.4 },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   cancelBtn: { marginTop: 14 },
-  cancelText: { color: '#6b7280', fontSize: 14 },
+  cancelText: { color: '#94a3b8', fontSize: 14, fontWeight: '600' },
 })

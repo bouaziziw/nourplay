@@ -23,12 +23,33 @@ const MIN_APPROVAL_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_APPRO
 const MIN_UNDER13_APPROVAL_CONFIDENCE = 0.92
 const MIN_REJECTION_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_REVIEW) || 0.75
 
-// Motifs de sécurité renforcée pour les moins de 13 ans (Horreur, monstres anxiogènes, armes, tromperies)
-const SENSITIVE_UNDER13_PATTERNS = [
-  /\b(huggy\s*wuggy|poppy\s*playtime|siren\s*head|fnaf|five\s*nights\s*at\s*freddy'?s|slenderman|momo\s*challenge|skibidi\s*toilet\s*horror|jumpscare|jump\s*scare|creepypasta|terror|gore|torture|bloody)\b/i,
-  /\b(fusillade|massacre|assassinat|démembrement|décapitation|suicide|mutilation|overdose)\b/i,
-  /\b(sexy|nude|hot\s*girl|erotic|hentai|ecchi|porn|sexe\s*explicite|strip)\b/i,
-  /\b(free\s*robux|free\s*vbucks|générateur\s*de\s*cartes|casino\s*enfant|betting)\b/i,
+// Motifs de sécurité renforcée pour les moins de 13 ans (Horreur, violence, armes, sexualité, romance/baisers, tromperies)
+export const SENSITIVE_UNDER13_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+  // 1. Horreur populaire, jumpscares, créatures anxiogènes
+  {
+    pattern: /\b(huggy\s*wuggy|poppy\s*playtime|siren\s*head|fnaf|five\s*nights\s*at\s*freddy'?s|slenderman|momo\s*challenge|skibidi\s*toilet\s*horror|jumpscare|jump\s*scare|creepypasta|terror|gore|torture|bloody)\b/i,
+    reason: "Contenu horrifique, jumpscare ou créature anxiogène interdit pour les enfants",
+  },
+  // 2. Violence extrême, massacres, armes réelles
+  {
+    pattern: /\b(fusillade|massacre|assassinat|démembrement|décapitation|suicide|mutilation|overdose|égorgement|attentat)\b/i,
+    reason: "Scène de violence extrême, armes ou mort interdite pour les enfants",
+  },
+  // 3. Sexualité, érotisme, nudité, tenues suggestives
+  {
+    pattern: /\b(sexy|nude|hot\s*girl|erotic|hentai|ecchi|porn|porno|sexe|sexuel|sexuelle|strip|lingerie|underwear|sous-vêtements?|cleavage|décolleté\s*plongeant|fétich)\b/i,
+    reason: "Contenu à caractère sexuel, érotique ou suggestif interdit pour les enfants",
+  },
+  // 4. Baisers romantiques/intimes, bisous, romance adulte, couples s'embrassant, intimité
+  {
+    pattern: /\b(baisers?|bisous?|bizous?|french\s*kiss|kiss|kisses|kissing|embrass(e|ent|er|ades?)|roule\s*une\s*pelle|smooch|makeout|making\s*out|flirt|drague|séduction|romance\s*sensuelle|couple\s*kiss|girls?\s*kissing|boys?\s*kissing|femmes?\s*(?:qui\s*)?(?:font\s*des\s*|s')?bi[sz]ous?|hommes?\s*(?:qui\s*)?(?:font\s*des\s*|s')?bi[sz]ous?|lesbian\s*kiss|gay\s*kiss|yuri|yaoi|scène\s*intime|intimité\s*de\s*couple)\b/i,
+    reason: "Baisers romantiques/intimes ou romance adulte interdits pour les profils enfants de moins de 13 ans",
+  },
+  // 5. Arnaques, paris d'argent, casinos
+  {
+    pattern: /\b(free\s*robux|free\s*vbucks|générateur\s*de\s*cartes|casino\s*enfant|betting|paris\s*sportifs?)\b/i,
+    reason: "Incitation aux jeux d'argent ou arnaques interdite pour les enfants",
+  },
 ]
 
 export function isTargetingUnder13(requestedRating?: string | null): boolean {
@@ -207,7 +228,10 @@ Analyse attentivement le titre, la description, les tags, les playlists, la lang
 
 Vérifie les critères suivants :
 - Violence : violence physique ou psychologique, armes, cruauté envers les animaux, scènes de combat sanglantes ou traumatisantes.
-- Nudité & sexualité : nudité, tenues inappropriées pour mineurs, insinuations sexuelles, pornographie, fétichisme.
+- Nudité, sexualité & intimité amoureuse :
+  * Nudité, tenues suggestives/inappropriées, insinuations sexuelles, pornographie, fétichisme.
+  * INTERDICTION STRICTE pour les profils enfants (< 13 ans : all_ages, 7_plus, 4_plus, 10_plus) de TOUT contenu romantique sensuel ou intime : baisers sur la bouche (bisous de couple, french kiss, deux femmes ou deux hommes ou couple s'embrassant amoureusement), scènes de lit, intimité amoureuse physique, drague ou flirt sensuel.
+  * Dans les miniatures, images ou titres : Si deux personnes s'embrassent sur la bouche ou manifestent une intimité amoureuse/sensuelle, classe OBLIGATOIREMENT en violation "sexual_content" (sévérité high) avec action "remove", décision REJETE, et age_rating minimum "16_plus".
 - Substances nocives : consommation ou promotion de drogues, alcool, tabac, cigarettes électroniques.
 - Toxicité : discours de haine, cyberharcèlement, intimidation, insultes graves, discrimination.
 - Risques vitaux : automutilation, idées suicidaires, défis dangereux (challenges TikTok/YouTube mettant la vie en danger).
@@ -221,7 +245,7 @@ Règles de décision :
 3. A_VERIFIER : En cas de doute légitime, d'ambiguïté dans le titre/miniature, de paroles à double sens potentielles, ou de thèmes matures nécessitant impérativement le visionnage complet par un adulte modérateur.
 
 RÈGLES STRICTES POUR LES ENFANTS DE MOINS DE 13 ANS (tranches all_ages, 7_plus, 4_plus, 10_plus) :
-- Tolérance ZÉRO pour toute violence, jumpscares, personnages anxiogènes ou d'horreur populaire (ex. Huggy Wuggy, Poppy Playtime, Siren Head, FNAF, Skibidi Horror), monstres terrifiants, armes réalistes, vulgarité ou sexualisation.
+- Tolérance ZÉRO pour toute violence, jumpscares, personnages anxiogènes ou d'horreur populaire (ex. Huggy Wuggy, Poppy Playtime, Siren Head, FNAF, Skibidi Horror), monstres terrifiants, armes réalistes, vulgarité, sexualisation, baisers romantiques/intimes sur la bouche (bisous de couple, deux femmes ou deux hommes s'embrassant), ou romance adulte.
 - En cas de titre ou miniature trompeuse (ex. titre de comptine avec jeu d'horreur ou ambiance sombre), classe impérativement en REJETE ou A_VERIFIER avec age_rating '13_plus' ou supérieur.
 - Une vidéo pour les moins de 13 ans ne peut être APPROUVÉE que si l'environnement est totalement sain, bienveillant et sans aucun doute raisonnable.
 
@@ -306,6 +330,56 @@ function extractJson(text: string): unknown {
 }
 
 export async function validateVideo(input: ValidateInput): Promise<ValidateResult> {
+  const isUnder13 = isTargetingUnder13(input.requestedAgeRating)
+  const textToCheck = `${input.title || ''} ${input.description || ''} ${input.tags?.join(' ') || ''}`
+
+  // Guardrail de sécurité immédiat pour les moins de 13 ans (rejet instantané sans appel réseau)
+  if (isUnder13) {
+    for (const guard of SENSITIVE_UNDER13_PATTERNS) {
+      if (guard.pattern.test(textToCheck)) {
+        const isSexualOrRomance = guard.reason.includes('sexuel') || guard.reason.includes('Baisers')
+        const report: ModerationReport = {
+          video_id: input.videoId,
+          decision: 'REJETE',
+          age_rating: isSexualOrRomance ? '16_plus' : '18_plus',
+          requested_age_rating: input.requestedAgeRating,
+          confidence: 1.0,
+          summary: `Rejet automatique de sécurité pour les moins de 13 ans : ${guard.reason}.`,
+          reasons: [guard.reason],
+          violations: [{
+            category: isSexualOrRomance ? 'sexual_content' : 'shocking_content',
+            severity: 'high',
+            timestamp_start: '00:00:00',
+            timestamp_end: '00:00:00',
+            evidence: `Détection de termes interdits pour les enfants : "${textToCheck.slice(0, 100)}"`,
+            action: 'remove',
+          }],
+          audio_analysis: {
+            transcript_available: false,
+            offensive_language: false,
+            hate_speech: false,
+            dangerous_instructions: false,
+            notes: 'Rejet automatique pré-analyse',
+          },
+          playlist_assessment: emptyPlaylistAssessment(),
+          recommended_action: 'reject',
+          review_priority: 'high',
+          model: 'rule-engine-under13',
+          analyzed_at: new Date().toISOString(),
+          analysis_coverage: {
+            title_and_description: true,
+            thumbnail_analyzed: false,
+            sampled_frames: 0,
+            transcript_available: false,
+            full_video_analyzed: false,
+          },
+          playlist_assessments: [],
+        }
+        return { score: 1.0, status: 'REJECTED', log: report }
+      }
+    }
+  }
+
   const candidateFrames = input.frames?.length ? input.frames : (
     input.thumbnailUrl ? [{ timestamp: '00:00:00', imageUrl: input.thumbnailUrl }] : []
   )
@@ -522,16 +596,53 @@ function decideStatus(
   const isUnder13 = isTargetingUnder13(requestedAgeRating)
   const textToCheck = `${title || ''} ${description || ''}`
 
-  // Guardrail regex renforcé pour les moins de 13 ans
+  // 1. Guardrail regex renforcé pour les moins de 13 ans
   if (isUnder13) {
-    for (const pattern of SENSITIVE_UNDER13_PATTERNS) {
-      if (pattern.test(textToCheck)) {
+    for (const guard of SENSITIVE_UNDER13_PATTERNS) {
+      if (guard.pattern.test(textToCheck)) {
         return 'REJECTED'
       }
     }
+
+    // Si l'IA a détecté une violation sexuelle, nudité ou de sévérité élevée/moyenne
+    const hasSensitiveViolation = report.violations.some(
+      v => v.category === 'sexual_content' || v.category === 'nudity' || v.severity === 'high' || v.severity === 'medium',
+    )
+    if (report.decision === 'REJETE' || hasSensitiveViolation) {
+      return 'REJECTED'
+    }
+
+    // Détection de termes sensibles dans le résumé ou les preuves de l'IA (ex: baisers, bisous, romance adulte)
+    const aiText = `${report.summary} ${report.reasons.join(' ')} ${report.violations.map(v => v.evidence).join(' ')}`
+    for (const guard of SENSITIVE_UNDER13_PATTERNS) {
+      if (guard.pattern.test(aiText)) {
+        return 'REJECTED'
+      }
+    }
+
+    // Interdiction formelle de toute tranche mature pour un profil enfant (< 13 ans)
+    if (['13_plus', '16_plus', '18_plus'].includes(report.age_rating)) {
+      return 'REJECTED'
+    }
+
+    // Tolérance ZERO pour la moindre violation résiduelle
+    if (report.violations.length > 0) {
+      return 'NEEDS_REVIEW'
+    }
+
+    // Seuil de confiance minimal de 92% pour approuver un profil enfant
+    if (report.confidence < MIN_UNDER13_APPROVAL_CONFIDENCE) {
+      return 'NEEDS_REVIEW'
+    }
+
+    if (report.decision === 'APPROUVE') {
+      return 'APPROVED'
+    }
+
+    return 'NEEDS_REVIEW'
   }
 
-  // 1. Rejet si violation grave ou décision explicite avec confiance suffisante
+  // 2. Règles pour les adolescents (13 ans et plus)
   if (report.decision === 'REJETE') {
     const hasSevereViolation = report.violations.some(
       v => (v.severity === 'high' || v.severity === 'medium') && (v.action === 'remove' || v.action === 'age_restrict'),
@@ -542,28 +653,7 @@ function decideStatus(
     return 'NEEDS_REVIEW'
   }
 
-  // 2. Approbation si le contenu est jugé sûr et approprié
   if (report.decision === 'APPROUVE') {
-    if (isUnder13) {
-      // Tolérance ZERO pour la moindre violation pour les enfants (< 13 ans)
-      if (report.violations.length > 0) {
-        return 'NEEDS_REVIEW'
-      }
-
-      // Si le modèle a classé la vidéo dans une tranche mature (13+, 16+, 18+), interdiction formelle pour les enfants
-      if (['13_plus', '16_plus', '18_plus'].includes(report.age_rating)) {
-        return 'NEEDS_REVIEW'
-      }
-
-      // Seuil de confiance ultra-strict pour les enfants (< 13 ans) : minimum 92%
-      if (report.confidence < MIN_UNDER13_APPROVAL_CONFIDENCE) {
-        return 'NEEDS_REVIEW'
-      }
-
-      return 'APPROVED'
-    }
-
-    // Règles pour les adolescents (13 ans et plus)
     const hasUnacceptableViolation = report.violations.some(
       v => v.severity === 'medium' || v.severity === 'high',
     )

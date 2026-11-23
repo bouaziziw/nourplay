@@ -105,7 +105,7 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Logo size="sm" subtitle="Enfant" />
-        {!Platform.isTV && (
+        {Platform.isTV && (
           <TouchableOpacity
             accessibilityRole="button"
             onPress={() => {
@@ -114,7 +114,7 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
             }}
             style={styles.parentModeButton}
           >
-            <Text style={styles.dashboardLink}>Mode Parent</Text>
+            <Text style={styles.dashboardLink}>🔒 Mode Parent</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -129,7 +129,7 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
       ) : profiles.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Aucun profil enfant disponible.</Text>
-          {!Platform.isTV && (
+          {Platform.isTV && (
             <Text style={styles.linkText}>Le parent peut créer un profil après avoir déverrouillé le Mode Parent.</Text>
           )}
         </View>
@@ -236,36 +236,36 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f8fd' },
+  safe: { flex: 1, backgroundColor: '#0b1120' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8 },
   appName: { fontSize: 18, fontWeight: '800', color: '#1c90d8' },
-  dashboardLink: { fontSize: 13, color: '#1c90d8', fontWeight: '700' },
-  parentModeButton: { borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#f0f9ff' },
+  dashboardLink: { fontSize: 13, color: '#38bdf8', fontWeight: '800' },
+  parentModeButton: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.08)' },
   titleBlock: { alignItems: 'center', marginTop: 32, marginBottom: 24 },
-  title: { fontSize: 26, fontWeight: '800', color: '#0f172a' },
-  subtitle: { fontSize: 14, color: '#64748b', marginTop: 4 },
+  title: { fontSize: 26, fontWeight: '900', color: '#ffffff' },
+  subtitle: { fontSize: 14, color: '#94a3b8', marginTop: 4 },
   grid: { paddingHorizontal: 16, paddingBottom: 24 },
   row: { justifyContent: 'space-between', marginBottom: 16 },
-  profileCard: { width: '47%', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowColor: '#1c90d8', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  profileCard: { width: '47%', alignItems: 'center', backgroundColor: '#0f172a', borderRadius: 20, padding: 20, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 3, borderWidth: 1, borderColor: '#1e293b' },
   avatar: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 10, overflow: 'hidden' },
   avatarImg: { width: 72, height: 72, borderRadius: 36 },
   avatarText: { fontSize: 22, fontWeight: '800' },
-  profileName: { fontSize: 14, fontWeight: '600', color: '#111827', textAlign: 'center' },
-  profileAge: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  profileName: { fontSize: 15, fontWeight: '800', color: '#ffffff', textAlign: 'center' },
+  profileAge: { fontSize: 12, color: '#38bdf8', marginTop: 2, fontWeight: '700' },
   emptyState: { alignItems: 'center', marginTop: 80 },
-  emptyText: { fontSize: 15, color: '#6b7280', marginBottom: 16 },
-  linkText: { fontSize: 14, color: '#1c90d8', fontWeight: '600', textAlign: 'center', maxWidth: 280 },
+  emptyText: { fontSize: 15, color: '#94a3b8', marginBottom: 16 },
+  linkText: { fontSize: 14, color: '#38bdf8', fontWeight: '600', textAlign: 'center', maxWidth: 280 },
   logoutBtn: { alignItems: 'center', paddingVertical: 20 },
-  logoutText: { fontSize: 13, color: '#9ca3af' },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.55)' },
-  unlockCard: { width: '100%', maxWidth: 380, backgroundColor: '#fff', borderRadius: 20, padding: 24 },
-  unlockTitle: { fontSize: 22, fontWeight: '800', color: '#111827', textAlign: 'center' },
-  unlockSubtitle: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8, marginBottom: 20, lineHeight: 20 },
-  passwordInput: { height: 48, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, color: '#111827', backgroundColor: '#f9fafb' },
-  unlockError: { color: '#b91c1c', fontSize: 13, textAlign: 'center', marginTop: 10 },
-  unlockButton: { height: 48, borderRadius: 11, backgroundColor: '#1c90d8', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  logoutText: { fontSize: 13, color: '#64748b' },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.75)' },
+  unlockCard: { width: '100%', maxWidth: 380, backgroundColor: '#0f172a', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#1e293b' },
+  unlockTitle: { fontSize: 22, fontWeight: '800', color: '#ffffff', textAlign: 'center' },
+  unlockSubtitle: { fontSize: 14, color: '#94a3b8', textAlign: 'center', marginTop: 8, marginBottom: 20, lineHeight: 20 },
+  passwordInput: { height: 48, borderWidth: 1, borderColor: '#334155', borderRadius: 12, paddingHorizontal: 12, color: '#ffffff', backgroundColor: '#1e293b' },
+  unlockError: { color: '#f87171', fontSize: 13, textAlign: 'center', marginTop: 10 },
+  unlockButton: { height: 48, borderRadius: 12, backgroundColor: '#0284c7', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   unlockButtonDisabled: { opacity: 0.55 },
-  unlockButtonText: { color: '#fff', fontWeight: '700' },
+  unlockButtonText: { color: '#fff', fontWeight: '800' },
   cancelButton: { alignItems: 'center', padding: 12, marginTop: 4 },
-  cancelText: { fontSize: 14, color: '#6b7280' },
+  cancelText: { fontSize: 14, color: '#94a3b8' },
 })
