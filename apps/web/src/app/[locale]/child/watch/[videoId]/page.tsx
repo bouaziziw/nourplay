@@ -602,4 +602,3 @@ export default function ChildWatchPage() {
     </div>
   )
 }
-}
