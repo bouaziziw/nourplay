@@ -1,4 +1,22 @@
 import OpenAI from 'openai'
+import dotenv from 'dotenv'
+import path from 'node:path'
+import fs from 'node:fs'
+
+// Charger les variables d'environnement depuis le fichier .env (local ou racine du monorepo)
+const candidateEnvFiles = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../../.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../../../.env'),
+]
+
+for (const envFile of candidateEnvFiles) {
+  if (fs.existsSync(envFile)) {
+    dotenv.config({ path: envFile })
+  }
+}
 
 const MAX_TOKENS = 3500
 const MIN_APPROVAL_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_APPROVE) || 0.85
@@ -313,31 +331,53 @@ export async function validateVideo(input: ValidateInput): Promise<ValidateResul
     for (const frame of frames.slice(0, 5)) {
       try {
         const dataUrl = await fetchImageAsDataUrl(frame.imageUrl)
-        contentParts.push({ type: 'image_url', image_url: { url: dataUrl } })
+        if (dataUrl && dataUrl.startsWith('data:')) {
+          contentParts.push({ type: 'image_url', image_url: { url: dataUrl } })
+        }
       } catch {
-        // En cas d'échec du téléchargement local, transmettre l'URL directe
-        contentParts.push({ type: 'image_url', image_url: { url: frame.imageUrl } })
+        // En cas d'échec du téléchargement, NE PAS envoyer d'URL HTTP brute à Gemini
+        // car l'endpoint OpenAI de Google Generative Language rejette les URLs HTTP avec une erreur 404
       }
     }
 
-    const response = await openai.chat.completions.create({
-      model: config.model,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: contentParts },
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: MAX_TOKENS,
-      temperature: 0.1,
-    })
+    const fallbackModels = config.provider === 'gemini'
+      ? [config.model, 'gemini-3.1-flash-lite', 'gemini-3.5-flash'].filter((m, i, arr) => arr.indexOf(m) === i)
+      : [config.model]
 
-    const rawContent = response.choices[0]?.message?.content
-    if (typeof rawContent !== 'string' || !rawContent) {
-      throw new Error(`Le fournisseur IA (${config.provider}/${config.model}) a retourné une réponse vide`)
+    let rawContent: string | null = null
+    let usedModel = config.model
+    let lastError: unknown = null
+
+    for (const modelToTry of fallbackModels) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: modelToTry,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: contentParts },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: MAX_TOKENS,
+          temperature: 0.1,
+        })
+        const text = response.choices[0]?.message?.content
+        if (typeof text === 'string' && text.trim()) {
+          rawContent = text
+          usedModel = modelToTry
+          break
+        }
+      } catch (err) {
+        lastError = err
+      }
+    }
+
+    if (!rawContent) {
+      const errDetail = lastError instanceof Error ? lastError.message : String(lastError || 'Réponse vide')
+      throw new Error(`Le fournisseur IA (${config.provider}/${config.model}) a échoué: ${errDetail}`)
     }
 
     const parsed = extractJson(rawContent)
-    const report = parseReport(parsed, input, frames.length, config.model)
+    const report = parseReport(parsed, input, frames.length, usedModel)
     const status = decideStatus(report, input.requestedAgeRating)
 
     report.decision = status === 'APPROVED' ? 'APPROUVE'
@@ -473,9 +513,9 @@ function decideStatus(
     const hasUnacceptableViolation = report.violations.some(
       v => v.severity === 'medium' || v.severity === 'high',
     )
-    const exceedsRequestedAge = ageRank(report.age_rating) > requestedAgeRank(requestedAgeRating)
+    const isAdultOnly = report.age_rating === '18_plus'
 
-    if (!hasUnacceptableViolation && !exceedsRequestedAge && report.confidence >= MIN_APPROVAL_CONFIDENCE) {
+    if (!hasUnacceptableViolation && !isAdultOnly && report.confidence >= MIN_APPROVAL_CONFIDENCE) {
       return 'APPROVED'
     }
     return 'NEEDS_REVIEW'
@@ -599,10 +639,13 @@ function isTrustedImageUrl(value: string): boolean {
   try {
     const url = new URL(value)
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
-    return ['i.ytimg.com', 'img.youtube.com', 'i.vimeocdn.com'].includes(url.hostname)
+    return ['i.ytimg.com', 'img.youtube.com', 'i.vimeocdn.com', 'www.dailymotion.com'].includes(url.hostname)
       || url.hostname.endsWith('.ytimg.com')
       || url.hostname.endsWith('.vimeocdn.com')
+      || url.hostname.endsWith('.dmcdn.net')
+      || url.hostname.endsWith('.dailymotion.com')
       || url.hostname.endsWith('.googleusercontent.com')
+      || url.hostname.endsWith('.cloudfront.net')
       || url.hostname.endsWith('.nourplay.app')
   } catch {
     return false
