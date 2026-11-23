@@ -6,11 +6,27 @@ import { useRouter } from 'next/navigation'
 export function isTvDevice(): boolean {
   if (typeof window === 'undefined') return false
 
-  // Explicit URL parameter check (?tv=1)
-  if (window.location.search.includes('tv=1')) return true
+  // Explicit URL parameter check (?tv=1, ?tv=true, ?tv, ?mode=tv, etc.)
+  try {
+    const search = window.location.search.toLowerCase()
+    if (
+      search.includes('tv=1') ||
+      search.includes('tv=true') ||
+      search.includes('mode=tv') ||
+      search.includes('tv=yes') ||
+      search === '?tv' ||
+      search.includes('&tv') ||
+      search.includes('?tv&')
+    ) {
+      localStorage.setItem('nourplay:tv-mode', '1')
+      return true
+    }
 
-  // LocalStorage preference check
-  if (localStorage.getItem('nourplay:tv-mode') === '1') return true
+    // LocalStorage preference check
+    if (localStorage.getItem('nourplay:tv-mode') === '1') return true
+  } catch {
+    // Ignore localStorage security errors
+  }
 
   const ua = navigator.userAgent.toLowerCase()
   return (
@@ -60,12 +76,17 @@ export function useTvNavigation(options: SpatialOptions = {}) {
   const [showTvHelper, setShowTvHelper] = useState<boolean>(false)
   const helperTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Auto-detect TV on mount
+  // Auto-detect TV on mount and show quick commands helper by default
   useEffect(() => {
     const detected = isTvDevice()
     if (detected) {
       setIsTv(true)
       document.documentElement.classList.add('tv-mode')
+      setShowTvHelper(true)
+      if (helperTimerRef.current) clearTimeout(helperTimerRef.current)
+      helperTimerRef.current = setTimeout(() => {
+        setShowTvHelper(false)
+      }, 6000)
     }
   }, [])
 

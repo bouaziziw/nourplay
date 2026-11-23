@@ -80,6 +80,27 @@ const INJECTED_START_AND_PAUSE_JS = `
     document.addEventListener('DOMContentLoaded', startAndQuickPause);
     setTimeout(startAndQuickPause, 800);
     setTimeout(startAndQuickPause, 1800);
+
+    // Active quick commands via remote / keyboard in WebView
+    document.addEventListener('keydown', function(e) {
+      var v = document.querySelector('video');
+      if (!v) return;
+      if (e.key === ' ' || e.code === 'Space' || e.key === 'MediaPlayPause' || e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        if (v.paused) v.play(); else v.pause();
+      } else if (e.key === 'ArrowLeft' || e.key === 'MediaRewind' || e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        v.currentTime = Math.max(0, v.currentTime - 10);
+      } else if (e.key === 'ArrowRight' || e.key === 'MediaFastForward' || e.key === 'l' || e.key === 'L') {
+        e.preventDefault();
+        v.currentTime = v.currentTime + 10;
+      } else if (e.key === 'm' || e.key === 'M') {
+        v.muted = !v.muted;
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (v.requestFullscreen) v.requestFullscreen();
+        else if (v.webkitRequestFullscreen) v.webkitRequestFullscreen();
+      }
+    });
   })();
   true;
 `
@@ -223,6 +244,17 @@ export function VideoPlayer({
 
       {/* Integrated Remote-Friendly TV Playback Controls */}
       <View style={[styles.controlsBar, isTV && styles.tvControlsBar]}>
+        {/* Quick Commands Header (Active by default) */}
+        <View style={styles.quickHeaderRow}>
+          <View style={styles.quickBadge}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.quickBadgeText}>⚡ Commandes rapides</Text>
+          </View>
+          <Text style={styles.quickStatusText}>
+            {isPlaying ? '▶ Lecture en cours' : 'Prêt à regarder 🍿'}
+          </Text>
+        </View>
+
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.btn, isPlaying ? styles.btnPause : styles.btnPlay, isTV && styles.tvBtn]}
@@ -279,6 +311,13 @@ export function VideoPlayer({
           >
             <Text style={styles.btnIconText}>{isMuted ? '🔇' : '🔊'}</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Quick Remote Navigation Hints for TV */}
+        <View style={styles.remoteHintRow}>
+          <Text style={styles.remoteHintText}>
+            [OK] Lecture/Pause  •  [◀◀ / ▶▶] ±10s  •  [⛶ Plein écran]
+          </Text>
         </View>
       </View>
     </View>
@@ -398,5 +437,52 @@ const styles = StyleSheet.create({
   },
   btnIconText: {
     fontSize: 15,
+  },
+  quickHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  quickBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0c2d48',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#0284c7',
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10b981',
+  },
+  quickBadgeText: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  quickStatusText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  remoteHintRow: {
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  remoteHintText: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '700',
   },
 })

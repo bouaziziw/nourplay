@@ -174,10 +174,27 @@ export function VideoPlayer({
       sendPlayerCommand('pauseVideo')
       setIsPlaying(false)
       setStatusMessage('Prêt à regarder 🍿')
+
+      // Requirement: Activer les commandes rapides par défaut
+      const primaryBtn = containerRef.current?.querySelector<HTMLElement>('[data-tv-focus="primary"]')
+      if (primaryBtn) {
+        primaryBtn.focus()
+      }
     }, 850)
 
     return () => clearTimeout(pauseTimer)
   }, [sendPlayerCommand])
+
+  // Focus primary quick command button on load
+  useEffect(() => {
+    const focusTimer = setTimeout(() => {
+      const primaryBtn = containerRef.current?.querySelector<HTMLElement>('[data-tv-focus="primary"]')
+      if (primaryBtn && typeof primaryBtn.focus === 'function') {
+        primaryBtn.focus()
+      }
+    }, 400)
+    return () => clearTimeout(focusTimer)
+  }, [])
 
   // Interactive controls
   const handleTogglePlay = useCallback(() => {
@@ -269,23 +286,26 @@ export function VideoPlayer({
     }
   }, [])
 
-  // TV Remote shortcut handling
+  // TV Remote & Keyboard Quick Commands handling
   useEffect(() => {
     const handleRemoteKeys = (e: KeyboardEvent) => {
       const keyCode = (e as unknown as { keyCode?: number }).keyCode || 0
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea') return
 
-      // Fullscreen key (F or TV dedicated key)
+      // Fullscreen quick command (F or TV dedicated key)
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
-        if (tag !== 'input' && tag !== 'textarea') {
-          e.preventDefault()
-          handleToggleFullscreen()
-          return
-        }
+        e.preventDefault()
+        handleToggleFullscreen()
+        return
       }
 
-      // Play / Pause media keys
+      // Play / Pause quick commands (Space, Enter, K, or TV Media keys)
       if (
+        e.key === ' ' ||
+        e.code === 'Space' ||
+        e.key === 'k' ||
+        e.key === 'K' ||
         e.key === 'MediaPlayPause' ||
         e.key === 'MediaPlay' ||
         e.key === 'MediaPause' ||
@@ -298,20 +318,39 @@ export function VideoPlayer({
         return
       }
 
-      // Rewind / Forward media keys
-      if (e.key === 'MediaRewind' || keyCode === 412) {
+      // Rewind quick commands (-10s: J, ArrowLeft, or TV Rewind)
+      if (
+        e.key === 'j' ||
+        e.key === 'J' ||
+        e.key === 'MediaRewind' ||
+        keyCode === 412
+      ) {
         e.preventDefault()
         handleRewind10()
         return
       }
-      if (e.key === 'MediaFastForward' || keyCode === 417) {
+
+      // Forward quick commands (+10s: L, ArrowRight, or TV FastForward)
+      if (
+        e.key === 'l' ||
+        e.key === 'L' ||
+        e.key === 'MediaFastForward' ||
+        keyCode === 417
+      ) {
         e.preventDefault()
         handleForward10()
         return
       }
 
-      // Next video media key
-      if ((e.key === 'MediaTrackNext' || keyCode === 10253) && onNext) {
+      // Mute / Unmute quick command (M)
+      if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault()
+        handleToggleMute()
+        return
+      }
+
+      // Next video quick command (N or TV Next key)
+      if ((e.key === 'n' || e.key === 'N' || e.key === 'MediaTrackNext' || keyCode === 10253) && onNext) {
         e.preventDefault()
         onNext()
         return
@@ -320,7 +359,7 @@ export function VideoPlayer({
 
     window.addEventListener('keydown', handleRemoteKeys)
     return () => window.removeEventListener('keydown', handleRemoteKeys)
-  }, [handleTogglePlay, handleRewind10, handleForward10, handleToggleFullscreen, onNext])
+  }, [handleTogglePlay, handleRewind10, handleForward10, handleToggleFullscreen, handleToggleMute, onNext])
 
   const safeUrl = buildSafeEmbedUrl(embedUrl, startAt, ccEnabled, isTv)
   const isYouTube = embedUrl.includes('youtube.com') || embedUrl.includes('youtu.be')
@@ -356,9 +395,41 @@ export function VideoPlayer({
       </div>
 
       {/* ── Smart TV Navigation & Playback Controls Bar ── */}
-      <div className="bg-slate-900/95 border-t border-white/10 px-4 py-3 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-3 text-white">
+      <div className="bg-slate-900/95 border-t border-white/10 px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-3 text-white">
+        {/* Quick Commands Header & Remote Guide (Active by default) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider text-sky-400 bg-sky-950/80 border border-sky-800/80 px-2.5 py-1 rounded-lg shadow-sm">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>⚡ Commandes rapides</span>
+            </span>
+            {statusMessage && (
+              <span className="text-xs font-bold text-sky-200 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+                {statusMessage}
+              </span>
+            )}
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-black/40 px-3 py-1 rounded-lg border border-white/5">
+            <span>[OK / Espace] Lecture</span>
+            <span>•</span>
+            <span>[◀◀ / ▶▶] ±10s</span>
+            <span>•</span>
+            <span>[F] Plein écran</span>
+            <span>•</span>
+            <span>[M] Sourdine</span>
+            {onNext && (
+              <>
+                <span>•</span>
+                <span>[N] Suivant</span>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Playback action buttons */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Main Play / Pause Button with Primary TV Focus */}
           <button
             type="button"
@@ -460,5 +531,6 @@ export function VideoPlayer({
         </div>
       </div>
     </div>
-  )
+  </div>
+)
 }
