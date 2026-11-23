@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, setOnTokenUpdate } from '../lib/api'
 
 interface User { id: string; email: string; role: string; locale: string }
 interface AuthState { user: User | null; token: string | null; loading: boolean }
@@ -9,6 +9,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<{ requiresTwoFactor?: boolean; userId?: string }>
   loginWith2fa: (userId: string, code: string) => Promise<void>
   logout: () => Promise<void>
+  refresh: () => Promise<void>
 }
 
 const AuthCtx = createContext<AuthContextValue | null>(null)
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const request = (async () => {
       try {
         const session = await api.auth.refresh()
-        if (session) {
+        if (session?.accessToken) {
           await loadUser(session.accessToken)
         } else {
           setState({ user: null, token: null, loading: false })
@@ -55,6 +56,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser])
 
   useEffect(() => { refresh() }, [refresh])
+
+  useEffect(() => {
+    setOnTokenUpdate((newToken: string) => {
+      setState(current => current.token === newToken ? current : { ...current, token: newToken })
+    })
+    return () => setOnTokenUpdate(null)
+  }, [])
+
+  useEffect(() => {
+    if (!state.token) return
+    // Rafraîchir automatiquement le token après 10 minutes (durée de validité : 15 min)
+    const timer = setTimeout(() => {
+      void refresh()
+    }, 10 * 60 * 1000)
+    return () => clearTimeout(timer)
+  }, [state.token, refresh])
+
+  useEffect(() => {
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' && state.token) {
+        void refresh()
+      }
+    }
+    window.addEventListener('visibilitychange', onVisibilityOrFocus)
+    window.addEventListener('focus', onVisibilityOrFocus)
+    return () => {
+      window.removeEventListener('visibilitychange', onVisibilityOrFocus)
+      window.removeEventListener('focus', onVisibilityOrFocus)
+    }
+  }, [state.token, refresh])
 
   const login = useCallback(async (email: string, password: string) => {
     const result = await api.auth.login({ email, password })
@@ -73,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthCtx.Provider value={{ ...state, login, loginWith2fa, logout }}>
+    <AuthCtx.Provider value={{ ...state, login, loginWith2fa, logout, refresh }}>
       {children}
     </AuthCtx.Provider>
   )

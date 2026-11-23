@@ -90,8 +90,9 @@ export class VideoController {
   }
 
   @Post('admin/revalidate-pending')
+  @Patch('admin/revalidate-pending')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '[Admin] Relancer en priorité la validation automatique des vidéos en attente' })
   revalidateAllPending() {

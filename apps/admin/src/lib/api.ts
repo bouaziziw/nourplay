@@ -26,7 +26,7 @@ export function setOnTokenUpdate(callback: ((token: string) => void) | null) {
   onTokenUpdateCallback = callback
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (activeRefreshPromise) return activeRefreshPromise
   activeRefreshPromise = (async () => {
     try {
@@ -84,8 +84,8 @@ async function request<T>(path: string, init: RequestInit = {}, isRetry = false)
   return res.json() as Promise<T>
 }
 
-function bearer(token: string): { headers: Record<string, string> } {
-  return { headers: { Authorization: `Bearer ${token}` } }
+function bearer(token?: string | null): { headers: Record<string, string> } {
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : { headers: {} }
 }
 
 // ── Domain types ──────────────────────────────────────────────────────────────
@@ -313,7 +313,7 @@ export const api = {
         ...bearer(token),
       }),
 
-    revalidateAllPending: (token: string) =>
+    revalidateAllPending: (token?: string | null) =>
       request<{ queued: number }>('/videos/admin/revalidate-pending', {
         method: 'POST',
         ...bearer(token),
