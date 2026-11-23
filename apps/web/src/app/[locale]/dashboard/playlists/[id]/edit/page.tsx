@@ -8,6 +8,12 @@ import QRCode from 'qrcode'
 import { useAuth } from '../../../../../../hooks/useAuth'
 import { api, PlaylistDetail, VideoSearchResult, PlaylistAccess } from '../../../../../../lib/api'
 import { RemoteImage } from '../../../../../../components/RemoteImage'
+import {
+  PLAYLIST_CATEGORIES,
+  LANGUAGE_OPTIONS,
+  packPlaylistDescription,
+  unpackPlaylistDescription,
+} from '../../../../../../lib/playlistCategory'
 
 const AGE_GROUPS = [
   { value: 'AGE_0_3', label: '0–3' },
@@ -43,13 +49,15 @@ export default function EditPlaylistPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [duplicating, setDuplicating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const [meta, setMeta] = useState({
     name: '',
     description: '',
+    category: 'stories',
     visibility: 'PRIVATE',
     targetAgeGroup: [] as string[],
-    languages: '',
+    language: 'fr',
   })
 
   // Schedule
@@ -108,17 +116,33 @@ export default function EditPlaylistPage() {
     }
   }
 
+  const handleDeletePlaylist = async () => {
+    if (!token || !playlist) return
+    if (!window.confirm(`Supprimer définitivement la playlist « ${playlist.name} » ? Cette action est irréversible.`)) return
+    setDeleting(true)
+    setError('')
+    try {
+      await api.playlists.delete(token, id)
+      router.push(`/${locale}/dashboard/playlists`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression de la playlist.')
+      setDeleting(false)
+    }
+  }
+
   const load = useCallback(() => {
     if (!token) return
     api.playlists.getById(token, id)
       .then(pl => {
         setPlaylist(pl)
+        const { category, cleanDescription } = unpackPlaylistDescription(pl.description, pl.name)
         setMeta({
           name: pl.name,
-          description: pl.description ?? '',
+          description: cleanDescription,
+          category,
           visibility: pl.visibility,
           targetAgeGroup: pl.targetAgeGroup ?? [],
-          languages: (pl.languages ?? []).join(', '),
+          language: pl.languages?.[0] ?? 'fr',
         })
         if (pl.scheduledPublishAt) {
           // Convert ISO string to datetime-local format (yyyy-MM-ddTHH:mm)
@@ -177,12 +201,13 @@ export default function EditPlaylistPage() {
     setSaving(true)
     setError('')
     try {
+      const packedDesc = packPlaylistDescription(meta.category, meta.description)
       await api.playlists.update(token, id, {
         name: meta.name.trim(),
-        description: meta.description.trim() || undefined,
+        description: packedDesc || undefined,
         visibility: meta.visibility,
         targetAgeGroup: meta.targetAgeGroup,
-        languages: meta.languages ? meta.languages.split(',').map(s => s.trim()).filter(Boolean) : [],
+        languages: meta.language ? [meta.language] : ['fr'],
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -371,6 +396,17 @@ export default function EditPlaylistPage() {
         >
           Aperçu
         </Link>
+        <button
+          onClick={handleDeletePlaylist}
+          disabled={deleting}
+          className="text-sm text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          title="Supprimer cette playlist"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          {deleting ? '…' : 'Supprimer'}
+        </button>
       </div>
 
       {error && (
@@ -432,6 +468,21 @@ export default function EditPlaylistPage() {
               />
             </div>
 
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Catégorie thématique</label>
+              <select
+                value={meta.category}
+                onChange={e => setMeta(m => ({ ...m, category: e.target.value }))}
+                className="w-full h-9 px-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {PLAYLIST_CATEGORIES.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.emoji} {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Visibilité</label>
@@ -444,14 +495,18 @@ export default function EditPlaylistPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Langues</label>
-                <input
-                  type="text"
-                  value={meta.languages}
-                  onChange={e => setMeta(m => ({ ...m, languages: e.target.value }))}
-                  placeholder="fr, en"
-                  className="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <label className="block text-xs text-gray-500 mb-1">Langue principale</label>
+                <select
+                  value={meta.language}
+                  onChange={e => setMeta(m => ({ ...m, language: e.target.value }))}
+                  className="w-full h-9 px-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {LANGUAGE_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.flag} {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -488,6 +543,27 @@ export default function EditPlaylistPage() {
               {saved ? '✓ Sauvegardé' : saving ? '...' : 'Sauvegarder'}
             </button>
           </form>
+
+          {/* Zone de suppression pour les parents */}
+          <div className="bg-red-50/60 rounded-2xl border border-red-200 p-4 space-y-2">
+            <h3 className="text-xs font-semibold text-red-900 flex items-center gap-1.5">
+              <span>⚠️</span> Zone de danger
+            </h3>
+            <p className="text-xs text-red-600">
+              Supprimer cette playlist la retirera définitivement de votre compte et du mode enfant.
+            </p>
+            <button
+              type="button"
+              onClick={handleDeletePlaylist}
+              disabled={deleting}
+              className="w-full h-9 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              {deleting ? 'Suppression en cours…' : 'Supprimer définitivement cette playlist'}
+            </button>
+          </div>
 
           {/* Video list */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">

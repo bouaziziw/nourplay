@@ -10,6 +10,7 @@ import { useOfflinePlaylists, readOfflinePlaylist } from '../../../../../hooks/u
 import { api, PlaylistDetail } from '../../../../../lib/api'
 import { RemoteImage } from '../../../../../components/RemoteImage'
 import { getPlaylistTheme } from '../../../../../lib/channelTheme'
+import { unpackPlaylistDescription } from '../../../../../lib/playlistCategory'
 
 const VIDEOS_PER_PAGE = 12
 
@@ -122,6 +123,7 @@ export default function ChildPlaylistPage() {
   if (!playlist) return null
 
   const theme = getPlaylistTheme(playlist.name, playlist.description)
+  const { cleanDescription } = unpackPlaylistDescription(playlist.description, playlist.name)
   const firstVideo = videos[0]?.video
 
   return (
@@ -138,37 +140,52 @@ export default function ChildPlaylistPage() {
           <span>Toutes les chaînes</span>
         </button>
 
-        {!isOfflineFallback && (
-          <button
-            onClick={handleToggleSave}
-            disabled={saving}
-            title={isSaved ? "Supprimer de l'accès hors ligne" : 'Enregistrer hors ligne'}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-extrabold transition-all shadow-sm ${
-              saving
-                ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
-                : isSaved
-                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                : 'bg-white/90 text-gray-700 hover:bg-white border border-gray-200'
-            }`}
-          >
-            {saving ? (
-              <svg className="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        <div className="flex items-center gap-2">
+          {!isOfflineFallback && (
+            <Link
+              href={`/${locale}/dashboard/playlists/${id}/edit`}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-extrabold text-gray-700 bg-white/90 hover:bg-white hover:text-indigo-600 border border-gray-200 transition-all shadow-sm"
+              title="Modifier ou supprimer cette playlist dans l'espace parent"
+            >
+              <svg className="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
-            ) : isSaved ? (
-              <>
-                <span>💾</span>
-                <span>Enregistré hors-ligne</span>
-              </>
-            ) : (
-              <>
-                <span>📥</span>
-                <span>Enregistrer hors-ligne</span>
-              </>
-            )}
-          </button>
-        )}
+              <span>Gérer / Modifier</span>
+            </Link>
+          )}
+
+          {!isOfflineFallback && (
+            <button
+              onClick={handleToggleSave}
+              disabled={saving}
+              title={isSaved ? "Supprimer de l'accès hors ligne" : 'Enregistrer hors ligne'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-extrabold transition-all shadow-sm ${
+                saving
+                  ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
+                  : isSaved
+                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                  : 'bg-white/90 text-gray-700 hover:bg-white border border-gray-200'
+              }`}
+            >
+              {saving ? (
+                <svg className="w-4 h-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : isSaved ? (
+                <>
+                  <span>💾</span>
+                  <span>Enregistré hors-ligne</span>
+                </>
+              ) : (
+                <>
+                  <span>📥</span>
+                  <span>Enregistrer hors-ligne</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Hero Channel Showcase Banner */}
@@ -191,9 +208,9 @@ export default function ChildPlaylistPage() {
               <h1 className="mt-2 text-2xl sm:text-4xl font-black tracking-tight drop-shadow-sm">
                 {playlist.name}
               </h1>
-              {playlist.description && (
+              {cleanDescription && (
                 <p className="mt-1.5 text-sm sm:text-base font-medium text-white/90 max-w-2xl leading-relaxed">
-                  {playlist.description}
+                  {cleanDescription}
                 </p>
               )}
               <div className="mt-3 flex items-center gap-3 text-xs font-bold text-white/90">

@@ -15,6 +15,7 @@ import {
 import { RemoteImage } from "../../../../components/RemoteImage";
 import { AddToPlaylistModal } from "../../../../components/AddToPlaylistModal";
 import { getPlaylistTheme } from "../../../../lib/channelTheme";
+import { unpackPlaylistDescription } from "../../../../lib/playlistCategory";
 
 type InProgressItem = {
   positionSec: number;
@@ -526,6 +527,7 @@ export default function ChildPlaylistsPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredPlaylists.map((pl) => {
                 const theme = getPlaylistTheme(pl.name, pl.description);
+                const { cleanDescription } = unpackPlaylistDescription(pl.description, pl.name);
                 const firstThumb = pl.playlistVideos?.[0]?.video?.thumbnailUrl;
                 const videoCount = pl._count.playlistVideos;
 
@@ -591,9 +593,9 @@ export default function ChildPlaylistsPage() {
                         <h3 className="text-base sm:text-lg font-extrabold text-gray-900 line-clamp-1 group-hover:text-[#1c90d8] transition-colors">
                           {pl.name}
                         </h3>
-                        {pl.description ? (
+                        {cleanDescription ? (
                           <p className="mt-1 text-xs font-medium text-gray-500 line-clamp-2 leading-relaxed">
-                            {pl.description}
+                            {cleanDescription}
                           </p>
                         ) : (
                           <p className="mt-1 text-xs font-medium text-gray-400 italic">

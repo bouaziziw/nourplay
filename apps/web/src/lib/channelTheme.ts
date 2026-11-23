@@ -9,6 +9,87 @@ export interface ChannelTheme {
 }
 
 export function getPlaylistTheme(name: string, description?: string | null): ChannelTheme {
+  const rawDesc = (description || '').toLowerCase()
+
+  // Explicit [cat:...] tags check first
+  if (rawDesc.includes('[cat:animals]')) {
+    return {
+      emoji: '🦁',
+      illustration: '🐾',
+      channelLabel: 'Animaux & Nature',
+      gradient: ['#f97316', '#ea580c'],
+      accentColor: '#ea580c',
+      bgLight: '#fff7ed',
+      category: 'animals',
+    }
+  }
+  if (rawDesc.includes('[cat:stories]')) {
+    return {
+      emoji: '🌙',
+      illustration: '⭐',
+      channelLabel: 'Histoires & Contes',
+      gradient: ['#6366f1', '#4338ca'],
+      accentColor: '#4f46e5',
+      bgLight: '#eef2ff',
+      category: 'stories',
+    }
+  }
+  if (rawDesc.includes('[cat:fun]')) {
+    return {
+      emoji: '🎵',
+      illustration: '🎉',
+      channelLabel: 'Comptines & Chansons',
+      gradient: ['#ec4899', '#be185d'],
+      accentColor: '#db2777',
+      bgLight: '#fdf2f8',
+      category: 'fun',
+    }
+  }
+  if (rawDesc.includes('[cat:creativity]')) {
+    return {
+      emoji: '🎨',
+      illustration: '✨',
+      channelLabel: 'Dessin & Créativité',
+      gradient: ['#8b5cf6', '#6d28d9'],
+      accentColor: '#7c3aed',
+      bgLight: '#f5f3ff',
+      category: 'fun',
+    }
+  }
+  if (rawDesc.includes('[cat:learn]')) {
+    return {
+      emoji: '🔤',
+      illustration: '🚀',
+      channelLabel: 'Éveil & Découverte',
+      gradient: ['#06b6d4', '#0284c7'],
+      accentColor: '#0284c7',
+      bgLight: '#f0f9ff',
+      category: 'learn',
+    }
+  }
+  if (rawDesc.includes('[cat:cartoons]')) {
+    return {
+      emoji: '🚀',
+      illustration: '🪐',
+      channelLabel: 'Aventure & Espace',
+      gradient: ['#0284c7', '#0369a1'],
+      accentColor: '#0284c7',
+      bgLight: '#e0f2fe',
+      category: 'learn',
+    }
+  }
+  if (rawDesc.includes('[cat:general]')) {
+    return {
+      emoji: '🎬',
+      illustration: '🎈',
+      channelLabel: 'Dessins Animés & Découvertes',
+      gradient: ['#3b82f6', '#1d4ed8'],
+      accentColor: '#2563eb',
+      bgLight: '#eff6ff',
+      category: 'general',
+    }
+  }
+
   const text = `${name || ''} ${description || ''}`.toLowerCase()
 
   // Animals / Nature
