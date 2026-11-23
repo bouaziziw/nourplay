@@ -10,10 +10,12 @@ import { useChildSession, isWithinSchedule, sessionElapsedMin, isDailyLimitReach
 import { api } from '../../../lib/api'
 import { ParentUnlockModal } from '../../../components/ParentUnlockModal'
 import { ChildCountdownTimer } from '../../../components/ChildCountdownTimer'
+import { useTvNavigation } from '../../../hooks/useTvNavigation'
 
 function ChildGuard({ children }: { children: React.ReactNode }) {
   const { session, hydrated, clear, isSessionExpired } = useChildSession()
   const { token, loading: authLoading, unlockParentMode } = useAuth()
+  const { isTv, showTvHelper } = useTvNavigation()
   const router = useRouter()
   const locale = useLocale()
   const pathname = usePathname()
@@ -213,6 +215,25 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
       </main>
       {unlockOpen && (
         <ParentUnlockModal onSubmit={handleParentUnlock} onClose={() => setUnlockOpen(false)} />
+      )}
+
+      {/* Floating Smart TV Remote Navigation Helper */}
+      {showTvHelper && (
+        <aside
+          aria-label="Aide navigation télécommande TV"
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-full bg-slate-900/95 text-white px-5 py-2 text-xs font-black shadow-2xl backdrop-blur-md border border-white/20 flex items-center gap-3 pointer-events-none"
+        >
+          <span className="flex items-center gap-1.5 text-sky-400">
+            <span>📺</span>
+            <span>Mode TV</span>
+          </span>
+          <span className="text-gray-500">|</span>
+          <span>[▲▼◀▶] Déplacer</span>
+          <span className="text-gray-500">|</span>
+          <span className="text-emerald-400">[OK] Choisir</span>
+          <span className="text-gray-500">|</span>
+          <span className="text-amber-300">[Retour] Précédent</span>
+        </aside>
       )}
     </div>
   )

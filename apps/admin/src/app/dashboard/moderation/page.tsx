@@ -282,7 +282,7 @@ export default function ModerationQueuePage() {
   }
 
   const handleRevalidateAllPending = async () => {
-    if (!token || !window.confirm('Relancer en priorité la validation automatique de toutes les vidéos en attente ?')) return
+    if (!window.confirm('Relancer en priorité la validation automatique de toutes les vidéos en attente ?')) return
     setRevalidating(true)
     setQueueError('')
     setRevalidationResult('')
@@ -318,7 +318,7 @@ export default function ModerationQueuePage() {
           >
             {approvingAll ? 'Approbation en cours…' : '✓ Approuver tout'}
           </button>
-          {user?.role === 'ADMIN' && (
+          {(user?.role === 'ADMIN' || user?.role === 'MODERATOR') && (
             <button
               onClick={handleRevalidateAllPending}
               disabled={revalidating}

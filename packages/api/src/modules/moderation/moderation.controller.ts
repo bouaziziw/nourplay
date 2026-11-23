@@ -1,9 +1,10 @@
 import {
-  Controller, Get, Patch, Param, Body, Query,
+  Controller, Get, Post, Patch, Param, Body, Query,
   ParseUUIDPipe, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger'
 import { ModerationService } from './moderation.service'
+import { VideoService } from '../video/video.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { RolesGuard } from '../../common/guards/roles.guard'
 import { Roles } from '../../common/decorators/roles.decorator'
@@ -20,7 +21,10 @@ import { UserRole } from '@nourplay/db'
 @Roles(UserRole.MODERATOR, UserRole.ADMIN)
 @Controller({ path: 'moderation', version: '1' })
 export class ModerationController {
-  constructor(private readonly moderationService: ModerationService) {}
+  constructor(
+    private readonly moderationService: ModerationService,
+    private readonly videoService: VideoService,
+  ) {}
 
   // ── File d'attente ────────────────────────────────────────────
 
@@ -46,6 +50,14 @@ export class ModerationController {
   @ApiOperation({ summary: 'Approuver toutes les vidéos en attente de modération' })
   approveAllPending(@CurrentUser() actor: JwtPayload) {
     return this.moderationService.approveAllPending(actor.sub, actor.role)
+  }
+
+  @Post('revalidate-pending')
+  @Patch('revalidate-pending')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Relancer en priorité la validation automatique des vidéos en attente' })
+  revalidateAllPending() {
+    return this.videoService.revalidateAllPending()
   }
 
   // ── Signalements ──────────────────────────────────────────────
