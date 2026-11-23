@@ -7,6 +7,11 @@ import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
 import { api, PlaylistDetail } from '../../../../../lib/api'
 import { RemoteImage } from '../../../../../components/RemoteImage'
+import {
+  unpackPlaylistDescription,
+  getCategoryBadge,
+  getLanguageBadge,
+} from '../../../../../lib/playlistCategory'
 
 const VIDEOS_PER_PAGE = 12
 
@@ -35,9 +40,24 @@ export default function ParentPlaylistPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [visibleCount, setVisibleCount] = useState(VIDEOS_PER_PAGE)
   const [loadingMore, setLoadingMore] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  const handleDelete = async () => {
+    if (!token || !playlist) return
+    if (!window.confirm(`Supprimer définitivement la playlist « ${playlist.name} » ? Cette action est irréversible.`)) return
+    setDeleting(true)
+    setError('')
+    try {
+      await api.playlists.delete(token, id)
+      router.push(`/${locale}/dashboard/playlists`)
+    } catch {
+      setError('Impossible de supprimer cette playlist.')
+      setDeleting(false)
+    }
+  }
 
   const handleExport = async () => {
     if (!token || !playlist) return
@@ -99,6 +119,12 @@ export default function ParentPlaylistPage() {
     )
   }
 
+  const { category, cleanDescription } = playlist
+    ? unpackPlaylistDescription(playlist.description, playlist.name)
+    : { category: 'general', cleanDescription: '' }
+  const categoryBadge = getCategoryBadge(category)
+  const primaryLang = playlist?.languages?.[0] ? getLanguageBadge(playlist.languages[0]) : null
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -109,9 +135,21 @@ export default function ParentPlaylistPage() {
           </svg>
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900 truncate">{playlist.name}</h1>
-          {playlist.description && (
-            <p className="text-gray-500 text-sm mt-1">{playlist.description}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold text-gray-900 truncate">{playlist.name}</h1>
+            <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+              <span>{categoryBadge.emoji}</span>
+              <span>{categoryBadge.label}</span>
+            </span>
+            {primaryLang && (
+              <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <span>{primaryLang.flag}</span>
+                <span>{primaryLang.label}</span>
+              </span>
+            )}
+          </div>
+          {cleanDescription && (
+            <p className="text-gray-500 text-sm mt-1">{cleanDescription}</p>
           )}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-xs text-gray-400">{videos.length} vidéo{videos.length !== 1 ? 's' : ''}</span>
@@ -123,10 +161,24 @@ export default function ParentPlaylistPage() {
         <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
           <Link
             href={`/${locale}/dashboard/playlists/${id}/edit`}
-            className="rounded-xl bg-[#1c90d8] px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#1572ab] shadow-sm"
+            className="rounded-xl bg-[#1c90d8] px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#1572ab] shadow-sm flex items-center gap-1.5"
           >
-            Ajouter des vidéos
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Modifier la playlist
           </Link>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-sm text-red-600 font-medium border border-red-200 bg-red-50/50 rounded-xl px-3.5 py-1.5 hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+            title="Supprimer cette playlist"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            {deleting ? 'Suppression…' : 'Supprimer'}
+          </button>
           <button
             onClick={handleExport}
             disabled={exporting || videos.length === 0}

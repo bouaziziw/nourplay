@@ -134,7 +134,12 @@ export interface PlaylistSummary {
   name: string
   description: string | null
   visibility: string
+  targetAgeGroup?: string[]
+  languages?: string[]
+  shareToken?: string | null
   scheduledPublishAt: string | null
+  createdAt?: string
+  updatedAt?: string
   _count: { playlistVideos: number }
   playlistVideos?: { video: { id: string; title: string; thumbnailUrl: string | null } }[]
   importedVideoCount?: number
