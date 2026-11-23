@@ -1,9 +1,10 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { Controller, Get, Headers, UnauthorizedException } from '@nestjs/common'
+import { Controller, Get, Headers, UnauthorizedException, Optional } from '@nestjs/common'
 import { SkipThrottle } from '@nestjs/throttler'
 import { PlaylistService } from '../playlist/playlist.service'
 import { SubscriptionTasksService } from '../subscription/subscription.tasks'
 import { UserTasksService } from '../user/user.tasks'
+import { VideoService } from '../video/video.service'
 
 @SkipThrottle()
 @Controller({ path: 'cron', version: '1' })
@@ -12,6 +13,7 @@ export class CronController {
     private readonly playlists: PlaylistService,
     private readonly users: UserTasksService,
     private readonly subscriptions: SubscriptionTasksService,
+    @Optional() private readonly videos?: VideoService,
   ) {}
 
   private assertAuthorized(authorization?: string) {
@@ -22,6 +24,15 @@ export class CronController {
     if (!timingSafeEqual(digest(authorization), digest(`Bearer ${secret}`))) {
       throw new UnauthorizedException()
     }
+  }
+
+  @Get('validate-pending')
+  async validatePending(@Headers('authorization') authorization?: string) {
+    this.assertAuthorized(authorization)
+    if (this.videos) {
+      return this.videos.revalidateAllPending()
+    }
+    return { ok: true }
   }
 
   @Get('publish-scheduled')

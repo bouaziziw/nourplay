@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "crons": [
-    { "path": "/api/v1/cron/publish-scheduled", "schedule": "* * * * *" }
+    { "path": "/api/v1/cron/publish-scheduled", "schedule": "* * * * *" },
+    { "path": "/api/v1/cron/validate-pending", "schedule": "*/2 * * * *" }
   ]
 }
