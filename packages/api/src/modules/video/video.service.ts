@@ -7,6 +7,7 @@ import {
   Inject,
   Logger,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import { Prisma } from '@nourplay/db'
@@ -14,6 +15,7 @@ import { PrismaService } from '../../common/prisma/prisma.service'
 import { CacheService } from '../../common/cache/cache.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
+import { VideoValidationService } from './video-validation.service'
 import { allowedAgeRatings } from '../../common/age-utils'
 import { safeFetch } from '../../common/http/safe-fetch'
 import { SubmitVideoDto } from './dto/submit-video.dto'
@@ -39,6 +41,7 @@ export class VideoService implements OnModuleInit {
     private readonly cache: CacheService,
     @Inject(VIDEO_VALIDATION_QUEUE) private readonly validationQueue: Queue,
     private readonly audit: AuditService,
+    @Optional() private readonly videoValidationService?: VideoValidationService,
   ) {}
 
   async onModuleInit() {
@@ -138,6 +141,11 @@ export class VideoService implements OnModuleInit {
     })
 
     await this.enqueueValidation(video.id)
+    if (this.videoValidationService) {
+      void this.videoValidationService.validateVideoById(video.id).catch(err => {
+        this.logger.warn(`Direct validation failed for video ${video.id}: ${err.message}`)
+      })
+    }
     this.logger.log(`Video ${video.id} submitted and queued for priority validation`)
     return video
   }
@@ -177,6 +185,17 @@ export class VideoService implements OnModuleInit {
 
       cursor = videos[videos.length - 1].id
       if (videos.length < batchSize) break
+    }
+
+    if (this.videoValidationService) {
+      const directResult = await this.videoValidationService.processPendingVideos(30)
+      return {
+        queued,
+        processed: directResult.processed,
+        approved: directResult.approved,
+        rejected: directResult.rejected,
+        needsReview: directResult.needsReview,
+      }
     }
 
     return { queued }
@@ -268,6 +287,11 @@ export class VideoService implements OnModuleInit {
     }
 
     await this.enqueueValidation(videoId)
+    if (this.videoValidationService) {
+      void this.videoValidationService.validateVideoById(videoId).catch(err => {
+        this.logger.warn(`Direct validation failed for video ${videoId}: ${err.message}`)
+      })
+    }
 
     this.logger.log(`Video ${videoId} approved by submitter and queued for validation`)
     return {

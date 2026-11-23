@@ -288,8 +288,17 @@ export default function ModerationQueuePage() {
     setRevalidationResult('')
     setApprovalResult('')
     try {
-      const { queued } = await api.moderation.revalidateAllPending(token)
-      setRevalidationResult(`${queued} vidéo${queued === 1 ? '' : 's'} envoyée${queued === 1 ? '' : 's'} en validation prioritaire.`)
+      const res = await api.moderation.revalidateAllPending(token)
+      if (res.processed !== undefined && res.processed > 0) {
+        const approvedCount = res.approved ?? 0
+        const rejectedCount = res.rejected ?? 0
+        const reviewCount = res.needsReview ?? 0
+        setRevalidationResult(
+          `${res.processed} vidéo${res.processed > 1 ? 's' : ''} analysée${res.processed > 1 ? 's' : ''} : ${approvedCount} approuvée${approvedCount > 1 ? 's' : ''}, ${rejectedCount} rejetée${rejectedCount > 1 ? 's' : ''}, ${reviewCount} à réviser.`
+        )
+      } else {
+        setRevalidationResult(`${res.queued} vidéo${res.queued === 1 ? '' : 's'} envoyée${res.queued === 1 ? '' : 's'} en validation prioritaire.`)
+      }
       load(page)
     } catch (error) {
       setQueueError(error instanceof Error ? error.message : 'Impossible de relancer les validations automatiques.')

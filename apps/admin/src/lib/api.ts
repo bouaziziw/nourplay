@@ -314,7 +314,13 @@ export const api = {
       }),
 
     revalidateAllPending: (token?: string | null) =>
-      request<{ queued: number }>('/videos/admin/revalidate-pending', {
+      request<{
+        queued: number
+        processed?: number
+        approved?: number
+        rejected?: number
+        needsReview?: number
+      }>('/videos/admin/revalidate-pending', {
         method: 'POST',
         ...bearer(token),
       }),
