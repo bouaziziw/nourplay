@@ -20,7 +20,22 @@ for (const envFile of candidateEnvFiles) {
 
 const MAX_TOKENS = 3500
 const MIN_APPROVAL_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_APPROVE) || 0.85
+const MIN_UNDER13_APPROVAL_CONFIDENCE = 0.92
 const MIN_REJECTION_CONFIDENCE = Number(process.env.AI_MODERATION_THRESHOLD_REVIEW) || 0.75
+
+// Motifs de sécurité renforcée pour les moins de 13 ans (Horreur, monstres anxiogènes, armes, tromperies)
+const SENSITIVE_UNDER13_PATTERNS = [
+  /\b(huggy\s*wuggy|poppy\s*playtime|siren\s*head|fnaf|five\s*nights\s*at\s*freddy'?s|slenderman|momo\s*challenge|skibidi\s*toilet\s*horror|jumpscare|jump\s*scare|creepypasta|terror|gore|torture|bloody)\b/i,
+  /\b(fusillade|massacre|assassinat|démembrement|décapitation|suicide|mutilation|overdose)\b/i,
+  /\b(sexy|nude|hot\s*girl|erotic|hentai|ecchi|porn|sexe\s*explicite|strip)\b/i,
+  /\b(free\s*robux|free\s*vbucks|générateur\s*de\s*cartes|casino\s*enfant|betting)\b/i,
+]
+
+export function isTargetingUnder13(requestedRating?: string | null): boolean {
+  if (!requestedRating) return true
+  const r = requestedRating.toUpperCase().replace(/[-_]/g, '')
+  return r.includes('ALL') || r.includes('4') || r.includes('7') || r.includes('10')
+}
 
 const AGE_RATINGS = ['all_ages', '7_plus', '13_plus', '16_plus', '18_plus'] as const
 const DECISIONS = ['APPROUVE', 'REJETE', 'A_VERIFIER'] as const
@@ -205,6 +220,11 @@ Règles de décision :
 2. REJETE : Si les éléments prouvent sans ambiguïté une violation grave (pornographie, violence explicite, drogues, haine, incitation au suicide ou danger manifeste).
 3. A_VERIFIER : En cas de doute légitime, d'ambiguïté dans le titre/miniature, de paroles à double sens potentielles, ou de thèmes matures nécessitant impérativement le visionnage complet par un adulte modérateur.
 
+RÈGLES STRICTES POUR LES ENFANTS DE MOINS DE 13 ANS (tranches all_ages, 7_plus, 4_plus, 10_plus) :
+- Tolérance ZÉRO pour toute violence, jumpscares, personnages anxiogènes ou d'horreur populaire (ex. Huggy Wuggy, Poppy Playtime, Siren Head, FNAF, Skibidi Horror), monstres terrifiants, armes réalistes, vulgarité ou sexualisation.
+- En cas de titre ou miniature trompeuse (ex. titre de comptine avec jeu d'horreur ou ambiance sombre), classe impérativement en REJETE ou A_VERIFIER avec age_rating '13_plus' ou supérieur.
+- Une vidéo pour les moins de 13 ans ne peut être APPROUVÉE que si l'environnement est totalement sain, bienveillant et sans aucun doute raisonnable.
+
 Tranches d'âge ("age_rating") :
 - all_ages : Contenu universel pour tous, y compris les tout-petits (doux, bienveillant, comptines, animaux, éveil).
 - 7_plus : Contenu enfants primaires (aventures gentilles, jeux vidéo tout public, découvertes).
@@ -341,7 +361,7 @@ export async function validateVideo(input: ValidateInput): Promise<ValidateResul
     }
 
     const fallbackModels = config.provider === 'gemini'
-      ? [config.model, 'gemini-3.1-flash-lite', 'gemini-3.5-flash'].filter((m, i, arr) => arr.indexOf(m) === i)
+      ? [config.model, 'gemini-3-flash-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest'].filter((m, i, arr) => arr.indexOf(m) === i)
       : [config.model]
 
     let rawContent: string | null = null
@@ -378,7 +398,7 @@ export async function validateVideo(input: ValidateInput): Promise<ValidateResul
 
     const parsed = extractJson(rawContent)
     const report = parseReport(parsed, input, frames.length, usedModel)
-    const status = decideStatus(report, input.requestedAgeRating)
+    const status = decideStatus(report, input.requestedAgeRating, input.title, input.description)
 
     report.decision = status === 'APPROVED' ? 'APPROUVE'
       : status === 'REJECTED' ? 'REJETE' : 'A_VERIFIER'
@@ -496,7 +516,21 @@ function parseReport(
 function decideStatus(
   report: ModerationReport,
   requestedAgeRating: string,
+  title?: string,
+  description?: string,
 ): VideoStatus {
+  const isUnder13 = isTargetingUnder13(requestedAgeRating)
+  const textToCheck = `${title || ''} ${description || ''}`
+
+  // Guardrail regex renforcé pour les moins de 13 ans
+  if (isUnder13) {
+    for (const pattern of SENSITIVE_UNDER13_PATTERNS) {
+      if (pattern.test(textToCheck)) {
+        return 'REJECTED'
+      }
+    }
+  }
+
   // 1. Rejet si violation grave ou décision explicite avec confiance suffisante
   if (report.decision === 'REJETE') {
     const hasSevereViolation = report.violations.some(
@@ -510,6 +544,26 @@ function decideStatus(
 
   // 2. Approbation si le contenu est jugé sûr et approprié
   if (report.decision === 'APPROUVE') {
+    if (isUnder13) {
+      // Tolérance ZERO pour la moindre violation pour les enfants (< 13 ans)
+      if (report.violations.length > 0) {
+        return 'NEEDS_REVIEW'
+      }
+
+      // Si le modèle a classé la vidéo dans une tranche mature (13+, 16+, 18+), interdiction formelle pour les enfants
+      if (['13_plus', '16_plus', '18_plus'].includes(report.age_rating)) {
+        return 'NEEDS_REVIEW'
+      }
+
+      // Seuil de confiance ultra-strict pour les enfants (< 13 ans) : minimum 92%
+      if (report.confidence < MIN_UNDER13_APPROVAL_CONFIDENCE) {
+        return 'NEEDS_REVIEW'
+      }
+
+      return 'APPROVED'
+    }
+
+    // Règles pour les adolescents (13 ans et plus)
     const hasUnacceptableViolation = report.violations.some(
       v => v.severity === 'medium' || v.severity === 'high',
     )
