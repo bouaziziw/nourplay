@@ -341,10 +341,10 @@ export default function ChildPlaylistsPage() {
             <div className="rounded-3xl border-2 border-dashed border-pink-200 bg-white/70 p-12 text-center shadow-sm">
               <span className="text-5xl">💖</span>
               <h3 className="mt-3 text-lg font-extrabold text-gray-800">
-                Tu n'as pas encore de favoris !
+                {"Tu n'as pas encore de favoris !"}
               </h3>
               <p className="mt-1 text-sm font-medium text-gray-500 max-w-sm mx-auto">
-                Quand une vidéo te plaît, clique sur le cœur ❤️ pour la retrouver ici en un clin d'œil.
+                {"Quand une vidéo te plaît, clique sur le cœur ❤️ pour la retrouver ici en un clin d'œil."}
               </p>
               <button
                 onClick={() => setActiveFilter("all")}
@@ -513,7 +513,7 @@ export default function ChildPlaylistsPage() {
                 Pas encore de chaîne dans cette catégorie !
               </h3>
               <p className="mt-1 text-sm font-medium text-gray-500 max-w-sm mx-auto">
-                Demande à ton parent d'ajouter de nouvelles playlists dans ton profil.
+                {"Demande à ton parent d'ajouter de nouvelles playlists dans ton profil."}
               </p>
               <button
                 onClick={() => setActiveFilter("all")}

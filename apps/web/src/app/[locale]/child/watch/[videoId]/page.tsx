@@ -210,7 +210,7 @@ export default function ChildWatchPage() {
         <p className="text-6xl mb-4">🎬</p>
         <h2 className="text-xl font-extrabold text-gray-900 mb-2">Vidéo introuvable</h2>
         <p className="text-sm font-medium text-gray-500 mb-6">
-          Cette vidéo n'est plus accessible ou a été retirée.
+          {"Cette vidéo n'est plus accessible ou a été retirée."}
         </p>
         <button
           onClick={() => router.push(`/${locale}/child/playlists`)}
@@ -297,7 +297,7 @@ export default function ChildWatchPage() {
             ) : approvalStatus === 'DENIED' ? (
               <div className="space-y-3">
                 <div className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 text-sm font-bold text-rose-700">
-                  Un parent a refusé l'accès à ce contenu.
+                  {"Un parent a refusé l'accès à ce contenu."}
                 </div>
                 <button
                   onClick={handleRequestApproval}

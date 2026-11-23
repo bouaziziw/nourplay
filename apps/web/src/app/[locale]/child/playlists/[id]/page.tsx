@@ -245,7 +245,7 @@ export default function ChildPlaylistPage() {
           <span className="text-6xl">🎬</span>
           <h3 className="mt-4 text-xl font-extrabold text-gray-800">Aucune vidéo dans cette chaîne</h3>
           <p className="mt-1 text-sm font-medium text-gray-500">
-            Reviens bientôt ou demande à ton parent d'ajouter des épisodes.
+            {"Reviens bientôt ou demande à ton parent d'ajouter des épisodes."}
           </p>
         </div>
       ) : (

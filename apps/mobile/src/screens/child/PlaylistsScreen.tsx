@@ -168,7 +168,7 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>🎬</Text>
           <Text style={styles.emptyTitle}>Pas encore de vidéos ici !</Text>
-          <Text style={styles.emptySub}>Demande à ton parent d'ajouter de chouettes playlists depuis son espace.</Text>
+          <Text style={styles.emptySub}>{"Demande à ton parent d'ajouter de chouettes playlists depuis son espace."}</Text>
           <TouchableOpacity onPress={() => setActiveFilter('all')} style={styles.resetFilterBtn}>
             <Text style={styles.resetFilterText}>Voir toutes les playlists ⭐</Text>
           </TouchableOpacity>
