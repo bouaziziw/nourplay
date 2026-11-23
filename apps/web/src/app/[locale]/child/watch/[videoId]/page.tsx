@@ -234,7 +234,7 @@ export default function ChildWatchPage() {
               router.push(`/${locale}/child/playlists`)
             }
           }}
-          className="inline-flex items-center gap-2 rounded-2xl bg-white/90 px-4 py-2 text-sm font-extrabold text-gray-700 shadow-sm transition hover:bg-white hover:text-sky-700 hover:shadow-md"
+          className="tv-btn inline-flex items-center gap-2 rounded-2xl bg-white/95 px-5 py-2.5 text-sm font-extrabold text-gray-800 shadow-sm transition hover:bg-white hover:text-sky-700 hover:shadow-md border border-white/40"
         >
           <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
@@ -330,13 +330,15 @@ export default function ChildWatchPage() {
                 ccEnabled={ccEnabled}
                 onWatched={handleWatched}
                 onProgress={handleProgress}
+                onNext={nextVideo ? () => router.push(`/${locale}/child/watch/${nextVideo.id}${playlistId ? `?playlist=${playlistId}` : ''}`) : undefined}
+                onBack={() => router.push(playlistId ? `/${locale}/child/playlists/${playlistId}` : `/${locale}/child/playlists`)}
               />
             )}
           </div>
 
           {/* Mobile Only: Next Video Button below player */}
           {nextVideo && (
-            <div className="block lg:hidden">
+            <div className="block lg:hidden tv-hide">
               <Link
                 href={`/${locale}/child/watch/${nextVideo.id}${playlistId ? `?playlist=${playlistId}` : ''}`}
                 className="group flex items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-600 p-4 text-white shadow-xl transition-all duration-200 active:scale-[0.99]"
@@ -382,7 +384,7 @@ export default function ChildWatchPage() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleRate('THUMBS_UP')}
-                    className={`inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 shadow-sm ${
+                    className={`tv-btn inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-extrabold transition-all duration-200 shadow-sm ${
                       myRating === 'THUMBS_UP'
                         ? 'bg-pink-500 text-white shadow-pink-200 shadow-md scale-105'
                         : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
@@ -394,7 +396,7 @@ export default function ChildWatchPage() {
                   <button
                     onClick={() => handleRate('THUMBS_DOWN')}
                     title="Je n'aime pas"
-                    className={`inline-flex items-center justify-center rounded-2xl h-10 w-10 text-sm font-extrabold transition-all duration-200 ${
+                    className={`tv-btn inline-flex items-center justify-center rounded-2xl h-10 w-10 text-sm font-extrabold transition-all duration-200 ${
                       myRating === 'THUMBS_DOWN'
                         ? 'bg-gray-700 text-white shadow'
                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -408,7 +410,7 @@ export default function ChildWatchPage() {
 
             {/* Accessibility & Modes Bar */}
             {!needsApproval && (
-              <div className="flex items-center gap-2.5 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2.5 pt-3 border-t border-gray-100 tv-hide">
                 <button
                   onClick={handleCCToggle}
                   disabled={!supportsCC}
@@ -439,7 +441,7 @@ export default function ChildWatchPage() {
 
             {/* Reading Mode Text or Description */}
             {Boolean(readingMode && ('description' in video) && video.description) && (
-              <div className="mt-3 pt-3 border-t border-gray-100 bg-amber-50/70 rounded-2xl p-5">
+              <div className="mt-3 pt-3 border-t border-gray-100 bg-amber-50/70 rounded-2xl p-5 tv-hide">
                 <p className="text-xs font-black text-amber-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                   <span>📖</span>
                   <span>Histoire écrite & description</span>

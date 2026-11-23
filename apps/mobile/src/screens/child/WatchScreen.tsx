@@ -107,6 +107,7 @@ export default function WatchScreen({ route, navigation }: Props) {
             embedUrl={video.embedUrl}
             title={video.title}
             onWatched={handleWatched}
+            onNext={nextVideo ? () => navigation.replace('Watch', { videoId: nextVideo.id, playlistId }) : undefined}
           />
         </View>
 

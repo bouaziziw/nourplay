@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { Text, TouchableOpacity } from 'react-native'
+import { Text, TouchableOpacity, Platform } from 'react-native'
 import { AuthContext } from '../hooks/useAuth'
 import { ChildSessionContext } from '../hooks/useChildSession'
 import { usePushNotifications } from '../hooks/usePushNotifications'
@@ -37,11 +37,12 @@ export default function AppNavigator() {
 
   if (auth.loading || !childCtx.hydrated) return null
 
+  const isTV = Platform.isTV
   const navigationKey = !auth.token
     ? 'auth'
-    : auth.parentModeUnlocked
+    : auth.parentModeUnlocked && !isTV
       ? 'parent'
-      : childCtx.session
+      : childCtx.session || isTV
         ? 'child-active'
         : 'child-select'
 
@@ -49,9 +50,9 @@ export default function AppNavigator() {
     <Stack.Navigator
       key={navigationKey}
       initialRouteName={
-        auth.parentModeUnlocked
+        auth.parentModeUnlocked && !isTV
           ? 'ParentTabs'
-          : auth.token && childCtx.session
+          : auth.token && (childCtx.session || isTV)
             ? 'ChildPlaylists'
             : undefined
       }
