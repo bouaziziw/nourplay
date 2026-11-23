@@ -533,7 +533,7 @@ export default function ChildPlaylistsPage() {
                   <Link
                     key={pl.id}
                     href={`/${locale}/child/playlists/${pl.id}`}
-                    className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border border-gray-100"
+                    className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border border-gray-100 focus:outline-none focus:ring-4 focus:ring-sky-400 focus:scale-[1.03] focus:shadow-2xl"
                   >
                     {/* 16:9 Channel Cover */}
                     <div
@@ -578,7 +578,7 @@ export default function ChildPlaylistsPage() {
                       </div>
 
                       {/* Glowing Big Play Circle Overlay */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105">
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-105 group-focus:opacity-100 group-focus:scale-105">
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-[#1c90d8] shadow-2xl">
                           <span className="ml-1 text-xl font-black">▶</span>
                         </div>

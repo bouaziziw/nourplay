@@ -267,7 +267,7 @@ export default function ChildPlaylistPage() {
               <Link
                 key={video.id}
                 href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
-                className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl border border-gray-100"
+                className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-xl border border-gray-100 focus:outline-none focus:ring-4 focus:ring-sky-400 focus:scale-[1.03] focus:shadow-2xl"
               >
                 {/* 16:9 Thumbnail */}
                 <div
@@ -293,7 +293,7 @@ export default function ChildPlaylistPage() {
                   )}
 
                   {/* Play overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100 group-focus:opacity-100">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#1c90d8] shadow-2xl transition-transform group-hover:scale-105">
                       <span className="ml-1 text-xl font-black">▶</span>
                     </div>
