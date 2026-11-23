@@ -28,6 +28,7 @@ export default function WatchScreen({ route, navigation }: Props) {
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLoved, setIsLoved] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false })
@@ -79,37 +80,51 @@ export default function WatchScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      {/* Friendly Kid Watch Top Bar */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.backBtnIcon}>‹</Text>
-          <Text style={styles.backBtnText}>Retour</Text>
-        </TouchableOpacity>
+    <SafeAreaView
+      style={[styles.safe, isFullscreen && styles.safeFullscreen]}
+      edges={isFullscreen ? [] : ['top', 'bottom']}
+    >
+      {/* Friendly Kid Watch Top Bar - hidden in fullscreen */}
+      {!isFullscreen && (
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backBtnIcon}>‹</Text>
+            <Text style={styles.backBtnText}>Retour</Text>
+          </TouchableOpacity>
 
-        {playlist && (
-          <View style={styles.playlistBadgePill}>
-            <Text style={styles.playlistBadgeEmoji}>{theme?.emoji ?? '🎬'}</Text>
-            <Text style={styles.playlistBadgeName} numberOfLines={1}>{playlist.name}</Text>
-          </View>
-        )}
-      </View>
+          {playlist && (
+            <View style={styles.playlistBadgePill}>
+              <Text style={styles.playlistBadgeEmoji}>{theme?.emoji ?? '🎬'}</Text>
+              <Text style={styles.playlistBadgeName} numberOfLines={1}>{playlist.name}</Text>
+            </View>
+          )}
+        </View>
+      )}
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={isFullscreen ? styles.scrollFullscreen : styles.scroll}
+        scrollEnabled={!isFullscreen}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Main 16:9 Video Player */}
-        <View style={styles.playerCard}>
+        <View style={[styles.playerCard, isFullscreen && styles.playerCardFullscreen]}>
           <VideoPlayer
             key={videoId}
             embedUrl={video.embedUrl}
             title={video.title}
             onWatched={handleWatched}
             onNext={nextVideo ? () => navigation.replace('Watch', { videoId: nextVideo.id, playlistId }) : undefined}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
           />
         </View>
+
+        {!isFullscreen && (
+          <>
 
         {/* Video Info & Kid Actions */}
         <View style={styles.infoCard}>
@@ -203,6 +218,8 @@ export default function WatchScreen({ route, navigation }: Props) {
             </ScrollView>
           </View>
         )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -210,6 +227,7 @@ export default function WatchScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f0f9ff' },
+  safeFullscreen: { backgroundColor: '#000000' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#64748b' },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
@@ -252,6 +270,7 @@ const styles = StyleSheet.create({
   playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#0369a1' },
 
   scroll: { padding: 14, gap: 14, paddingBottom: 32 },
+  scrollFullscreen: { padding: 0, flex: 1 },
   playerCard: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -261,6 +280,12 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+  },
+  playerCardFullscreen: {
+    borderRadius: 0,
+    flex: 1,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   infoCard: {
     backgroundColor: '#ffffff',

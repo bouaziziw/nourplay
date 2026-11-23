@@ -71,3 +71,22 @@ html.tv-mode .tv-btn {
 html.tv-mode * {
   cursor: default;
 }
+
+/* Fullscreen Video Player Mode */
+:fullscreen .tv-player-container,
+:-webkit-full-screen .tv-player-container {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: #000 !important;
+}
+
+:fullscreen .tv-player-canvas,
+:-webkit-full-screen .tv-player-canvas {
+  height: calc(100vh - 72px) !important;
+  padding-bottom: 0 !important;
+}
+

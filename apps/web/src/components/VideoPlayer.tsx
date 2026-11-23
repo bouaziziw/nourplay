@@ -82,14 +82,16 @@ export function VideoPlayer({
   onBack,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const mountTimeRef = useRef<number>(Date.now())
   const firedRef = useRef(false)
   const completedRef = useRef(false)
 
-  // Smart TV detection
+  // Smart TV detection & Player State
   const [isTv, setIsTv] = useState<boolean>(Boolean(tvMode))
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [isMuted, setIsMuted] = useState<boolean>(false)
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
   const [statusMessage, setStatusMessage] = useState<string>('')
   const [playerReady, setPlayerReady] = useState<boolean>(false)
 
@@ -212,10 +214,75 @@ export function VideoPlayer({
     }
   }, [isMuted, sendPlayerCommand])
 
+  // Fullscreen management across Smart TV & Desktop browsers
+  const handleToggleFullscreen = useCallback(() => {
+    const doc = document as any
+    const container = containerRef.current as any
+
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+      if (container?.requestFullscreen) {
+        container.requestFullscreen().catch(() => {})
+      } else if (container?.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen()
+      } else if (container?.mozRequestFullScreen) {
+        container.mozRequestFullScreen()
+      } else if (container?.msRequestFullscreen) {
+        container.msRequestFullscreen()
+      }
+      setStatusMessage('Plein écran ⛶')
+    } else {
+      if (doc.exitFullscreen) {
+        doc.exitFullscreen().catch(() => {})
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen()
+      } else if (doc.mozCancelFullScreen) {
+        doc.mozCancelFullScreen()
+      } else if (doc.msExitFullscreen) {
+        doc.msExitFullscreen()
+      }
+      setStatusMessage('Écran normal')
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const doc = document as any
+      const isNowFull = Boolean(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      )
+      setIsFullscreen(isNowFull)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+    }
+  }, [])
+
   // TV Remote shortcut handling
   useEffect(() => {
     const handleRemoteKeys = (e: KeyboardEvent) => {
       const keyCode = (e as unknown as { keyCode?: number }).keyCode || 0
+
+      // Fullscreen key (F or TV dedicated key)
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault()
+          handleToggleFullscreen()
+          return
+        }
+      }
 
       // Play / Pause media keys
       if (
@@ -253,7 +320,7 @@ export function VideoPlayer({
 
     window.addEventListener('keydown', handleRemoteKeys)
     return () => window.removeEventListener('keydown', handleRemoteKeys)
-  }, [handleTogglePlay, handleRewind10, handleForward10, onNext])
+  }, [handleTogglePlay, handleRewind10, handleForward10, handleToggleFullscreen, onNext])
 
   const safeUrl = buildSafeEmbedUrl(embedUrl, startAt, ccEnabled, isTv)
   const isYouTube = embedUrl.includes('youtube.com') || embedUrl.includes('youtu.be')
@@ -261,9 +328,19 @@ export function VideoPlayer({
   const supportCC = isYouTube || isDailymotion
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 shadow-2xl border border-white/10 flex flex-col">
+    <div
+      ref={containerRef}
+      className={`tv-player-container rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 shadow-2xl border border-white/10 flex flex-col transition-all ${
+        isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none w-screen h-screen' : ''
+      }`}
+    >
       {/* 16:9 Video Canvas */}
-      <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+      <div
+        className={`tv-player-canvas relative w-full bg-black ${
+          isFullscreen ? 'flex-1 min-h-0' : ''
+        }`}
+        style={isFullscreen ? { height: 'calc(100vh - 72px)' } : { paddingBottom: '56.25%' }}
+      >
         <iframe
           ref={iframeRef}
           onLoad={handleIframeLoad}
@@ -332,6 +409,17 @@ export function VideoPlayer({
               <span>⏭️</span>
             </button>
           )}
+
+          {/* Fullscreen Button */}
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className="tv-btn flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-white transition-all active:scale-95"
+            title={isFullscreen ? 'Quitter le plein écran (Touche Échap ou F)' : 'Plein écran (Touche F)'}
+          >
+            <span className="text-base">{isFullscreen ? '🗗' : '⛶'}</span>
+            <span>{isFullscreen ? 'Réduire' : 'Plein écran'}</span>
+          </button>
 
           {/* Mute / Unmute */}
           <button
