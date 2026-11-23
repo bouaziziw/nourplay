@@ -175,7 +175,7 @@ export default function ChildPlaylistsPage() {
                 <span>Espace Découverte</span>
               </div>
               <h1 className="mt-1 text-2xl sm:text-4xl font-extrabold tracking-tight drop-shadow-sm">
-                Coucou {session?.displayName || "toi"} !
+                Playlists — Coucou {session?.displayName || "toi"} !
               </h1>
               <p className="mt-1 text-sm sm:text-base font-medium text-sky-100 max-w-xl">
                 Choisis une chaîne pour regarder tes histoires, dessins animés et découvertes préférés !

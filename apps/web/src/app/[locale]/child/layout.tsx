@@ -184,10 +184,10 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
             )}
             <button
               onClick={() => setUnlockOpen(true)}
-              className="text-xs font-black text-gray-700 hover:text-[#1c90d8] hover:bg-sky-50 border border-gray-200 hover:border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-xs flex items-center gap-1.5"
+              className="text-xs font-semibold text-[#1c90d8] hover:bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-sm flex items-center gap-1.5"
             >
               <span>🔒</span>
-              <span className="hidden sm:inline">Parents</span>
+              <span>Mode Parent</span>
             </button>
             {session && (
               <button
