@@ -93,7 +93,9 @@ export default function AppNavigator() {
               headerTitle: '',
               headerBackTitle: 'Retour',
               headerRight: () => (
-                <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
+                !Platform.isTV ? (
+                  <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
+                ) : null
               ),
             })}
           />
@@ -106,7 +108,9 @@ export default function AppNavigator() {
               headerBackTitle: 'Retour',
               headerTransparent: true,
               headerRight: () => (
-                <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
+                !Platform.isTV ? (
+                  <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
+                ) : null
               ),
             })}
           />

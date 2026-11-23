@@ -11,6 +11,7 @@ import { api, PlaylistDetail } from '../../../../../lib/api'
 import { RemoteImage } from '../../../../../components/RemoteImage'
 import { getPlaylistTheme } from '../../../../../lib/channelTheme'
 import { unpackPlaylistDescription } from '../../../../../lib/playlistCategory'
+import { isTvDevice } from '../../../../../hooks/useTvNavigation'
 
 const VIDEOS_PER_PAGE = 12
 
@@ -141,7 +142,7 @@ export default function ChildPlaylistPage() {
         </button>
 
         <div className="flex items-center gap-2">
-          {!isOfflineFallback && (
+          {!isTvDevice() && !isOfflineFallback && (
             <Link
               href={`/${locale}/dashboard/playlists/${id}/edit`}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-extrabold text-gray-700 bg-white/90 hover:bg-white hover:text-indigo-600 border border-gray-200 transition-all shadow-sm"

@@ -90,3 +90,12 @@ html.tv-mode * {
   padding-bottom: 0 !important;
 }
 
+/* ── Hide scrollbars in TV & Child carousels ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+

@@ -16,6 +16,7 @@ import { RemoteImage } from "../../../../components/RemoteImage";
 import { AddToPlaylistModal } from "../../../../components/AddToPlaylistModal";
 import { getPlaylistTheme } from "../../../../lib/channelTheme";
 import { unpackPlaylistDescription } from "../../../../lib/playlistCategory";
+import { useTvNavigation } from "../../../../hooks/useTvNavigation";
 
 type InProgressItem = {
   positionSec: number;
@@ -48,6 +49,7 @@ export default function ChildPlaylistsPage() {
   const { token } = useAuth();
   const { session } = useChildSession();
   const { saved: offlinePlaylists } = useOfflinePlaylists();
+  const { isTv } = useTvNavigation();
 
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [favorites, setFavorites] = useState<VideoFavorite[]>([]);
@@ -150,6 +152,45 @@ export default function ChildPlaylistsPage() {
     });
   }, [playlists, activeFilter]);
 
+  // ── TV Mode Derived Data (Inspired by Mockups screenshot-tv-1.png & 1000017388 / 1000017389) ──
+  const featuredPlaylist = useMemo(() => {
+    if (playlists.length === 0) return null;
+    return (
+      playlists.find((p) => p.playlistVideos && p.playlistVideos.length > 0) ||
+      playlists[0]
+    );
+  }, [playlists]);
+
+  const featuredVideo = featuredPlaylist?.playlistVideos?.[0]?.video;
+  const featuredWatchUrl =
+    featuredVideo && featuredPlaylist
+      ? `/${locale}/child/watch/${featuredVideo.id}?playlistId=${featuredPlaylist.id}`
+      : featuredPlaylist
+      ? `/${locale}/child/playlists/${featuredPlaylist.id}`
+      : `/${locale}/child/playlists`;
+
+  const featuredDesc = featuredPlaylist
+    ? unpackPlaylistDescription(featuredPlaylist.description, featuredPlaylist.name).cleanDescription
+    : "";
+
+  const featuredFirstThumb = featuredPlaylist?.playlistVideos?.[0]?.video?.thumbnailUrl;
+
+  const discoverVideos = useMemo(() => {
+    const list: {
+      video: { id: string; title: string; thumbnailUrl: string | null };
+      playlistId: string;
+      playlistName: string;
+    }[] = [];
+    for (const pl of playlists) {
+      for (const pv of pl.playlistVideos || []) {
+        if (pv.video && !list.some((item) => item.video.id === pv.video.id)) {
+          list.push({ video: pv.video, playlistId: pl.id, playlistName: pl.name });
+        }
+      }
+    }
+    return list.slice(0, 12);
+  }, [playlists]);
+
   if (loading) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-4">
@@ -157,6 +198,269 @@ export default function ChildPlaylistsPage() {
         <p className="text-base font-bold text-sky-800 animate-pulse">
           Chargement de ton univers... 🎈
         </p>
+      </div>
+    );
+  }
+
+  // ── TV MODE DISPLAY (MATCHING MOCKUPS) ──
+  if (isTv) {
+    return (
+      <div className="space-y-10 pb-16">
+        {/* ── 1. Grand Hero Banner : Sélection du Jour (screenshot-tv-1.png & 1000017388.png) ── */}
+        <section
+          aria-label="Sélection du Jour"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-sky-950 to-indigo-950 p-8 sm:p-12 text-white shadow-2xl border border-white/10"
+        >
+          <div className="relative z-10 max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-4 py-1.5 text-xs font-black tracking-wider uppercase text-slate-950 shadow-md">
+              <span>⭐</span>
+              <span>SÉLECTION DU JOUR</span>
+            </div>
+
+            <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight drop-shadow-md text-white">
+              {featuredPlaylist?.name || "Les Histoires Éducatives"}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-sky-200">
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm border border-white/10">
+                ✨ Tous publics
+              </span>
+              <span>•</span>
+              <span className="rounded-lg bg-white/15 px-2.5 py-1 backdrop-blur-sm border border-white/10">
+                🎬 {featuredPlaylist?._count?.playlistVideos ?? 0} vidéos
+              </span>
+              <span>•</span>
+              <span className="rounded-lg bg-emerald-500/20 text-emerald-300 px-2.5 py-1 border border-emerald-500/30">
+                Sans publicité
+              </span>
+            </div>
+
+            <p className="text-sm sm:text-base text-gray-300 leading-relaxed font-medium">
+              {featuredDesc ||
+                "Découvre de merveilleuses aventures pleines de sagesse et d'apprentissage !"}
+            </p>
+
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <Link
+                href={featuredWatchUrl}
+                data-tv-focus="primary"
+                tabIndex={0}
+                className="tv-btn inline-flex items-center justify-center gap-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base sm:text-lg px-8 py-4 shadow-2xl transition-all active:scale-95 focus:scale-105 focus:ring-4 focus:ring-amber-300"
+              >
+                <span className="text-xl">▶</span>
+                <span>Lire la vidéo</span>
+              </Link>
+
+              {featuredPlaylist && (
+                <Link
+                  href={`/${locale}/child/playlists/${featuredPlaylist.id}`}
+                  tabIndex={0}
+                  className="tv-btn inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm sm:text-base px-6 py-4 border border-white/20 transition-all active:scale-95 focus:scale-105"
+                >
+                  <span>ⓘ</span>
+                  <span>Voir les épisodes</span>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Ambient background glow & cover */}
+          {featuredFirstThumb && (
+            <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-25 pointer-events-none overflow-hidden hidden md:block">
+              <RemoteImage
+                src={featuredFirstThumb}
+                alt={featuredPlaylist?.name || "Sélection"}
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/80 to-transparent" />
+            </div>
+          )}
+        </section>
+
+        {/* ── 2. Carrousel Horizontal : Playlists pour Enfants (screenshot-tv-1.png) ── */}
+        <section aria-label="Playlists pour Enfants" className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Playlists pour Enfants
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 font-medium">
+                Choisis une chaîne pour regarder tes histoires, dessins animés et découvertes
+              </p>
+            </div>
+            <span className="rounded-xl bg-white/10 px-3 py-1 text-xs font-bold text-sky-300 border border-white/10">
+              {playlists.length} chaînes
+            </span>
+          </div>
+
+          <div className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1">
+            {playlists.map((pl) => {
+              const theme = getPlaylistTheme(pl.name, pl.description);
+              const firstThumb = pl.playlistVideos?.[0]?.video?.thumbnailUrl;
+              const videoCount = pl._count.playlistVideos;
+
+              return (
+                <Link
+                  key={pl.id}
+                  href={`/${locale}/child/playlists/${pl.id}`}
+                  tabIndex={0}
+                  className="group relative w-72 sm:w-80 shrink-0 flex flex-col overflow-hidden rounded-3xl bg-slate-900 border border-white/10 shadow-xl transition-all duration-200 active:scale-95 focus:scale-105 focus:ring-4 focus:ring-sky-400"
+                >
+                  <div
+                    className="relative w-full overflow-hidden"
+                    style={{
+                      aspectRatio: "16/9",
+                      background: `linear-gradient(135deg, ${theme.gradient[0]}, ${theme.gradient[1]})`,
+                    }}
+                  >
+                    {firstThumb ? (
+                      <RemoteImage
+                        src={firstThumb}
+                        alt={pl.name}
+                        fill
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-white">
+                        <span className="text-5xl">{theme.emoji}</span>
+                      </div>
+                    )}
+
+                    {/* Gradient shadow overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent opacity-85" />
+
+                    {/* Channel Tag Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-black text-white border border-white/15 backdrop-blur-md">
+                      <span>{theme.emoji}</span>
+                      <span className="truncate max-w-[120px]">{theme.channelLabel}</span>
+                    </div>
+
+                    {/* Video Count Pill */}
+                    <div className="absolute top-3 right-3 rounded-full bg-slate-950/80 px-2.5 py-1 text-xs font-bold text-white border border-white/15 backdrop-blur-md">
+                      🎬 {videoCount}
+                    </div>
+
+                    {/* Bottom Title on Cover */}
+                    <div className="absolute inset-x-0 bottom-0 p-4">
+                      <h3 className="text-base sm:text-lg font-black text-white line-clamp-1 group-hover:text-sky-300">
+                        {pl.name}
+                      </h3>
+                    </div>
+
+                    {/* Center Play Icon on Focus */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-2xl">
+                        <span className="ml-1 text-xl font-black">▶</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── 3. Carrousel Horizontal : Continuer à regarder ── */}
+        {inProgress.length > 0 && (
+          <section aria-label="Continuer à regarder" className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-2xl font-black text-white">
+                Continuer à regarder ⏱️
+              </h2>
+            </div>
+
+            <div className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1">
+              {inProgress.map(({ video, positionSec }) => {
+                const progress = video.durationSec
+                  ? Math.min(100, Math.round((positionSec / video.durationSec) * 100))
+                  : 0;
+                return (
+                  <Link
+                    key={video.id}
+                    href={`/${locale}/child/watch/${video.id}`}
+                    tabIndex={0}
+                    className="group relative w-64 shrink-0 overflow-hidden rounded-2xl bg-slate-900 border border-white/10 shadow-lg transition-all active:scale-95 focus:scale-105 focus:ring-4 focus:ring-sky-400"
+                  >
+                    <div className="relative w-full overflow-hidden bg-gray-800" style={{ aspectRatio: "16/9" }}>
+                      {video.thumbnailUrl ? (
+                        <RemoteImage
+                          src={video.thumbnailUrl}
+                          alt={video.title}
+                          fill
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-3xl">🎬</div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60">
+                        <div className="h-full bg-sky-400" style={{ width: `${progress}%` }} />
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="line-clamp-2 text-xs font-bold text-white group-hover:text-sky-300">
+                        {video.title}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── 4. Carrousel Horizontal : À découvrir ce soir (1000017389.png) ── */}
+        {discoverVideos.length > 0 && (
+          <section aria-label="À découvrir ce soir" className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  À découvrir ce soir 🌙
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-400 font-medium">
+                  Vidéos sélectionnées avec soin pour un moment calme et enrichissant
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth py-3 px-1">
+              {discoverVideos.map(({ video, playlistId, playlistName }) => (
+                <Link
+                  key={video.id}
+                  href={`/${locale}/child/watch/${video.id}?playlistId=${playlistId}`}
+                  tabIndex={0}
+                  className="group relative w-64 sm:w-72 shrink-0 flex flex-col overflow-hidden rounded-2xl bg-slate-900 border border-white/10 shadow-lg transition-all active:scale-95 focus:scale-105 focus:ring-4 focus:ring-sky-400"
+                >
+                  <div className="relative w-full overflow-hidden bg-gray-800" style={{ aspectRatio: "16/9" }}>
+                    {video.thumbnailUrl ? (
+                      <RemoteImage
+                        src={video.thumbnailUrl}
+                        alt={video.title}
+                        fill
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-sky-950 text-3xl">🎬</div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity bg-black/30">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-950 font-black shadow-xl">
+                        ▶
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider block mb-1">
+                      {playlistName}
+                    </span>
+                    <p className="line-clamp-2 text-xs sm:text-sm font-bold text-white group-hover:text-sky-300">
+                      {video.title}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     );
   }

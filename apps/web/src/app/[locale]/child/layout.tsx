@@ -10,7 +10,7 @@ import { useChildSession, isWithinSchedule, sessionElapsedMin, isDailyLimitReach
 import { api } from '../../../lib/api'
 import { ParentUnlockModal } from '../../../components/ParentUnlockModal'
 import { ChildCountdownTimer } from '../../../components/ChildCountdownTimer'
-import { useTvNavigation } from '../../../hooks/useTvNavigation'
+import { useTvNavigation, isTvDevice } from '../../../hooks/useTvNavigation'
 
 function ChildGuard({ children }: { children: React.ReactNode }) {
   const { session, hydrated, clear, isSessionExpired } = useChildSession()
@@ -118,90 +118,145 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50">
+    <div className={`min-h-screen ${isTv ? 'bg-[#0b1120] text-white' : 'bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50'}`}>
       {/* Child header */}
       {token && (
-        <header className="bg-white/90 backdrop-blur-md border-b border-sky-100 px-4 h-16 flex items-center justify-between sticky top-0 z-40 shadow-sm">
-          <div className="flex items-center gap-3">
-            {session ? (
-              <>
-                <Link href={`/${locale}/child/playlists`} className="flex items-center gap-2.5">
-                  <Logo size="xs" showText={false} />
-                  <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center text-sm font-black text-white shadow-sm">
-                    {session.displayName.slice(0, 2).toUpperCase()}
-                  </div>
-                  <span className="font-extrabold text-gray-900 text-sm hidden sm:inline">{session.displayName}</span>
-                </Link>
-              </>
-            ) : (
-              <Logo size="sm" subtitle="Enfant" />
-            )}
-            {session && (
-              <div className="flex items-center gap-1.5 ml-2 border-l border-gray-200 pl-3">
+        isTv ? (
+          /* Smart TV Cinematic Top Navigation Bar (Inspired by Mockups) */
+          <header className="bg-slate-950/90 border-b border-white/10 px-6 sm:px-10 h-20 flex items-center justify-between sticky top-0 z-40 backdrop-blur-md">
+            <div className="flex items-center gap-6">
+              <Link href={`/${locale}/child/playlists`} tabIndex={0} className="flex items-center gap-2 focus:scale-105 transition-transform">
+                <Logo size="sm" showText={true} />
+              </Link>
+              <nav aria-label="Navigation TV" className="flex items-center gap-3 ml-4">
                 <Link
                   href={`/${locale}/child/playlists`}
-                  title="Toutes les chaînes"
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 text-[#1c90d8] font-black text-xs hover:bg-sky-100 transition-colors shadow-xs"
+                  tabIndex={0}
+                  className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                    isPlaylistsPage
+                      ? 'bg-[#1c90d8] text-white shadow-md'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  <span>📺</span>
-                  <span className="hidden md:inline">Chaînes</span>
+                  Accueil
                 </Link>
                 <Link
-                  href={`/${locale}/child/favorites`}
-                  title="Mes favoris"
-                  className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-pink-500 hover:bg-pink-50 transition-colors"
+                  href={`/${locale}/child/playlists`}
+                  tabIndex={0}
+                  className="px-4 py-2 rounded-xl text-sm font-black text-gray-300 hover:text-white hover:bg-white/10 transition-all"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
+                  Playlists
                 </Link>
                 <Link
-                  href={`/${locale}/child/history`}
-                  title="Mon historique"
-                  className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
+                  href={`/${locale}/child`}
+                  tabIndex={0}
+                  className={`px-4 py-2 rounded-xl text-sm font-black transition-all ${
+                    isProfileSelector
+                      ? 'bg-[#1c90d8] text-white shadow-md'
+                      : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  }`}
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  Profils Enfants
                 </Link>
-              </div>
-            )}
-          </div>
+              </nav>
+            </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            {session && (
-              <ChildCountdownTimer
-                sessionLimitMin={session.sessionLimitMin}
-                dailyLimitMin={session.dailyLimitMin}
-                activatedAt={session.activatedAt}
-                dailyWatchedSec={dailyWatchedSec}
-                onExpire={() => {
-                  if (token && session.profileId) {
-                    void api.users.notifySessionExpired(token, session.profileId).catch(() => {})
-                  }
-                  // Force re-render to trigger blocking screen
-                  setDailyWatchedSec(prev => (prev ?? 0) + 1)
-                }}
-              />
-            )}
-            <button
-              onClick={() => setUnlockOpen(true)}
-              className="text-xs font-semibold text-[#1c90d8] hover:bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-sm flex items-center gap-1.5"
-            >
-              <span>🔒</span>
-              <span>Mode Parent</span>
-            </button>
-            {session && (
+            <div className="flex items-center gap-4">
+              {session && (
+                <div className="flex items-center gap-3 bg-white/10 rounded-2xl px-3.5 py-1.5 border border-white/10 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-xs font-black text-white shadow">
+                    {session.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-sm font-black text-white">{session.displayName}</span>
+                </div>
+              )}
+            </div>
+          </header>
+        ) : (
+          /* Standard Desktop & Mobile Header */
+          <header className="bg-white/90 backdrop-blur-md border-b border-sky-100 px-4 h-16 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+            <div className="flex items-center gap-3">
+              {session ? (
+                <>
+                  <Link href={`/${locale}/child/playlists`} className="flex items-center gap-2.5">
+                    <Logo size="xs" showText={false} />
+                    <div className="w-9 h-9 bg-gradient-to-br from-sky-400 to-blue-500 rounded-2xl flex items-center justify-center text-sm font-black text-white shadow-sm">
+                      {session.displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <span className="font-extrabold text-gray-900 text-sm hidden sm:inline">{session.displayName}</span>
+                  </Link>
+                </>
+              ) : (
+                <Logo size="sm" subtitle="Enfant" />
+              )}
+              {session && (
+                <div className="flex items-center gap-1.5 ml-2 border-l border-gray-200 pl-3">
+                  <Link
+                    href={`/${locale}/child/playlists`}
+                    title="Toutes les chaînes"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 text-[#1c90d8] font-black text-xs hover:bg-sky-100 transition-colors shadow-xs"
+                  >
+                    <span>📺</span>
+                    <span className="hidden md:inline">Chaînes</span>
+                  </Link>
+                  <Link
+                    href={`/${locale}/child/favorites`}
+                    title="Mes favoris"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-pink-500 hover:bg-pink-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </Link>
+                  <Link
+                    href={`/${locale}/child/history`}
+                    title="Mon historique"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              {session && (
+                <ChildCountdownTimer
+                  sessionLimitMin={session.sessionLimitMin}
+                  dailyLimitMin={session.dailyLimitMin}
+                  activatedAt={session.activatedAt}
+                  dailyWatchedSec={dailyWatchedSec}
+                  onExpire={() => {
+                    if (token && session.profileId) {
+                      void api.users.notifySessionExpired(token, session.profileId).catch(() => {})
+                    }
+                    // Force re-render to trigger blocking screen
+                    setDailyWatchedSec(prev => (prev ?? 0) + 1)
+                  }}
+                />
+              )}
+              {/* Mode Parent available only on Desktop & Mobile, never on TV */}
               <button
-                onClick={() => { clear(); router.replace(`/${locale}/child`) }}
-                className="text-xs font-bold text-gray-400 hover:text-rose-500 rounded-xl px-2 py-1.5 transition-colors"
-                title="Changer de profil"
+                onClick={() => setUnlockOpen(true)}
+                className="text-xs font-semibold text-[#1c90d8] hover:bg-sky-50 border border-sky-200 rounded-xl px-3 py-1.5 transition-colors shadow-sm flex items-center gap-1.5"
               >
-                👶
+                <span>🔒</span>
+                <span>Mode Parent</span>
               </button>
-            )}
-          </div>
-        </header>
+              {session && (
+                <button
+                  onClick={() => { clear(); router.replace(`/${locale}/child`) }}
+                  className="text-xs font-bold text-gray-400 hover:text-rose-500 rounded-xl px-2 py-1.5 transition-colors"
+                  title="Changer de profil"
+                >
+                  👶
+                </button>
+              )}
+            </div>
+          </header>
+        )
       )}
 
       <main
@@ -213,7 +268,7 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      {unlockOpen && (
+      {!isTv && unlockOpen && (
         <ParentUnlockModal onSubmit={handleParentUnlock} onClose={() => setUnlockOpen(false)} />
       )}
 
@@ -256,6 +311,7 @@ function BlockingScreen({
   onUnlockClose: () => void
   onUnlockSubmit: (password: string) => Promise<void>
 }) {
+  const isTv = isTvDevice()
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 to-sky-950 flex items-center justify-center p-4">
@@ -265,19 +321,23 @@ function BlockingScreen({
           <p className="text-sky-200 text-sm mb-8">{message}</p>
           <button
             onClick={onExit}
-            className="bg-white text-primary font-semibold px-6 py-2.5 rounded-xl hover:bg-sky-50 transition-colors"
+            data-tv-focus="primary"
+            tabIndex={0}
+            className="bg-white text-primary font-black px-6 py-3 rounded-2xl hover:bg-sky-50 transition-transform active:scale-95 shadow-xl"
           >
             Retourner au mode enfant
           </button>
-          <button
-            onClick={onParentUnlock}
-            className="mt-4 block w-full text-sm font-medium text-white underline underline-offset-4"
-          >
-            Mode Parent
-          </button>
+          {!isTv && (
+            <button
+              onClick={onParentUnlock}
+              className="mt-4 block w-full text-sm font-medium text-white underline underline-offset-4"
+            >
+              Mode Parent
+            </button>
+          )}
         </div>
       </div>
-      {unlockOpen && (
+      {!isTv && unlockOpen && (
         <ParentUnlockModal onSubmit={onUnlockSubmit} onClose={onUnlockClose} />
       )}
     </>

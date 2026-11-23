@@ -36,10 +36,26 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!auth?.token) return
     api.users.profiles(auth.token)
-      .then(setProfiles)
+      .then(profs => {
+        setProfiles(profs)
+
+        // Requirement: En mode TV, activer le mode enfant par défaut dès le chargement
+        if (Platform.isTV && profs.length > 0 && childCtx) {
+          const auto = profs[0]
+          void childCtx.set({
+            profileId: auto.id,
+            displayName: auto.displayName,
+            ageGroup: auto.ageGroup,
+            dailyLimitMin: auto.dailyLimitMin,
+            sessionLimitMin: auto.sessionLimitMin,
+            viewingSchedule: auto.viewingSchedule,
+          })
+          navigation.navigate('ChildPlaylists')
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [auth?.token])
+  }, [auth?.token, childCtx, navigation])
 
   useEffect(() => {
     if (route.params?.unlockParent) {
@@ -89,16 +105,18 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Logo size="sm" subtitle="Enfant" />
-        <TouchableOpacity
-          accessibilityRole="button"
-          onPress={() => {
-            setUnlockError('')
-            setUnlockVisible(true)
-          }}
-          style={styles.parentModeButton}
-        >
-          <Text style={styles.dashboardLink}>Mode Parent</Text>
-        </TouchableOpacity>
+        {!Platform.isTV && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => {
+              setUnlockError('')
+              setUnlockVisible(true)
+            }}
+            style={styles.parentModeButton}
+          >
+            <Text style={styles.dashboardLink}>Mode Parent</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.titleBlock}>
@@ -111,7 +129,9 @@ export default function ProfileSelectorScreen({ navigation, route }: Props) {
       ) : profiles.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>Aucun profil enfant disponible.</Text>
-          <Text style={styles.linkText}>Le parent peut créer un profil après avoir déverrouillé le Mode Parent.</Text>
+          {!Platform.isTV && (
+            <Text style={styles.linkText}>Le parent peut créer un profil après avoir déverrouillé le Mode Parent.</Text>
+          )}
         </View>
       ) : (
         <FlatList

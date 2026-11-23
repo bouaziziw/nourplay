@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Image, ScrollView,
+  ActivityIndicator, Alert, Image, ScrollView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
@@ -12,6 +12,7 @@ import { api, PlaylistSummary } from '../../api'
 import { ChildCountdownTimer } from '../../components/ChildCountdownTimer'
 import { getPlaylistTheme } from '../../utils/channelTheme'
 import type { RootStackParamList } from '../../navigation/AppNavigator'
+import { Logo } from '../../components/Logo'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChildPlaylists'>
 
@@ -96,6 +97,193 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
     })
   }, [playlists, activeFilter])
 
+  const isTV = Platform.isTV
+
+  const featuredPlaylist = useMemo(() => {
+    if (playlists.length === 0) return null
+    return playlists.find(p => p.playlistVideos && p.playlistVideos.length > 0) || playlists[0]
+  }, [playlists])
+
+  const featuredFirstVideo = featuredPlaylist?.playlistVideos?.[0]?.video
+
+  const discoverVideos = useMemo(() => {
+    const list: { video: any; playlistId: string; playlistName: string }[] = []
+    for (const pl of playlists) {
+      for (const pv of pl.playlistVideos || []) {
+        if (pv.video && !list.some(item => item.video.id === pv.video.id)) {
+          list.push({ video: pv.video, playlistId: pl.id, playlistName: pl.name })
+        }
+      }
+    }
+    return list.slice(0, 10)
+  }, [playlists])
+
+  if (isTV) {
+    return (
+      <SafeAreaView style={styles.tvSafe}>
+        {/* ── TV Header (screenshot-tv-1.png) ── */}
+        <View style={styles.tvHeader}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Logo size="sm" subtitle="TV" />
+            <View style={styles.tvNavTabs}>
+              <View style={[styles.tvNavTab, styles.tvNavTabActive]}>
+                <Text style={styles.tvNavTabTextActive}>Accueil</Text>
+              </View>
+              <View style={styles.tvNavTab}>
+                <Text style={styles.tvNavTabText}>Playlists</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ProfileSelector')}
+                style={styles.tvNavTab}
+              >
+                <Text style={styles.tvNavTabText}>Profils Enfants</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.tvProfileBadge}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarEmoji}>👶</Text>
+            </View>
+            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 14 }}>
+              {session?.displayName}
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          {/* ── TV Hero Banner : Sélection du Jour (screenshot-tv-1.png & 1000017388.png) ── */}
+          <View style={styles.tvHero}>
+            <View style={styles.tvHeroBadge}>
+              <Text style={styles.tvHeroBadgeText}>⭐ SÉLECTION DU JOUR</Text>
+            </View>
+            <Text style={styles.tvHeroTitle} numberOfLines={2}>
+              {featuredPlaylist?.name || 'Les Histoires Éducatives'}
+            </Text>
+            <View style={styles.tvHeroMeta}>
+              <Text style={styles.tvHeroTag}>✨ Tous publics</Text>
+              <Text style={styles.tvHeroTag}>
+                🎬 {featuredPlaylist?._count?.playlistVideos ?? 0} vidéos
+              </Text>
+            </View>
+            <Text style={styles.tvHeroDesc} numberOfLines={3}>
+              {featuredPlaylist?.description ||
+                'Découvre de merveilleuses aventures pleines de sagesse et d\'apprentissage !'}
+            </Text>
+
+            <View style={styles.tvHeroActions}>
+              <TouchableOpacity
+                style={styles.tvPlayBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  if (featuredFirstVideo && featuredPlaylist) {
+                    navigation.push('Watch', {
+                      videoId: featuredFirstVideo.id,
+                      playlistId: featuredPlaylist.id,
+                    })
+                  } else if (featuredPlaylist) {
+                    navigation.push('ChildPlaylistDetail', {
+                      playlistId: featuredPlaylist.id,
+                      playlistName: featuredPlaylist.name,
+                    })
+                  }
+                }}
+              >
+                <Text style={styles.tvPlayBtnText}>▶ Lire la vidéo</Text>
+              </TouchableOpacity>
+
+              {featuredPlaylist && (
+                <TouchableOpacity
+                  style={styles.tvInfoBtn}
+                  activeOpacity={0.85}
+                  onPress={() =>
+                    navigation.push('ChildPlaylistDetail', {
+                      playlistId: featuredPlaylist.id,
+                      playlistName: featuredPlaylist.name,
+                    })
+                  }
+                >
+                  <Text style={styles.tvInfoBtnText}>ⓘ Voir les épisodes</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* ── Row 1 : Playlists pour Enfants (screenshot-tv-1.png) ── */}
+          <View style={styles.tvSection}>
+            <Text style={styles.tvSectionTitle}>Playlists pour Enfants</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tvHorizontalList}>
+              {playlists.map(pl => {
+                const theme = getPlaylistTheme(pl.name, pl.description)
+                const firstThumb = pl.playlistVideos?.[0]?.video?.thumbnailUrl
+                return (
+                  <TouchableOpacity
+                    key={pl.id}
+                    style={styles.tvCard}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      navigation.push('ChildPlaylistDetail', {
+                        playlistId: pl.id,
+                        playlistName: pl.name,
+                      })
+                    }
+                  >
+                    <View style={[styles.tvCardCover, { backgroundColor: theme.gradient[0] }]}>
+                      {firstThumb ? (
+                        <Image source={{ uri: firstThumb }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 44 }}>{theme.emoji}</Text>
+                        </View>
+                      )}
+                      <View style={styles.tvCardTitleOverlay}>
+                        <Text style={styles.tvCardTitle} numberOfLines={1}>{pl.name}</Text>
+                        <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                          🎬 {pl._count.playlistVideos} épisodes
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+          </View>
+
+          {/* ── Row 2 : À découvrir ce soir (1000017389.png) ── */}
+          {discoverVideos.length > 0 && (
+            <View style={styles.tvSection}>
+              <Text style={styles.tvSectionTitle}>À découvrir ce soir 🌙</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tvHorizontalList}>
+                {discoverVideos.map(({ video, playlistId, playlistName }) => (
+                  <TouchableOpacity
+                    key={video.id}
+                    style={styles.tvCard}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.push('Watch', { videoId: video.id, playlistId })}
+                  >
+                    <View style={styles.tvCardCover}>
+                      {video.thumbnailUrl ? (
+                        <Image source={{ uri: video.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e293b' }}>
+                          <Text style={{ fontSize: 36 }}>🎬</Text>
+                        </View>
+                      )}
+                      <View style={styles.tvCardTitleOverlay}>
+                        <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700' }}>{playlistName}</Text>
+                        <Text style={styles.tvCardTitle} numberOfLines={1}>{video.title}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Friendly Kid Top Bar */}
@@ -128,13 +316,15 @@ export default function ChildPlaylistsScreen({ navigation }: Props) {
             />
           )}
 
-          <TouchableOpacity
-            accessibilityRole="button"
-            onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })}
-            style={styles.parentBtn}
-          >
-            <Text style={styles.parentText}>🔒 Parent</Text>
-          </TouchableOpacity>
+          {!Platform.isTV && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })}
+              style={styles.parentBtn}
+            >
+              <Text style={styles.parentText}>🔒 Parent</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -444,4 +634,90 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   resetFilterText: { color: '#ffffff', fontSize: 13, fontWeight: '800' },
+
+  // TV Mode Specific Styles (Matching mockups)
+  tvSafe: { flex: 1, backgroundColor: '#0b1120' },
+  tvHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 28,
+    paddingVertical: 18,
+    backgroundColor: '#070d18',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  tvNavTabs: { flexDirection: 'row', alignItems: 'center', gap: 12, marginLeft: 24 },
+  tvNavTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, backgroundColor: 'transparent' },
+  tvNavTabActive: { backgroundColor: '#1c90d8' },
+  tvNavTabText: { color: '#94a3b8', fontSize: 14, fontWeight: '800' },
+  tvNavTabTextActive: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  tvProfileBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tvHero: {
+    margin: 24,
+    padding: 28,
+    borderRadius: 24,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  tvHeroBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  tvHeroBadgeText: { color: '#0f172a', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 },
+  tvHeroTitle: { fontSize: 32, fontWeight: '900', color: '#ffffff', marginBottom: 8 },
+  tvHeroMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  tvHeroTag: {
+    color: '#38bdf8',
+    fontSize: 12,
+    fontWeight: '700',
+    backgroundColor: 'rgba(56,189,248,0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tvHeroDesc: { color: '#94a3b8', fontSize: 14, lineHeight: 20, marginBottom: 18, maxWidth: 600 },
+  tvHeroActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  tvPlayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f59e0b',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  tvPlayBtnText: { color: '#0f172a', fontSize: 16, fontWeight: '900' },
+  tvInfoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: '#475569',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+  },
+  tvInfoBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '800' },
+  tvSection: { marginBottom: 28, paddingHorizontal: 24 },
+  tvSectionTitle: { fontSize: 22, fontWeight: '900', color: '#ffffff', marginBottom: 12 },
+  tvHorizontalList: { gap: 18 },
+  tvCard: { width: 280, borderRadius: 20, overflow: 'hidden', backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#1e293b' },
+  tvCardCover: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
+  tvCardTitleOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, backgroundColor: 'rgba(5,10,20,0.85)' },
+  tvCardTitle: { fontSize: 14, fontWeight: '800', color: '#ffffff' },
 })

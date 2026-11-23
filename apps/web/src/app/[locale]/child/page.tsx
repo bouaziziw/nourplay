@@ -87,15 +87,19 @@ export default function ChildProfileSelector() {
       {profiles.length === 0 ? (
         <div className="text-center">
           <p className="text-gray-400 mb-4">Aucun profil enfant disponible.</p>
-          <p className="text-sm text-gray-500">Le parent peut déverrouiller le Mode Parent pour créer un profil.</p>
+          {!isTvDevice() && (
+            <p className="text-sm text-gray-500">Le parent peut déverrouiller le Mode Parent pour créer un profil.</p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl">
-          {profiles.map(p => (
+          {profiles.map((p, idx) => (
             <button
               key={p.id}
               onClick={() => setSelected(p)}
-              className="group flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-white/80 hover:shadow-lg transition-all duration-200 active:scale-95"
+              data-tv-focus={idx === 0 ? "primary" : undefined}
+              tabIndex={0}
+              className="group flex flex-col items-center gap-3 p-4 rounded-2xl hover:bg-white/80 hover:shadow-lg transition-all duration-200 active:scale-95 focus:outline-none focus:ring-4 focus:ring-sky-400"
             >
               <div className="transition-transform group-hover:scale-110">
                 <ProfileAvatar avatarKey={p.avatarKey} displayName={p.displayName} size={80} />
