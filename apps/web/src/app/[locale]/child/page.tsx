@@ -8,6 +8,7 @@ import { useChildSession } from '../../../hooks/useChildSession'
 import { PinModal } from '../../../components/PinModal'
 import { ProfileAvatar } from '../../../components/ProfileAvatar'
 import { api, ProfileSummary } from '../../../lib/api'
+import { isTvDevice } from '../../../hooks/useTvNavigation'
 
 const AGE_LABELS: Record<string, string> = {
   AGE_0_3: '0–3', AGE_4_6: '4–6', AGE_7_9: '7–9',
@@ -18,18 +19,40 @@ export default function ChildProfileSelector() {
   const locale = useLocale()
   const router = useRouter()
   const { token, loading: authLoading } = useAuth()
-  const { set: setSession } = useChildSession()
+  const { session, set: setSession } = useChildSession()
   const [profiles, setProfiles] = useState<ProfileSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ProfileSummary | null>(null)
 
   useEffect(() => {
+    // Si une session enfant est déjà active en mode TV, aller directement aux playlists
+    if (session && isTvDevice()) {
+      router.replace(`/${locale}/child/playlists`)
+      return
+    }
+
     if (!token) return
     api.users.profiles(token)
-      .then(setProfiles)
+      .then(profs => {
+        setProfiles(profs)
+
+        // Requirement 3: En mode TV, activer le mode enfant par défaut sans sélection manuelle
+        if (isTvDevice() && profs.length > 0) {
+          const autoProfile = profs[0]
+          setSession({
+            profileId: autoProfile.id,
+            displayName: autoProfile.displayName,
+            ageGroup: autoProfile.ageGroup,
+            dailyLimitMin: autoProfile.dailyLimitMin,
+            sessionLimitMin: autoProfile.sessionLimitMin,
+            viewingSchedule: autoProfile.viewingSchedule,
+          })
+          router.replace(`/${locale}/child/playlists`)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [token])
+  }, [token, locale, router, session, setSession])
 
   const handlePinSuccess = (pin: string) => {
     if (!token || !selected) return Promise.reject()
