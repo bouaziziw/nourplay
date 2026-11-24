@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#09101b" />
+      <stop offset="35%" stop-color="#182a3c" />
+      <stop offset="65%" stop-color="#101d2a" />
+      <stop offset="100%" stop-color="#050910" />
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#96b2b5" stop-opacity="1" />
+      <stop offset="85%" stop-color="#8ba5a8" stop-opacity="1" />
+      <stop offset="100%" stop-color="#728e91" stop-opacity="0.95" />
+    </radialGradient>
+    <linearGradient id="darkOverlay" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#050910" stop-opacity="0" />
+      <stop offset="50%" stop-color="#050910" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#050910" stop-opacity="0.85" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sky Base -->
+  <rect width="1920" height="1080" fill="url(#sky)" />
+
+  <!-- Pale Moon at top right matching mockup -->
+  <circle cx="1420" cy="270" r="174" fill="url(#moonGlow)" />
+
+  <!-- Far Mountain Peaks Layer (Behind Moon & Center) -->
+  <polygon points="1060,650 1320,410 1520,330 1720,430 1920,350 1920,850 1060,850" fill="#1b313e" />
+  <polygon points="0,480 220,330 480,450 680,390 980,590 980,850 0,850" fill="#1b313e" />
+
+  <!-- Mid Mountain Layer -->
+  <polygon points="1180,680 1480,440 1630,390 1860,530 1920,500 1920,950 1180,950" fill="#22394d" opacity="0.95" />
+  <polygon points="0,540 180,390 350,510 570,350 830,560 1040,460 1260,700 1260,950 0,950" fill="#243c50" />
+
+  <!-- Near Ridge Layer -->
+  <polygon points="0,620 150,520 340,640 560,480 780,630 1000,540 1220,710 1920,630 1920,1080 0,1080" fill="#13222e" />
+
+  <!-- Child/Figure Silhouette near moon base -->
+  <circle cx="1475" cy="558" r="38" fill="#071018" />
+  <polygon points="1445,780 1505,780 1492,592 1458,592" fill="#071018" />
+
+  <!-- Midground Pine Trees -->
+  <g fill="#091520">
+    <polygon points="980,690 1020,540 1060,690" />
+    <polygon points="1040,700 1075,570 1110,700" />
+    <polygon points="1100,710 1140,550 1180,710" />
+    <polygon points="1160,720 1200,580 1240,720" />
+    <polygon points="1220,710 1260,560 1300,710" />
+    <polygon points="1280,730 1320,590 1360,730" />
+    <polygon points="1340,720 1380,570 1420,720" />
+    <polygon points="1520,710 1560,560 1600,710" />
+    <polygon points="1580,720 1620,580 1660,720" />
+    <polygon points="1640,730 1685,570 1730,730" />
+    <polygon points="1710,720 1750,550 1790,720" />
+    <polygon points="1770,740 1810,590 1850,740" />
+    <polygon points="1830,730 1875,560 1920,730" />
+  </g>
+
+  <!-- Foreground Dense Conifer Silhouette -->
+  <g fill="#050c14">
+    <polygon points="-40,860 30,540 100,860" />
+    <polygon points="20,870 90,580 160,870" />
+    <polygon points="80,860 150,520 220,860" />
+    <polygon points="150,870 215,570 280,870" />
+    <polygon points="210,880 280,550 350,880" />
+    <polygon points="280,870 350,590 420,870" />
+    <polygon points="350,890 425,530 500,890" />
+    <polygon points="430,900 500,570 570,900" />
+    <polygon points="500,890 570,550 640,890" />
+    <polygon points="570,910 640,600 710,910" />
+    <polygon points="640,900 720,540 800,900" />
+    <polygon points="730,910 805,580 880,910" />
+    <polygon points="810,900 885,560 960,900" />
+    <polygon points="890,920 970,610 1050,920" />
+    <polygon points="970,910 1050,550 1130,910" />
+    <polygon points="1060,920 1135,600 1210,920" />
+    <polygon points="1140,910 1215,570 1290,910" />
+    <polygon points="1220,930 1300,620 1380,930" />
+    <polygon points="1310,920 1385,560 1460,920" />
+    <polygon points="1500,920 1575,570 1650,920" />
+    <polygon points="1580,930 1655,610 1730,930" />
+    <polygon points="1660,920 1735,560 1810,920" />
+    <polygon points="1740,930 1820,590 1900,930" />
+    <polygon points="1820,940 1890,630 1960,940" />
+  </g>
+
+  <!-- Ambient Bottom Gradient for High Contrast -->
+  <rect y="580" width="1920" height="500" fill="url(#darkOverlay)" />
+</svg>

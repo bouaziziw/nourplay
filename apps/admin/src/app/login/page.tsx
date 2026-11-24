@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Logo } from '@nourplay/ui'
-import { AuthProvider, useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../hooks/useAuth'
 import { ApiError } from '../../lib/api'
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter()
   const { login, loginWith2fa } = useAuth()
   const [email, setEmail] = useState('')
@@ -52,17 +52,17 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8 flex flex-col items-center">
-          <Logo size="lg" subtitle="Admin" theme="dark" className="justify-center mb-2" />
-          <p className="text-gray-400 text-sm">Back-office d&apos;administration sécurisé</p>
+          <Logo size="lg" subtitle="Admin" theme="light" className="justify-center mb-2" />
+          <p className="text-slate-600 text-sm">Back-office d&apos;administration sécurisé</p>
         </div>
 
-        <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+        <div className="bg-white/85 rounded-2xl p-6 border border-slate-200 shadow-xl backdrop-blur-md">
           {error && (
-            <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">
+            <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
@@ -70,39 +70,39 @@ function LoginForm() {
           {step === 'credentials' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
                   autoFocus
-                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1c90d8] focus:border-transparent"
                   placeholder="admin@exemple.com"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Mot de passe</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1.5">Mot de passe</label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
-                  className="w-full h-10 px-3 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1c90d8] focus:border-transparent"
                   placeholder="••••••••"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-10 bg-primary hover:bg-primary-600 text-white font-semibold rounded-lg text-sm transition-colors disabled:opacity-50 shadow-md shadow-sky-950/30"
+                className="w-full h-10 bg-[#1c90d8] hover:bg-[#1572ab] text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50 shadow-md"
               >
                 {loading ? 'Connexion…' : 'Se connecter'}
               </button>
             </form>
           ) : (
             <form onSubmit={handle2fa} className="space-y-4">
-              <p className="text-sm text-gray-300 text-center">
+              <p className="text-sm text-slate-700 text-center">
                 Code à 6 chiffres de votre application d&apos;authentification
               </p>
               <input
@@ -112,28 +112,20 @@ function LoginForm() {
                 value={code}
                 onChange={e => setCode(e.target.value)}
                 autoFocus
-                className="w-full h-12 px-3 bg-gray-700 border border-gray-600 rounded-xl text-xl text-white text-center tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-12 px-3 bg-white border border-slate-300 rounded-xl text-xl text-slate-900 text-center tracking-[0.5em] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1c90d8] focus:border-transparent"
                 placeholder="000000"
               />
               <button
                 type="submit"
                 disabled={loading || code.length < 6}
-                className="w-full h-10 bg-primary hover:bg-primary-600 text-white font-semibold rounded-xl text-sm transition-colors disabled:opacity-50 shadow-sm"
+                className="w-full h-10 bg-[#1c90d8] hover:bg-[#1572ab] text-white font-bold rounded-lg text-sm transition-colors disabled:opacity-50 shadow-md"
               >
-                {loading ? 'Vérification…' : 'Vérifier'}
+                {loading ? 'Vérification…' : 'Valider'}
               </button>
             </form>
           )}
         </div>
       </div>
     </div>
-  )
-}
-
-export default function LoginPage() {
-  return (
-    <AuthProvider>
-      <LoginForm />
-    </AuthProvider>
   )
 }

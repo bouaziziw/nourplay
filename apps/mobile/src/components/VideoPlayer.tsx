@@ -244,17 +244,6 @@ export function VideoPlayer({
 
       {/* Integrated Remote-Friendly TV Playback Controls */}
       <View style={[styles.controlsBar, isTV && styles.tvControlsBar]}>
-        {/* Quick Commands Header (Active by default) */}
-        <View style={styles.quickHeaderRow}>
-          <View style={styles.quickBadge}>
-            <View style={styles.pulseDot} />
-            <Text style={styles.quickBadgeText}>⚡ Commandes rapides</Text>
-          </View>
-          <Text style={styles.quickStatusText}>
-            {isPlaying ? '▶ Lecture en cours' : 'Prêt à regarder 🍿'}
-          </Text>
-        </View>
-
         <View style={styles.controlsRow}>
           <TouchableOpacity
             style={[styles.btn, isPlaying ? styles.btnPause : styles.btnPlay, isTV && styles.tvBtn]}
@@ -300,7 +289,7 @@ export function VideoPlayer({
             activeOpacity={0.8}
           >
             <Text style={styles.btnSecondaryText}>
-              {isFullscreen ? '🗗 Réduire' : '⛶ Plein écran'}
+              {isFullscreen ? '🗗' : '⛶'}
             </Text>
           </TouchableOpacity>
 
@@ -311,13 +300,6 @@ export function VideoPlayer({
           >
             <Text style={styles.btnIconText}>{isMuted ? '🔇' : '🔊'}</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Quick Remote Navigation Hints for TV */}
-        <View style={styles.remoteHintRow}>
-          <Text style={styles.remoteHintText}>
-            [OK] Lecture/Pause  •  [◀◀ / ▶▶] ±10s  •  [⛶ Plein écran]
-          </Text>
         </View>
       </View>
     </View>
@@ -356,33 +338,33 @@ const styles = StyleSheet.create({
   },
   controlsBar: {
     backgroundColor: '#0f172a',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderTopWidth: 1,
     borderTopColor: '#1e293b',
   },
   tvControlsBar: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   tvBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 38,
   },
   btnPlay: {
     backgroundColor: '#1c90d8',
@@ -391,13 +373,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f59e0b',
   },
   btnIcon: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     fontWeight: '900',
   },
   btnText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
   },
   btnTextPause: {
@@ -405,38 +387,38 @@ const styles = StyleSheet.create({
   },
   btnSecondary: {
     backgroundColor: '#1e293b',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#334155',
   },
   btnSecondaryText: {
     color: '#e2e8f0',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   btnNext: {
     backgroundColor: '#059669',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
   btnNextText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
   btnIconOnly: {
     backgroundColor: '#1e293b',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#334155',
   },
   btnIconText: {
-    fontSize: 15,
+    fontSize: 13,
   },
   quickHeaderRow: {
     flexDirection: 'row',

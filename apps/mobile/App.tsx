@@ -1,11 +1,19 @@
 import React from 'react'
-import { NavigationContainer } from '@react-navigation/native'
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { View, ActivityIndicator } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthContext, useAuthState } from './src/hooks/useAuth'
 import { ChildSessionContext, useChildSessionState } from './src/hooks/useChildSession'
 import AppNavigator from './src/navigation/AppNavigator'
+
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#ffffff',
+  },
+}
 
 function Providers({ children }: { children: React.ReactNode }) {
   const { state, login, loginWith2fa, logout, unlockParentMode, lockParentMode } = useAuthState()
@@ -27,11 +35,11 @@ function Providers({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
+      <NavigationContainer theme={navTheme}>
         <Providers>
           <AppNavigator />
         </Providers>
-        <StatusBar style="auto" />
+        <StatusBar style="dark" />
       </NavigationContainer>
     </SafeAreaProvider>
   )

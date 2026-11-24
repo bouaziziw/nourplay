@@ -94,13 +94,13 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   containerNormal: {
-    backgroundColor: 'rgba(2, 132, 199, 0.2)',
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    backgroundColor: 'rgba(28, 144, 216, 0.15)',
+    borderColor: 'rgba(28, 144, 216, 0.35)',
   },
   textNormal: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#38bdf8',
+    color: '#000000',
   },
   containerWarning: {
     backgroundColor: 'rgba(245, 158, 11, 0.2)',

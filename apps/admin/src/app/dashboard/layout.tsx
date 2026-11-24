@@ -36,17 +36,17 @@ function Sidebar() {
   const links = NAV.filter(n => !n.adminOnly || isAdmin)
 
   return (
-    <aside className="sticky top-0 z-30 flex w-full shrink-0 flex-col border-b border-gray-800 bg-gray-900 md:h-screen md:w-60 md:border-b-0 md:border-r">
+    <aside className="sticky top-0 z-30 flex w-full shrink-0 flex-col border-b border-slate-200/80 bg-white/75 backdrop-blur-md md:h-screen md:w-60 md:border-b-0 md:border-r text-slate-900">
       {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center border-b border-gray-800 px-4">
-        <Logo size="sm" subtitle="Admin" theme="dark" />
+      <div className="flex h-16 shrink-0 items-center border-b border-slate-200/80 px-4">
+        <Logo size="sm" subtitle="Admin" theme="light" />
       </div>
 
       {/* Role badge */}
       {user && (
-        <div className="hidden border-b border-gray-800 px-4 py-4 md:block">
-          <p className="truncate text-xs text-gray-400">{user.email}</p>
-          <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${isAdmin ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400'}`}>
+        <div className="hidden border-b border-slate-200/80 px-4 py-4 md:block">
+          <p className="truncate text-xs text-slate-600">{user.email}</p>
+          <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${isAdmin ? 'bg-red-500/10 text-red-600 border border-red-200' : 'bg-amber-500/10 text-amber-700 border border-amber-200'}`}>
             {user.role}
           </span>
         </div>
@@ -61,13 +61,13 @@ function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`mx-0 flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:mx-1 ${
+              className={`mx-0 flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors md:mx-1 ${
                 active
-                  ? 'bg-primary/20 text-sky-400 border border-primary/30 shadow-sm'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                  ? 'bg-[#1c90d8]/10 text-[#1c90d8] border border-[#1c90d8]/30 shadow-xs'
+                  : 'text-slate-700 hover:bg-sky-50/60 hover:text-[#1c90d8]'
               }`}
             >
-              <span className="w-5 text-center text-base leading-none">{link.icon}</span>
+              <span className="w-5 text-center text-base leading-none text-[#1c90d8]">{link.icon}</span>
               {link.label}
             </Link>
           )
@@ -78,7 +78,7 @@ function Sidebar() {
       {/* Logout */}
       <button
         onClick={handleLogout}
-        className="mx-3 mb-3 h-10 shrink-0 rounded-lg border border-gray-700 text-sm text-gray-400 transition-colors hover:border-gray-600 hover:bg-gray-800 hover:text-white"
+        className="mx-3 mb-3 h-10 shrink-0 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
       >
         Déconnexion
       </button>
@@ -99,7 +99,7 @@ function Guard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </div>
     )
@@ -108,10 +108,10 @@ function Guard({ children }: { children: React.ReactNode }) {
 
   if (user?.role !== 'ADMIN' && user?.role !== 'MODERATOR') {
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center p-8">
-        <div className="max-w-md rounded-xl border border-gray-700 bg-gray-800 p-6 text-center">
-          <h1 className="text-lg font-semibold text-white">Accès réservé</h1>
-          <p className="mt-2 text-sm text-gray-400">
+      <main className="flex min-w-0 flex-1 items-center justify-center p-8 bg-white">
+        <div className="max-w-md rounded-xl border border-slate-200 bg-white/80 p-6 text-center shadow-md backdrop-blur-md">
+          <h1 className="text-lg font-bold text-slate-900">Accès réservé</h1>
+          <p className="mt-2 text-sm text-slate-600">
             Le back-office est réservé aux comptes administrateur et modérateur.
           </p>
           <button
@@ -131,7 +131,7 @@ function Guard({ children }: { children: React.ReactNode }) {
 
   if (user.role === 'MODERATOR' && pathname === '/dashboard') {
     return (
-      <main className="flex min-w-0 flex-1 items-center justify-center">
+      <main className="flex min-w-0 flex-1 items-center justify-center bg-white">
         <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
       </main>
     )
@@ -142,15 +142,13 @@ function Guard({ children }: { children: React.ReactNode }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <div className="flex min-h-screen flex-col bg-gray-950 md:flex-row">
-        <Sidebar />
-        <Guard>
-          <main className="min-w-0 flex-1 overflow-auto">
-            {children}
-          </main>
-        </Guard>
-      </div>
-    </AuthProvider>
+    <div className="flex min-h-screen flex-col bg-white text-slate-900 md:flex-row">
+      <Sidebar />
+      <Guard>
+        <main className="min-w-0 flex-1 overflow-auto bg-white text-slate-900">
+          {children}
+        </main>
+      </Guard>
+    </div>
   )
 }

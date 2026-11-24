@@ -9,34 +9,34 @@ function StatCard({ label, value, sub, href, color = 'sky' }: {
   label: string; value: number | string; sub?: string; href?: string; color?: string
 }) {
   const colorMap: Record<string, string> = {
-    indigo: 'bg-primary/10 text-sky-400',
-    green: 'bg-green-500/10 text-green-400',
-    amber: 'bg-amber-500/10 text-amber-400',
-    red: 'bg-red-500/10 text-red-400',
-    sky: 'bg-primary/10 text-[#1c90d8]',
+    indigo: 'text-[#1c90d8]',
+    green: 'text-emerald-600',
+    amber: 'text-amber-600',
+    red: 'text-rose-600',
+    sky: 'text-[#1c90d8]',
   }
   const card = (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-gray-600 transition-colors">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">{label}</p>
-      <p className={`text-3xl font-bold ${colorMap[color]}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+    <div className="bg-white/80 border border-slate-200/90 rounded-xl p-5 hover:border-[#1c90d8] transition-colors shadow-xs backdrop-blur-sm">
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">{label}</p>
+      <p className={`text-3xl font-extrabold ${colorMap[color] ?? 'text-slate-900'}`}>{value}</p>
+      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
     </div>
   )
   return href ? <Link href={href}>{card}</Link> : card
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-500/20 text-yellow-400',
-  APPROVED: 'bg-green-500/20 text-green-400',
-  REJECTED: 'bg-red-500/20 text-red-400',
-  NEEDS_REVIEW: 'bg-amber-500/20 text-amber-400',
+  PENDING: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  APPROVED: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  REJECTED: 'bg-rose-50 text-rose-700 border border-rose-200',
+  NEEDS_REVIEW: 'bg-amber-50 text-amber-700 border border-amber-200',
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  ADMIN: 'bg-red-500/20 text-red-400',
-  MODERATOR: 'bg-amber-500/20 text-amber-400',
-  TEACHER: 'bg-sky-500/20 text-sky-400',
-  PARENT: 'bg-primary/20 text-sky-400',
+  ADMIN: 'bg-rose-50 text-rose-700 border border-rose-200',
+  MODERATOR: 'bg-amber-50 text-amber-700 border border-amber-200',
+  TEACHER: 'bg-sky-50 text-[#1c90d8] border border-sky-200',
+  PARENT: 'bg-sky-50 text-[#1c90d8] border border-sky-200',
 }
 
 export default function DashboardPage() {
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   }
 
   if (!stats) return (
-    <div className="p-8 text-gray-500 text-sm">Impossible de charger les statistiques.</div>
+    <div className="p-8 text-slate-500 text-sm">Impossible de charger les statistiques.</div>
   )
 
   const videoTotal = stats.videos.total
@@ -71,10 +71,10 @@ export default function DashboardPage() {
   const pending = stats.videos.byStatus['PENDING'] ?? 0
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8 bg-transparent text-slate-900">
       <div>
-        <h1 className="text-2xl font-bold text-white">Vue d&apos;ensemble</h1>
-        <p className="text-gray-500 text-sm mt-1">Statistiques de la plateforme en temps réel</p>
+        <h1 className="text-2xl font-black text-slate-900">Vue d&apos;ensemble</h1>
+        <p className="text-slate-500 text-sm mt-1">Statistiques de la plateforme en temps réel</p>
       </div>
 
       {/* Primary stats */}
@@ -96,34 +96,34 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Users by role */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-gray-300 mb-4">Utilisateurs par rôle</h2>
+        <div className="bg-white/80 border border-slate-200/90 rounded-xl p-5 shadow-xs backdrop-blur-sm">
+          <h2 className="text-sm font-bold text-slate-900 mb-4">Utilisateurs par rôle</h2>
           <div className="space-y-3">
             {Object.entries(stats.users.byRole).map(([role, count]) => (
               <div key={role} className="flex items-center justify-between">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ROLE_COLORS[role] ?? 'bg-gray-700 text-gray-400'}`}>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ROLE_COLORS[role] ?? 'bg-slate-100 text-slate-600'}`}>
                   {role}
                 </span>
                 <div className="flex items-center gap-3 flex-1 mx-4">
-                  <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                  <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="h-full bg-indigo-500 rounded-full"
+                      className="h-full bg-[#1c90d8] rounded-full"
                       style={{ width: `${stats.users.total > 0 ? (count / stats.users.total) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
-                <span className="text-sm font-bold text-white w-8 text-right">{count}</span>
+                <span className="text-sm font-bold text-slate-900 w-8 text-right">{count}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Videos by status */}
-        <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+        <div className="bg-white/80 border border-slate-200/90 rounded-xl p-5 shadow-xs backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-300">Vidéos par statut</h2>
+            <h2 className="text-sm font-bold text-slate-900">Vidéos par statut</h2>
             {needsReview > 0 && (
-              <Link href="/dashboard/moderation" className="text-xs text-amber-400 hover:text-amber-300 font-medium">
+              <Link href="/dashboard/moderation" className="text-xs text-[#1c90d8] hover:underline font-bold">
                 {needsReview} à réviser →
               </Link>
             )}
@@ -136,18 +136,18 @@ export default function DashboardPage() {
               { key: 'REJECTED', count: rejected },
             ].map(({ key, count }) => (
               <div key={key} className="flex items-center justify-between">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[key] ?? 'bg-gray-700 text-gray-400'}`}>
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[key] ?? 'bg-slate-100 text-slate-600'}`}>
                   {key}
                 </span>
                 <div className="flex items-center gap-3 flex-1 mx-4">
-                  <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                  <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="h-full bg-indigo-500 rounded-full"
+                      className="h-full bg-[#1c90d8] rounded-full"
                       style={{ width: `${videoTotal > 0 ? (count / videoTotal) * 100 : 0}%` }}
                     />
                   </div>
                 </div>
-                <span className="text-sm font-bold text-white w-8 text-right">{count}</span>
+                <span className="text-sm font-bold text-slate-900 w-8 text-right">{count}</span>
               </div>
             ))}
           </div>
@@ -156,20 +156,20 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link href="/dashboard/moderation" className="group bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 transition-colors">
+        <Link href="/dashboard/moderation" className="group bg-white/80 border border-slate-200/90 rounded-xl p-5 hover:border-[#1c90d8] hover:shadow-sm transition-all">
           <p className="text-2xl mb-3">▶</p>
-          <p className="font-semibold text-white text-sm group-hover:text-indigo-400 transition-colors">File de modération</p>
-          <p className="text-xs text-gray-500 mt-1">{needsReview} vidéo{needsReview !== 1 ? 's' : ''} en attente</p>
+          <p className="font-bold text-slate-900 text-sm group-hover:text-[#1c90d8] transition-colors">File de modération</p>
+          <p className="text-xs text-slate-500 mt-1">{needsReview} vidéo{needsReview !== 1 ? 's' : ''} en attente</p>
         </Link>
-        <Link href="/dashboard/moderation/reports" className="group bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 transition-colors">
+        <Link href="/dashboard/moderation/reports" className="group bg-white/80 border border-slate-200/90 rounded-xl p-5 hover:border-[#1c90d8] hover:shadow-sm transition-all">
           <p className="text-2xl mb-3">⚑</p>
-          <p className="font-semibold text-white text-sm group-hover:text-indigo-400 transition-colors">Signalements</p>
-          <p className="text-xs text-gray-500 mt-1">{stats.moderation.pendingReports} non résolu{stats.moderation.pendingReports !== 1 ? 's' : ''}</p>
+          <p className="font-bold text-slate-900 text-sm group-hover:text-[#1c90d8] transition-colors">Signalements</p>
+          <p className="text-xs text-slate-500 mt-1">{stats.moderation.pendingReports} non résolu{stats.moderation.pendingReports !== 1 ? 's' : ''}</p>
         </Link>
-        <Link href="/dashboard/audit" className="group bg-gray-800 border border-gray-700 rounded-xl p-5 hover:border-indigo-500/50 transition-colors">
+        <Link href="/dashboard/audit" className="group bg-white/80 border border-slate-200/90 rounded-xl p-5 hover:border-[#1c90d8] hover:shadow-sm transition-all">
           <p className="text-2xl mb-3">≡</p>
-          <p className="font-semibold text-white text-sm group-hover:text-indigo-400 transition-colors">Journal d&apos;audit</p>
-          <p className="text-xs text-gray-500 mt-1">Toutes les actions</p>
+          <p className="font-bold text-slate-900 text-sm group-hover:text-[#1c90d8] transition-colors">Journal d&apos;audit</p>
+          <p className="text-xs text-slate-500 mt-1">Toutes les actions</p>
         </Link>
       </div>
     </div>

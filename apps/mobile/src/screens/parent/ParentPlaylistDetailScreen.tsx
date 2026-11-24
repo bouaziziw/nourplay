@@ -101,7 +101,7 @@ export default function ParentPlaylistDetailScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f9fafb' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   meta: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 },
   subtitle: { fontSize: 13, color: '#6b7280' },

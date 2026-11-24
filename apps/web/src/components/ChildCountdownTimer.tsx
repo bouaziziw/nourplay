@@ -72,7 +72,7 @@ export function ChildCountdownTimer({
   const isCritical = remainingSec <= 60
   const isWarning = remainingSec > 60 && remainingSec <= 300
 
-  let badgeClasses = 'bg-sky-50 border-sky-300 text-sky-800'
+  let badgeClasses = 'bg-[#1c90d8]/10 border border-[#1c90d8]/30 text-black'
   let icon = (
     <svg className="w-3.5 h-3.5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
       <circle cx="12" cy="12" r="10" />

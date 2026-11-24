@@ -72,17 +72,17 @@ export default function ChildProfileSelector() {
   }
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center text-black bg-white">
       <div className="text-center mb-10">
-        <h1 className="text-3xl sm:text-4xl font-black text-white">Qui regarde ? 🌈</h1>
-        <p className="text-gray-400 mt-2 text-sm">Choisis ton profil pour commencer tes vidéos</p>
+        <h1 className="text-3xl sm:text-5xl font-black text-black">Qui regarde ? 🌈</h1>
+        <p className="text-[#1c90d8] font-bold mt-3 text-sm sm:text-base">Choisis ton profil pour commencer tes vidéos</p>
       </div>
 
       {profiles.length === 0 ? (
-        <div className="text-center bg-slate-900/60 p-8 rounded-3xl border border-white/10 max-w-md">
+        <div className="text-center bg-white/80 p-8 rounded-3xl border border-black/10 max-w-md shadow-xl backdrop-blur-md">
           <p className="text-4xl mb-3">👶</p>
-          <p className="text-gray-300 font-bold mb-2">Aucun profil enfant disponible.</p>
-          <p className="text-sm text-gray-400">Demande à ton parent de créer un profil enfant.</p>
+          <p className="text-black font-bold mb-2">Aucun profil enfant disponible.</p>
+          <p className="text-sm text-black">Demande à ton parent de créer un profil enfant.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-2xl px-4">
@@ -92,14 +92,14 @@ export default function ChildProfileSelector() {
               onClick={() => setSelected(p)}
               data-tv-focus={idx === 0 ? "primary" : undefined}
               tabIndex={0}
-              className="group flex flex-col items-center gap-3 p-5 rounded-3xl bg-slate-900/80 border border-white/10 hover:bg-slate-800/90 hover:border-sky-400 hover:shadow-xl hover:shadow-sky-500/10 transition-all duration-200 active:scale-95 focus:outline-none focus:ring-4 focus:ring-sky-400 focus:scale-105"
+              className="group flex flex-col items-center gap-3 p-5 rounded-3xl bg-white/70 border border-black/10 hover:border-[#1c90d8] hover:shadow-xl transition-all duration-200 active:scale-95 focus:outline-none focus:ring-4 focus:ring-[#1c90d8] focus:scale-105 shadow-sm"
             >
               <div className="transition-transform group-hover:scale-110 group-focus:scale-110">
                 <ProfileAvatar avatarKey={p.avatarKey} displayName={p.displayName} size={84} />
               </div>
               <div className="text-center">
-                <p className="font-black text-white text-base group-hover:text-sky-300 transition-colors">{p.displayName}</p>
-                <p className="text-xs text-sky-400 font-bold mt-1 bg-sky-950/80 px-2.5 py-0.5 rounded-full border border-sky-800/50 inline-block">
+                <p className="font-black text-black text-base group-hover:text-[#1c90d8] transition-colors">{p.displayName}</p>
+                <p className="text-xs text-[#1c90d8] font-extrabold mt-1 bg-[#1c90d8]/10 px-2.5 py-0.5 rounded-full border border-[#1c90d8]/30 inline-block shadow-xs">
                   {AGE_LABELS[p.ageGroup] ?? p.ageGroup} ans
                 </p>
               </div>

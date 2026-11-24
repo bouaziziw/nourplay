@@ -79,34 +79,34 @@ export default function ChildHistoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">Mon Historique ⏱️</h1>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Mon Historique ⏱️</h1>
           {!loading && history.length > 0 && (
-            <p className="text-xs text-gray-400 mt-1">{history.length} vidéo{history.length > 1 ? 's' : ''} regardée{history.length > 1 ? 's' : ''}</p>
+            <p className="text-xs text-slate-500 mt-1">{history.length} vidéo{history.length > 1 ? 's' : ''} regardée{history.length > 1 ? 's' : ''}</p>
           )}
         </div>
 
         {history.length > 0 && !confirmClear && (
           <button
             onClick={() => setConfirmClear(true)}
-            className="text-xs font-bold text-gray-400 hover:text-red-400 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 transition-colors"
+            className="text-xs font-bold text-slate-600 hover:text-red-500 px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 transition-colors shadow-xs"
           >
             Tout effacer
           </button>
         )}
 
         {confirmClear && (
-          <div className="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-white/10">
-            <span className="text-xs text-gray-300">Effacer tout ?</span>
+          <div className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
+            <span className="text-xs text-slate-700">Effacer tout ?</span>
             <button
               onClick={handleClear}
               disabled={clearing}
-              className="text-xs font-bold text-red-400 hover:text-red-300 disabled:opacity-50"
+              className="text-xs font-bold text-red-500 hover:text-red-400 disabled:opacity-50"
             >
               {clearing ? 'En cours…' : 'Oui'}
             </button>
             <button
               onClick={() => setConfirmClear(false)}
-              className="text-xs text-gray-400 hover:text-gray-200"
+              className="text-xs text-slate-500 hover:text-slate-800"
             >
               Annuler
             </button>
@@ -120,12 +120,12 @@ export default function ChildHistoryPage() {
           <div className="animate-spin h-8 w-8 border-4 border-[#1c90d8] border-t-transparent rounded-full" />
         </div>
       ) : history.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center bg-slate-900/60 rounded-3xl border border-white/10">
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white/80 rounded-3xl border border-slate-200/90 shadow-sm backdrop-blur-md">
           <span className="text-5xl mb-4">📺</span>
-          <p className="text-white font-bold">Aucune vidéo regardée pour l&apos;instant.</p>
+          <p className="text-slate-900 font-bold">Aucune vidéo regardée pour l&apos;instant.</p>
           <button
             onClick={() => router.push(`/${locale}/child/playlists`)}
-            className="mt-5 h-10 px-5 bg-amber-400 text-slate-950 text-sm font-black rounded-xl hover:bg-amber-300 transition-colors shadow-md"
+            className="mt-5 h-10 px-5 bg-[#1c90d8] text-white text-sm font-black rounded-xl hover:bg-[#1570a8] transition-colors shadow-md"
           >
             Découvrir des vidéos ⭐
           </button>
@@ -141,10 +141,10 @@ export default function ChildHistoryPage() {
               <button
                 key={entry.id}
                 onClick={() => router.push(`/${locale}/child/watch/${entry.video.id}`)}
-                className="w-full flex items-center gap-3 bg-slate-900 border border-white/10 rounded-2xl p-3 shadow-md hover:border-sky-400 hover:scale-[1.01] transition-all text-left group"
+                className="w-full flex items-center gap-3 bg-white/85 border border-slate-200/90 rounded-2xl p-3 shadow-xs hover:border-[#1c90d8] hover:bg-sky-50/40 hover:scale-[1.01] transition-all text-left group"
               >
                 {/* Thumbnail */}
-                <div className="relative w-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-800" style={{ aspectRatio: '16/9' }}>
+                <div className="relative w-28 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100" style={{ aspectRatio: '16/9' }}>
                   {entry.video.thumbnailUrl ? (
                     <RemoteImage
                       src={entry.video.thumbnailUrl}
@@ -162,7 +162,7 @@ export default function ChildHistoryPage() {
                   {progress !== null && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
                       <div
-                        className="h-full bg-sky-400"
+                        className="h-full bg-[#1c90d8]"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
@@ -180,21 +180,21 @@ export default function ChildHistoryPage() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-white line-clamp-2 group-hover:text-sky-300 transition-colors leading-snug">
+                  <p className="text-sm font-bold text-slate-900 line-clamp-2 group-hover:text-[#1c90d8] transition-colors leading-snug">
                     {entry.video.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-400">{timeAgo(entry.watchedAt)}</span>
+                    <span className="text-xs text-slate-500">{timeAgo(entry.watchedAt)}</span>
                     {entry.durationWatchedSec > 0 && (
                       <>
-                        <span className="text-gray-600">·</span>
-                        <span className="text-xs text-sky-400 font-bold">{formatDuration(entry.durationWatchedSec)}</span>
+                        <span className="text-slate-400">·</span>
+                        <span className="text-xs text-[#1c90d8] font-bold">{formatDuration(entry.durationWatchedSec)}</span>
                       </>
                     )}
                   </div>
                 </div>
 
-                <span className="text-lg font-bold text-sky-400 group-hover:translate-x-1 transition-transform">
+                <span className="text-lg font-bold text-[#1c90d8] group-hover:translate-x-1 transition-transform">
                   ›
                 </span>
               </button>

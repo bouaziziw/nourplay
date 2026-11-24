@@ -102,7 +102,7 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f8fd' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
   kav: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 20 },
   header: { alignItems: 'center', marginBottom: 28 },

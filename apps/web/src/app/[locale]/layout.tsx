@@ -51,7 +51,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
-      <body suppressHydrationWarning>
+      <body className="bg-white text-slate-900 min-h-screen" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>{children}</AuthProvider>
           <InstallBanner />

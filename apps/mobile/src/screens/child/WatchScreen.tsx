@@ -142,7 +142,7 @@ export default function WatchScreen({ route, navigation }: Props) {
               </View>
             </View>
 
-            {/* Big "Vidéo Suivante" Button (Children love this!) */}
+            {/* Big "Vidéo Suivante" Button */}
             {nextVideo && (
               <TouchableOpacity
                 style={styles.nextBigButton}
@@ -225,12 +225,12 @@ export default function WatchScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0b1120' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
   safeFullscreen: { backgroundColor: '#000000' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#0b1120' },
-  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#94a3b8' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#ffffff' },
+  loadingText: { marginTop: 12, fontSize: 14, fontWeight: '700', color: '#64748b' },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  notFound: { fontSize: 16, fontWeight: '700', color: '#f1f5f9', marginBottom: 16 },
+  notFound: { fontSize: 16, fontWeight: '700', color: '#000000', marginBottom: 16 },
   backHomeBtn: { backgroundColor: '#0284c7', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 10 },
   backHomeText: { color: '#ffffff', fontWeight: '800', fontSize: 14 },
 
@@ -240,35 +240,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#070d18',
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
-  backBtnIcon: { fontSize: 24, fontWeight: '900', color: '#38bdf8', lineHeight: 26 },
-  backBtnText: { fontSize: 13, fontWeight: '700', color: '#f1f5f9' },
+  backBtnIcon: { fontSize: 24, fontWeight: '900', color: '#1c90d8', lineHeight: 26 },
+  backBtnText: { fontSize: 13, fontWeight: '700', color: '#000000' },
   playlistBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(28, 144, 216, 0.1)',
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 6,
     maxWidth: '60%',
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderColor: 'rgba(28, 144, 216, 0.25)',
   },
   playlistBadgeEmoji: { fontSize: 14 },
-  playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#38bdf8' },
+  playlistBadgeName: { fontSize: 12, fontWeight: '800', color: '#1c90d8' },
 
   scroll: { padding: 14, gap: 14, paddingBottom: 32 },
   scrollFullscreen: { padding: 0, flex: 1 },
@@ -289,11 +291,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0,
   },
   infoCard: {
-    backgroundColor: '#0f172a',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   titleRow: {
     flexDirection: 'row',
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: '#000000',
     lineHeight: 22,
   },
   loveBtn: {
@@ -328,11 +330,11 @@ const styles = StyleSheet.create({
   nextBigButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f59e0b',
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 20,
     padding: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
@@ -348,17 +350,17 @@ const styles = StyleSheet.create({
   },
   nextBigIcon: { fontSize: 20 },
   nextBigTextBox: { flex: 1 },
-  nextBigLabel: { fontSize: 11, fontWeight: '800', color: '#451a03', textTransform: 'uppercase', letterSpacing: 0.6 },
+  nextBigLabel: { fontSize: 11, fontWeight: '800', color: '#0284c7', textTransform: 'uppercase', letterSpacing: 0.6 },
   nextBigTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginTop: 2 },
-  nextBigArrow: { fontSize: 28, fontWeight: '900', color: '#451a03', marginLeft: 8 },
+  nextBigArrow: { fontSize: 28, fontWeight: '900', color: '#0284c7', marginLeft: 8 },
 
   // Carousel
   carouselSection: {
-    backgroundColor: '#0f172a',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 20,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   carouselHeader: {
     flexDirection: 'row',
@@ -367,24 +369,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
-  carouselTitle: { fontSize: 15, fontWeight: '800', color: '#f8fafc' },
-  carouselCounter: { fontSize: 12, fontWeight: '700', color: '#38bdf8' },
+  carouselTitle: { fontSize: 15, fontWeight: '800', color: '#000000' },
+  carouselCounter: { fontSize: 12, fontWeight: '700', color: '#1c90d8' },
   carouselScroll: { paddingHorizontal: 14, gap: 12 },
   thumbCard: {
     width: 170,
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#1e293b',
-    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   thumbCardActive: {
-    borderColor: '#38bdf8',
-    backgroundColor: '#0c4a6e',
+    borderColor: '#1c90d8',
+    backgroundColor: 'rgba(28, 144, 216, 0.1)',
   },
   thumbBox: { width: '100%', aspectRatio: 16 / 9, position: 'relative' },
   thumbImg: { width: '100%', height: '100%' },
-  thumbPlaceholder: { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
+  thumbPlaceholder: { backgroundColor: '#0284c7', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
   playingBadge: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(2, 132, 199, 0.8)',
@@ -414,5 +416,5 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   durBadgeText: { color: '#ffffff', fontSize: 9, fontWeight: '700' },
-  thumbTitle: { fontSize: 12, fontWeight: '700', color: '#f1f5f9', padding: 8, lineHeight: 16 },
+  thumbTitle: { fontSize: 12, fontWeight: '700', color: '#000000', padding: 8, lineHeight: 16 },
 })

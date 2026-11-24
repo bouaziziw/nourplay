@@ -109,7 +109,7 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f5f6fb' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 14 },
   title: { fontSize: 25, fontWeight: '800', color: '#171a2b', letterSpacing: -0.5 },

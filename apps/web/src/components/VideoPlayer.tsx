@@ -79,21 +79,22 @@ export function VideoPlayer({
   autoMarkCompleteAfterSec = 300,
   tvMode,
   onNext,
-  onBack,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mountTimeRef = useRef<number>(Date.now())
   const firedRef = useRef(false)
   const completedRef = useRef(false)
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Smart TV detection & Player State
+  // Player state & controls visibility
   const [isTv, setIsTv] = useState<boolean>(Boolean(tvMode))
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [isMuted, setIsMuted] = useState<boolean>(false)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false)
   const [statusMessage, setStatusMessage] = useState<string>('')
-  const [playerReady, setPlayerReady] = useState<boolean>(false)
+  const [, setPlayerReady] = useState<boolean>(false)
+  const [showControls, setShowControls] = useState<boolean>(false)
 
   useEffect(() => {
     if (tvMode !== undefined) {
@@ -120,6 +121,7 @@ export function VideoPlayer({
     completedRef.current = false
     setPlayerReady(false)
     setIsPlaying(false)
+    setShowControls(false)
 
     const completeTimer = setTimeout(() => {
       completedRef.current = true
@@ -162,38 +164,12 @@ export function VideoPlayer({
     }
   }, [])
 
-  // Auto-start and quickly pause video on load in TV mode
-  const handleIframeLoad = useCallback(() => {
-    setPlayerReady(true)
-
-    // Requirement: La vidéo doit démarrer automatiquement puis être mise en pause rapidement
-    // afin que le décodeur et le flux soient préchargés et que l'utilisateur puisse la contrôler facilement.
-    sendPlayerCommand('playVideo')
-
-    const pauseTimer = setTimeout(() => {
-      sendPlayerCommand('pauseVideo')
-      setIsPlaying(false)
-      setStatusMessage('Prêt à regarder 🍿')
-
-      // Requirement: Activer les commandes rapides par défaut
-      const primaryBtn = containerRef.current?.querySelector<HTMLElement>('[data-tv-focus="primary"]')
-      if (primaryBtn) {
-        primaryBtn.focus()
-      }
-    }, 850)
-
-    return () => clearTimeout(pauseTimer)
-  }, [sendPlayerCommand])
-
-  // Focus primary quick command button on load
-  useEffect(() => {
-    const focusTimer = setTimeout(() => {
-      const primaryBtn = containerRef.current?.querySelector<HTMLElement>('[data-tv-focus="primary"]')
-      if (primaryBtn && typeof primaryBtn.focus === 'function') {
-        primaryBtn.focus()
-      }
-    }, 400)
-    return () => clearTimeout(focusTimer)
+  // Auto-hide controls timer
+  const resetHideTimer = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = setTimeout(() => {
+      setShowControls(false)
+    }, 3500)
   }, [])
 
   // Interactive controls
@@ -205,19 +181,22 @@ export function VideoPlayer({
     } else {
       sendPlayerCommand('playVideo')
       setIsPlaying(true)
-      setStatusMessage('Lecture en cours ▶')
+      setStatusMessage('Lecture ▶')
     }
-  }, [isPlaying, sendPlayerCommand])
+    resetHideTimer()
+  }, [isPlaying, sendPlayerCommand, resetHideTimer])
 
   const handleRewind10 = useCallback(() => {
     sendPlayerCommand('seekTo', Math.max(0, elapsedSec() - 10))
-    setStatusMessage('Recul de 10s ◀◀')
-  }, [sendPlayerCommand, elapsedSec])
+    setStatusMessage('-10s ◀◀')
+    resetHideTimer()
+  }, [sendPlayerCommand, elapsedSec, resetHideTimer])
 
   const handleForward10 = useCallback(() => {
     sendPlayerCommand('seekTo', elapsedSec() + 10)
-    setStatusMessage('Avance de 10s ▶▶')
-  }, [sendPlayerCommand, elapsedSec])
+    setStatusMessage('+10s ▶▶')
+    resetHideTimer()
+  }, [sendPlayerCommand, elapsedSec, resetHideTimer])
 
   const handleToggleMute = useCallback(() => {
     if (isMuted) {
@@ -229,9 +208,48 @@ export function VideoPlayer({
       setIsMuted(true)
       setStatusMessage('Son coupé 🔇')
     }
-  }, [isMuted, sendPlayerCommand])
+    resetHideTimer()
+  }, [isMuted, sendPlayerCommand, resetHideTimer])
 
-  // Fullscreen management across Smart TV & Desktop browsers
+  // Click on video: afficher les commandes rapides ou basculer play/pause
+  const handleVideoClick = useCallback(() => {
+    if (!showControls) {
+      setShowControls(true)
+      resetHideTimer()
+    } else {
+      handleTogglePlay()
+    }
+  }, [showControls, handleTogglePlay, resetHideTimer])
+
+  // Mouse moves out of the player container: disparu lorsque je bouge la souris de l'écran de lecture
+  const handleMouseLeave = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    setShowControls(false)
+  }, [])
+
+  // Mouse moves within the player: keep hide timer refreshed
+  const handleMouseMove = useCallback(() => {
+    if (showControls) {
+      resetHideTimer()
+    }
+  }, [showControls, resetHideTimer])
+
+  // Auto-start and quickly pause video on load in TV mode
+  const handleIframeLoad = useCallback(() => {
+    setPlayerReady(true)
+
+    sendPlayerCommand('playVideo')
+
+    const pauseTimer = setTimeout(() => {
+      sendPlayerCommand('pauseVideo')
+      setIsPlaying(false)
+      setStatusMessage('Prêt à regarder 🍿')
+    }, 850)
+
+    return () => clearTimeout(pauseTimer)
+  }, [sendPlayerCommand])
+
+  // Fullscreen management
   const handleToggleFullscreen = useCallback(() => {
     const doc = document as any
     const container = containerRef.current as any
@@ -259,7 +277,8 @@ export function VideoPlayer({
       }
       setStatusMessage('Écran normal')
     }
-  }, [])
+    resetHideTimer()
+  }, [resetHideTimer])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -293,14 +312,18 @@ export function VideoPlayer({
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
       if (tag === 'input' || tag === 'textarea') return
 
-      // Fullscreen quick command (F or TV dedicated key)
+      // Any player keypress displays controls and resets timer
+      setShowControls(true)
+      resetHideTimer()
+
+      // Fullscreen quick command (F)
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
         handleToggleFullscreen()
         return
       }
 
-      // Play / Pause quick commands (Space, Enter, K, or TV Media keys)
+      // Play / Pause quick commands (Space, Enter, K)
       if (
         e.key === ' ' ||
         e.code === 'Space' ||
@@ -318,7 +341,7 @@ export function VideoPlayer({
         return
       }
 
-      // Rewind quick commands (-10s: J, ArrowLeft, or TV Rewind)
+      // Rewind quick commands (-10s: J, ArrowLeft)
       if (
         e.key === 'j' ||
         e.key === 'J' ||
@@ -330,7 +353,7 @@ export function VideoPlayer({
         return
       }
 
-      // Forward quick commands (+10s: L, ArrowRight, or TV FastForward)
+      // Forward quick commands (+10s: L, ArrowRight)
       if (
         e.key === 'l' ||
         e.key === 'L' ||
@@ -342,14 +365,14 @@ export function VideoPlayer({
         return
       }
 
-      // Mute / Unmute quick command (M)
+      // Mute / Unmute (M)
       if (e.key === 'm' || e.key === 'M') {
         e.preventDefault()
         handleToggleMute()
         return
       }
 
-      // Next video quick command (N or TV Next key)
+      // Next video (N)
       if ((e.key === 'n' || e.key === 'N' || e.key === 'MediaTrackNext' || keyCode === 10253) && onNext) {
         e.preventDefault()
         onNext()
@@ -359,7 +382,7 @@ export function VideoPlayer({
 
     window.addEventListener('keydown', handleRemoteKeys)
     return () => window.removeEventListener('keydown', handleRemoteKeys)
-  }, [handleTogglePlay, handleRewind10, handleForward10, handleToggleFullscreen, handleToggleMute, onNext])
+  }, [handleTogglePlay, handleRewind10, handleForward10, handleToggleFullscreen, handleToggleMute, onNext, resetHideTimer])
 
   const safeUrl = buildSafeEmbedUrl(embedUrl, startAt, ccEnabled, isTv)
   const isYouTube = embedUrl.includes('youtube.com') || embedUrl.includes('youtu.be')
@@ -369,7 +392,9 @@ export function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className={`tv-player-container rounded-2xl sm:rounded-3xl overflow-hidden bg-slate-950 shadow-2xl border border-white/10 flex flex-col transition-all ${
+      onMouseLeave={handleMouseLeave}
+      onMouseMove={handleMouseMove}
+      className={`tv-player-container relative rounded-2xl sm:rounded-3xl overflow-hidden bg-black shadow-2xl border border-white/10 flex flex-col transition-all select-none ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none w-screen h-screen' : ''
       }`}
     >
@@ -378,7 +403,7 @@ export function VideoPlayer({
         className={`tv-player-canvas relative w-full bg-black ${
           isFullscreen ? 'flex-1 min-h-0' : ''
         }`}
-        style={isFullscreen ? { height: 'calc(100vh - 72px)' } : { paddingBottom: '56.25%' }}
+        style={isFullscreen ? { height: '100vh' } : { paddingBottom: '56.25%' }}
       >
         <iframe
           ref={iframeRef}
@@ -392,145 +417,137 @@ export function VideoPlayer({
           referrerPolicy="strict-origin"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
         />
-      </div>
 
-      {/* ── Smart TV Navigation & Playback Controls Bar ── */}
-      <div className="bg-slate-900/95 border-t border-white/10 px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-3 text-white">
-        {/* Quick Commands Header & Remote Guide (Active by default) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider text-sky-400 bg-sky-950/80 border border-sky-800/80 px-2.5 py-1 rounded-lg shadow-sm">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>⚡ Commandes rapides</span>
-            </span>
-            {statusMessage && (
-              <span className="text-xs font-bold text-sky-200 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
-                {statusMessage}
-              </span>
-            )}
+        {/* Click detection layer over video to toggle controls / play-pause */}
+        <div
+          onClick={handleVideoClick}
+          className="absolute inset-0 z-10 cursor-pointer"
+          title="Cliquer pour afficher les commandes ou mettre en pause"
+        />
+
+        {/* ── Bloc des Commandes Rapides (Taille réduite, flottant, affiché au clic, masqué quand la souris quitte) ── */}
+        <div
+          className={`absolute bottom-0 inset-x-0 z-20 transition-all duration-300 ${
+            showControls
+              ? 'opacity-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 translate-y-3 pointer-events-none'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2.5 sm:p-3.5 pt-8">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 shadow-2xl text-white">
+              
+              {/* Actions de lecture principales */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                {/* Bouton Lecture / Pause */}
+                <button
+                  type="button"
+                  data-tv-focus="primary"
+                  onClick={handleTogglePlay}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg sm:rounded-xl px-3 py-1 sm:px-3.5 sm:py-1.5 font-black text-xs sm:text-sm transition-all shadow active:scale-95 ${
+                    isPlaying
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                      : 'bg-[#1c90d8] hover:bg-sky-400 text-white'
+                  }`}
+                  title="Lecture / Pause (Espace ou OK)"
+                >
+                  <span>{isPlaying ? '⏸' : '▶'}</span>
+                  <span>{isPlaying ? 'Pause' : 'Lecture'}</span>
+                </button>
+
+                {/* Reculer 10s */}
+                <button
+                  type="button"
+                  onClick={handleRewind10}
+                  className="flex items-center justify-center gap-1 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-2.5 py-1 text-xs font-bold text-white transition-all active:scale-95"
+                  title="Reculer de 10s"
+                >
+                  <span>◀◀</span>
+                  <span>-10s</span>
+                </button>
+
+                {/* Avancer 10s */}
+                <button
+                  type="button"
+                  onClick={handleForward10}
+                  className="flex items-center justify-center gap-1 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-2.5 py-1 text-xs font-bold text-white transition-all active:scale-95"
+                  title="Avancer de 10s"
+                >
+                  <span>+10s</span>
+                  <span>▶▶</span>
+                </button>
+
+                {/* Épisode Suivant */}
+                {onNext && (
+                  <button
+                    type="button"
+                    onClick={onNext}
+                    className="flex items-center justify-center gap-1 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-xs font-black transition-all shadow active:scale-95"
+                    title="Épisode suivant"
+                  >
+                    <span>Suivant</span>
+                    <span>⏭️</span>
+                  </button>
+                )}
+
+                {/* Badge compact discret */}
+                <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-sky-400 bg-sky-950/60 border border-sky-800/40 px-2 py-0.5 rounded-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Commandes</span>
+                </span>
+              </div>
+
+              {/* Statut, sous-titres, son et plein écran */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {statusMessage && (
+                  <span className="text-[11px] font-bold text-sky-300 bg-white/10 border border-white/10 px-2 py-0.5 rounded-md">
+                    {statusMessage}
+                  </span>
+                )}
+
+                {onCCToggle && (
+                  <button
+                    type="button"
+                    onClick={onCCToggle}
+                    disabled={!supportCC}
+                    className={`flex items-center text-xs font-bold px-2 py-0.5 rounded-md border transition-all ${
+                      !supportCC
+                        ? 'opacity-30 cursor-not-allowed border-white/10 text-white/30'
+                        : ccEnabled
+                        ? 'bg-white text-black border-white'
+                        : 'bg-white/10 text-white border-white/20 hover:border-white/50'
+                    }`}
+                    title="Sous-titres"
+                  >
+                    CC
+                  </button>
+                )}
+
+                {/* Son / Sourdine */}
+                <button
+                  type="button"
+                  onClick={handleToggleMute}
+                  className="flex items-center justify-center rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 p-1 text-xs font-bold text-white transition-all"
+                  title="Couper / Activer le son"
+                >
+                  <span>{isMuted ? '🔇' : '🔊'}</span>
+                </button>
+
+                {/* Plein écran */}
+                <button
+                  type="button"
+                  onClick={handleToggleFullscreen}
+                  className="flex items-center justify-center gap-1 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 px-2 py-1 text-xs font-bold text-white transition-all active:scale-95"
+                  title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+                >
+                  <span>{isFullscreen ? '🗗' : '⛶'}</span>
+                </button>
+              </div>
+
+            </div>
           </div>
-
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-bold text-slate-400 bg-black/40 px-3 py-1 rounded-lg border border-white/5">
-            <span>[OK / Espace] Lecture</span>
-            <span>•</span>
-            <span>[◀◀ / ▶▶] ±10s</span>
-            <span>•</span>
-            <span>[F] Plein écran</span>
-            <span>•</span>
-            <span>[M] Sourdine</span>
-            {onNext && (
-              <>
-                <span>•</span>
-                <span>[N] Suivant</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Playback action buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Main Play / Pause Button with Primary TV Focus */}
-          <button
-            type="button"
-            data-tv-focus="primary"
-            onClick={handleTogglePlay}
-            className={`tv-btn flex items-center justify-center gap-2 rounded-2xl px-5 py-2.5 font-black text-sm transition-all shadow-md active:scale-95 ${
-              isPlaying
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
-                : 'bg-[#1c90d8] hover:bg-sky-400 text-white'
-            }`}
-            title="Lecture / Pause (Touche OK ou Espace)"
-          >
-            <span className="text-lg">{isPlaying ? '⏸' : '▶'}</span>
-            <span>{isPlaying ? 'Pause' : 'Lecture'}</span>
-          </button>
-
-          {/* -10s Rewind */}
-          <button
-            type="button"
-            onClick={handleRewind10}
-            className="tv-btn flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-white transition-all active:scale-95"
-            title="Reculer de 10 secondes"
-          >
-            <span>◀◀</span>
-            <span>-10s</span>
-          </button>
-
-          {/* +10s Forward */}
-          <button
-            type="button"
-            onClick={handleForward10}
-            className="tv-btn flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-white transition-all active:scale-95"
-            title="Avancer de 10 secondes"
-          >
-            <span>+10s</span>
-            <span>▶▶</span>
-          </button>
-
-          {/* Next Episode Button */}
-          {onNext && (
-            <button
-              type="button"
-              onClick={onNext}
-              className="tv-btn flex items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 text-xs sm:text-sm font-black transition-all shadow-md active:scale-95"
-              title="Passer à l'épisode suivant"
-            >
-              <span>Épisode suivant</span>
-              <span>⏭️</span>
-            </button>
-          )}
-
-          {/* Fullscreen Button */}
-          <button
-            type="button"
-            onClick={handleToggleFullscreen}
-            className="tv-btn flex items-center justify-center gap-1.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-white transition-all active:scale-95"
-            title={isFullscreen ? 'Quitter le plein écran (Touche Échap ou F)' : 'Plein écran (Touche F)'}
-          >
-            <span className="text-base">{isFullscreen ? '🗗' : '⛶'}</span>
-            <span>{isFullscreen ? 'Réduire' : 'Plein écran'}</span>
-          </button>
-
-          {/* Mute / Unmute */}
-          <button
-            type="button"
-            onClick={handleToggleMute}
-            className="tv-btn flex items-center justify-center rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 p-2.5 text-sm font-bold text-white transition-all"
-            title="Couper / Activer le son"
-          >
-            <span>{isMuted ? '🔇' : '🔊'}</span>
-          </button>
-        </div>
-
-        {/* Secondary Info & CC */}
-        <div className="flex items-center gap-3">
-          {statusMessage && (
-            <span className="text-xs font-bold text-sky-400 bg-sky-950/70 border border-sky-800/60 px-3 py-1.5 rounded-xl">
-              {statusMessage}
-            </span>
-          )}
-
-          {onCCToggle && (
-            <button
-              type="button"
-              onClick={onCCToggle}
-              disabled={!supportCC}
-              className={`flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                !supportCC
-                  ? 'opacity-30 cursor-not-allowed border-white/10 text-white/30'
-                  : ccEnabled
-                  ? 'bg-white text-black border-white'
-                  : 'bg-white/10 text-white/80 border-white/20 hover:border-white/50'
-              }`}
-              title="Sous-titres"
-            >
-              CC
-            </button>
-          )}
         </div>
       </div>
     </div>
-  </div>
-)
+  )
 }

@@ -1,16 +1,21 @@
-import React, { useContext } from 'react'
+import React, { useContext, useState } from 'react'
+import { TouchableOpacity, Text, View, Platform, StyleSheet } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { Text, TouchableOpacity, Platform } from 'react-native'
 import { AuthContext } from '../hooks/useAuth'
 import { ChildSessionContext } from '../hooks/useChildSession'
-import { usePushNotifications } from '../hooks/usePushNotifications'
+import { ChildCountdownTimer } from '../components/ChildCountdownTimer'
 
+// Auth screens
 import LoginScreen from '../screens/LoginScreen'
 import TwoFactorScreen from '../screens/TwoFactorScreen'
+
+// Child screens
 import ProfileSelectorScreen from '../screens/child/ProfileSelectorScreen'
 import ChildPlaylistsScreen from '../screens/child/PlaylistsScreen'
 import ChildPlaylistDetailScreen from '../screens/child/PlaylistDetailScreen'
 import WatchScreen from '../screens/child/WatchScreen'
+
+// Parent navigator & screens
 import ParentTabNavigator from './ParentTabNavigator'
 import ParentPlaylistDetailScreen from '../screens/parent/ParentPlaylistDetailScreen'
 
@@ -18,45 +23,29 @@ export type RootStackParamList = {
   Login: undefined
   TwoFactor: { userId: string }
   ProfileSelector: { unlockParent?: boolean } | undefined
-  ParentTabs: undefined
-  ParentPlaylistDetail: { playlistId: string; playlistName: string }
   ChildPlaylists: undefined
   ChildPlaylistDetail: { playlistId: string; playlistName: string }
   Watch: { videoId: string; playlistId: string }
+  ParentTabs: undefined
+  ParentPlaylistDetail: { playlistId: string; playlistName: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
 export default function AppNavigator() {
   const auth = useContext(AuthContext)
-  const childCtx = useContext(ChildSessionContext)
 
-  usePushNotifications(auth?.token ?? null)
-
-  if (!auth || !childCtx) return null
-
-  if (auth.loading || !childCtx.hydrated) return null
-
-  const isTV = Platform.isTV
-  const navigationKey = !auth.token
-    ? 'auth'
-    : auth.parentModeUnlocked
-      ? 'parent'
-      : childCtx.session || isTV
-        ? 'child-active'
-        : 'child-select'
+  if (!auth) return null
 
   return (
     <Stack.Navigator
-      key={navigationKey}
-      initialRouteName={
-        auth.parentModeUnlocked
-          ? 'ParentTabs'
-          : auth.token && (childCtx.session || isTV)
-            ? 'ChildPlaylists'
-            : undefined
-      }
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        headerStyle: { backgroundColor: '#ffffff' },
+        headerTintColor: '#000000',
+        headerTitleStyle: { fontWeight: '700' },
+        contentStyle: { backgroundColor: '#ffffff' },
+      }}
     >
       {!auth.token ? (
         // ── Auth stack ─────────────────────────────────────────────────────────
@@ -92,10 +81,12 @@ export default function AppNavigator() {
               headerShown: true,
               headerTitle: '',
               headerBackTitle: 'Retour',
+              headerTransparent: true,
               headerRight: () => (
-                Platform.isTV ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ChildTimerAction />
                   <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
-                ) : null
+                </View>
               ),
             })}
           />
@@ -108,9 +99,10 @@ export default function AppNavigator() {
               headerBackTitle: 'Retour',
               headerTransparent: true,
               headerRight: () => (
-                Platform.isTV ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ChildTimerAction />
                   <ParentModeAction onPress={() => navigation.navigate('ProfileSelector', { unlockParent: true })} />
-                ) : null
+                </View>
               ),
             })}
           />
@@ -120,10 +112,31 @@ export default function AppNavigator() {
   )
 }
 
+function ChildTimerAction() {
+  const childCtx = useContext(ChildSessionContext)
+  const session = childCtx?.session
+  if (!session) return null
+  return (
+    <ChildCountdownTimer
+      sessionLimitMin={session.sessionLimitMin}
+      dailyLimitMin={session.dailyLimitMin}
+      activatedAt={session.activatedAt}
+    />
+  )
+}
+
 function ParentModeAction({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={{ paddingHorizontal: 10, paddingVertical: 6 }}>
-      <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 13 }}>Parent</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: '#1c90d8',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+      }}
+    >
+      <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }}>🔒 Mode Parent</Text>
     </TouchableOpacity>
   )
 }
@@ -139,7 +152,7 @@ function LockParentModeAction() {
       }}
       style={{ paddingHorizontal: 10, paddingVertical: 6 }}
     >
-      <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 13 }}>Enfant</Text>
+      <Text style={{ color: '#1c90d8', fontWeight: '700', fontSize: 13 }}>Verrouiller</Text>
     </TouchableOpacity>
   )
 }

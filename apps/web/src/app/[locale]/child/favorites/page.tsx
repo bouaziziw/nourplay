@@ -54,26 +54,26 @@ export default function ChildFavoritesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-black text-white">Mes favoris ❤️</h1>
+    <div className="space-y-6 bg-white text-black">
+      <h1 className="text-2xl sm:text-3xl font-black text-black">Mes favoris ❤️</h1>
 
       {favorites.length === 0 ? (
-        <div className="text-center py-16 bg-slate-900/60 rounded-3xl border border-white/10 max-w-md mx-auto">
+        <div className="text-center py-16 bg-white/80 rounded-3xl border border-black/10 max-w-md mx-auto shadow-sm">
           <p className="text-5xl mb-4">💝</p>
-          <p className="text-white font-bold">Aucun favori pour l&apos;instant.</p>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-black font-bold">Aucun favori pour l&apos;instant.</p>
+          <p className="text-sm text-black/70 mt-1">
             Ajoute des vidéos depuis tes playlists !
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {favorites.map(fav => (
-            <div key={fav.id} className="group relative bg-slate-900 rounded-2xl border border-white/10 p-3 shadow-lg">
+            <div key={fav.id} className="group relative bg-white/80 rounded-2xl border border-black/10 p-3 shadow-md hover:border-[#1c90d8] transition-all">
               <button
                 onClick={() => router.push(`/${locale}/child/watch/${fav.videoId}`)}
                 className="w-full text-left"
               >
-                <div className="relative bg-gray-800 rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                <div className="relative bg-slate-100 rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                   {fav.video.thumbnailUrl ? (
                     <RemoteImage
                       src={fav.video.thumbnailUrl}
@@ -93,11 +93,11 @@ export default function ChildFavoritesPage() {
                   )}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
-                      <span className="text-slate-950 font-black ml-0.5">▶</span>
+                      <span className="text-black font-black ml-0.5">▶</span>
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-bold text-white line-clamp-2 mt-2 leading-snug px-0.5 group-hover:text-sky-300 transition-colors">
+                <p className="text-sm font-bold text-black line-clamp-2 mt-2 leading-snug px-0.5 group-hover:text-[#1c90d8] transition-colors">
                   {fav.video.title}
                 </p>
               </button>
@@ -106,7 +106,7 @@ export default function ChildFavoritesPage() {
                 onClick={() => handleRemove(fav.videoId)}
                 disabled={removing === fav.videoId}
                 title="Retirer des favoris"
-                className="mt-2 text-xs font-bold text-pink-400 hover:text-pink-300 py-1 px-2.5 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/20 transition-colors"
+                className="mt-2 text-xs font-bold text-black/60 hover:text-red-500 py-1 px-2.5 rounded-lg bg-black/5 hover:bg-black/10 transition-colors"
               >
                 {removing === fav.videoId ? 'Suppression…' : '❤️ Retirer'}
               </button>

@@ -128,14 +128,14 @@ export default function ChildPlaylistPage() {
   const firstVideo = videos[0]?.video
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 bg-white">
       {/* Top Back Navigation Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push(`/${locale}/child/playlists`)}
-          className="inline-flex items-center gap-2 rounded-2xl bg-[#1e293b]/90 hover:bg-[#28384f] px-4 py-2.5 text-sm font-extrabold text-white border border-white/10 shadow-sm transition"
+          className="inline-flex items-center gap-2 rounded-2xl bg-white/80 hover:bg-white px-4 py-2.5 text-sm font-extrabold text-black border border-black/10 shadow-xs transition"
         >
-          <svg className="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 text-[#1c90d8]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
           </svg>
           <span>Toutes les chaînes</span>
@@ -147,12 +147,12 @@ export default function ChildPlaylistPage() {
               onClick={handleToggleSave}
               disabled={saving}
               title={isSaved ? "Supprimer de l'accès hors ligne" : 'Enregistrer hors ligne'}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-sm ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shadow-xs ${
                 saving
-                  ? 'opacity-50 cursor-not-allowed bg-gray-800 text-gray-500'
+                  ? 'opacity-50 cursor-not-allowed bg-slate-200 text-slate-500'
                   : isSaved
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-[#1e293b]/90 text-gray-200 hover:bg-[#28384f] border border-white/10'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                  : 'bg-white/80 text-black hover:bg-white border border-black/10'
               }`}
             >
               {saving ? (
@@ -256,10 +256,10 @@ export default function ChildPlaylistPage() {
       ) : (
         <>
           <div className="flex items-center justify-between pt-2">
-            <h2 className="text-xl sm:text-2xl font-black text-white">
+            <h2 className="text-xl sm:text-2xl font-black text-black">
               Tous les épisodes 🍿
             </h2>
-            <span className="text-xs font-bold text-gray-400">
+            <span className="text-xs font-bold text-black/60">
               {visibleVideos.length} sur {videos.length}
             </span>
           </div>
@@ -272,11 +272,11 @@ export default function ChildPlaylistPage() {
               <Link
                 key={video.id}
                 href={`/${locale}/child/watch/${video.id}?playlist=${id}`}
-                className="group relative flex flex-col overflow-hidden rounded-3xl bg-slate-900 shadow-lg transition duration-300 hover:-translate-y-2 hover:shadow-sky-500/10 border border-white/10 focus:outline-none focus:ring-4 focus:ring-sky-400 focus:scale-[1.03]"
+                className="group relative flex flex-col overflow-hidden rounded-2xl bg-white/70 shadow-md transition duration-300 hover:border-[#1c90d8] border border-black/10 focus:outline-none focus:ring-4 focus:ring-[#1c90d8] focus:scale-[1.03]"
               >
                 {/* 16:9 Thumbnail */}
                 <div
-                  className="relative w-full overflow-hidden bg-gray-800"
+                  className="relative w-full overflow-hidden bg-slate-100"
                   style={{ aspectRatio: '16/9' }}
                 >
                   {video.thumbnailUrl ? (
@@ -299,35 +299,35 @@ export default function ChildPlaylistPage() {
 
                   {/* Play overlay */}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-all duration-300 group-hover:opacity-100 group-focus:opacity-100">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-950 shadow-2xl transition-transform group-hover:scale-105">
-                      <span className="ml-1 text-xl font-black">▶</span>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-black shadow-2xl transition-transform group-hover:scale-105">
+                      <span className="ml-0.5 text-lg font-black">▶</span>
                     </div>
                   </div>
 
                   {/* Episode Position Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-slate-950/80 px-2.5 py-1 text-xs font-black text-white border border-white/10 backdrop-blur-md">
+                  <div className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-xs font-black text-white">
                     <span>#{position}</span>
                   </div>
 
                   {/* Duration Badge */}
                   {video.durationSec && (
-                    <div className="absolute bottom-2.5 right-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur-md">
+                    <div className="absolute bottom-2.5 right-2.5 rounded-md bg-black/75 px-2 py-0.5 text-[11px] font-bold text-white">
                       {formatDuration(video.durationSec)}
                     </div>
                   )}
                 </div>
 
                 {/* Video Info */}
-                <div className="flex flex-1 flex-col justify-between p-4 bg-slate-900">
-                  <h3 className="text-sm font-bold leading-snug text-white line-clamp-2 group-hover:text-sky-300 transition-colors">
+                <div className="flex flex-1 flex-col justify-between p-4 bg-transparent">
+                  <h3 className="text-sm font-bold leading-snug text-black line-clamp-2 group-hover:text-[#1c90d8] transition-colors">
                     {video.title}
                   </h3>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5">
-                    <span className="text-xs font-bold text-sky-400">
+                  <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-2.5">
+                    <span className="text-xs font-bold text-[#1c90d8]">
                       Regarder ›
                     </span>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300 text-xs font-bold group-hover:bg-amber-400 group-hover:text-slate-950 transition">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1c90d8]/10 text-[#1c90d8] text-xs font-bold group-hover:bg-[#1c90d8] group-hover:text-white transition">
                       ▶
                     </span>
                   </div>

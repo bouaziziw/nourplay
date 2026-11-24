@@ -47,6 +47,7 @@
   },
   "scripts": {
     "dev": "turbo run dev",
+    "dev:pnpm": "pnpm --filter @nourplay/web --filter @nourplay/admin --filter @nourplay/api --parallel dev",
     "worker:validator": "pnpm --filter @nourplay/video-validator dev",
     "build": "turbo run build",
     "lint": "turbo run lint",

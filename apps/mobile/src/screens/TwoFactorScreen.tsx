@@ -73,8 +73,8 @@ export default function TwoFactorScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f0f8fd' },
-  container: { flex: 1, padding: 24, justifyContent: 'center' },
+  safe: { flex: 1, backgroundColor: '#ffffff' },
+  container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#ffffff' },
   title: { fontSize: 22, fontWeight: '700', color: '#0f172a', textAlign: 'center', marginBottom: 10 },
   desc: { fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
   errorBox: { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginBottom: 16 },

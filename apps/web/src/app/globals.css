@@ -2,13 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+}
+
 html {
   scroll-behavior: smooth;
+  background-color: #ffffff;
 }
 
 body {
   min-height: 100vh;
   text-rendering: optimizeLegibility;
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
 ::selection {
@@ -24,12 +31,19 @@ body {
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, outline 0.15s ease;
 }
 
+/* ── Child Mode Harmonized Theme (Web, Mobile & TV - White Background) ── */
+html.child-theme,
+body.child-theme {
+  background-color: #ffffff !important;
+  color: #000000;
+}
+
 /* ── 10-Foot TV Experience (Active on Smart TV or Remote Control) ─── */
 html.tv-mode {
   user-select: none;
   -webkit-user-select: none;
   font-size: 110%; /* Comfortable 10-foot viewing distance */
-  background-color: #0b1120; /* Deep cinema slate */
+  background-color: #ffffff;
 }
 
 html.tv-mode body {
