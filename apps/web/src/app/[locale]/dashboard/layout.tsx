@@ -96,10 +96,7 @@ function DashboardNav() {
 
         {/* 3. Sélecteur de Langue compact avec tooltip */}
         <div className="relative group flex items-center justify-center">
-          <div className="flex items-center h-8 rounded-xl border border-slate-200 bg-white/80 px-1.5 shadow-xs hover:border-[#1c90d8] transition-colors">
-            <span className="text-xs mr-0.5">🌐</span>
-            <LocaleSwitcher mode="select" />
-          </div>
+          <LocaleSwitcher mode="select" />
           <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[11px] font-semibold text-white shadow-md z-50 pointer-events-none">
             Changer de langue
           </span>

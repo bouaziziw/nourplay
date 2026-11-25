@@ -69,3 +69,23 @@ test('admin API proxy rejects destinations that are not HTTP(S) origins', async 
   }
   delete process.env.API_PROXY_ORIGIN
 })
+
+test('locale switching navigation properly prefixes routes and prevents 404', async () => {
+  const { defineRouting } = await import('next-intl/routing')
+  const { createNavigation } = await import('next-intl/navigation')
+  const routing = defineRouting({
+    locales: ['fr', 'en', 'ar', 'es'],
+    defaultLocale: 'fr',
+    localePrefix: 'as-needed',
+  })
+  const { getPathname } = createNavigation(routing)
+
+  assert.equal(getPathname({ href: '/dashboard', locale: 'en' }), '/en/dashboard')
+  assert.equal(getPathname({ href: '/dashboard', locale: 'fr' }), '/dashboard')
+  assert.equal(getPathname({ href: '/dashboard', locale: 'ar' }), '/ar/dashboard')
+  assert.equal(getPathname({ href: '/dashboard', locale: 'es' }), '/es/dashboard')
+  assert.equal(getPathname({ href: '/dashboard/account', locale: 'en' }), '/en/dashboard/account')
+  assert.equal(getPathname({ href: '/dashboard/account', locale: 'fr' }), '/dashboard/account')
+  assert.equal(getPathname({ href: '/child', locale: 'en' }), '/en/child')
+  assert.equal(getPathname({ href: '/child', locale: 'fr' }), '/child')
+})

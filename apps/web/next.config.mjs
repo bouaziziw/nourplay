@@ -88,6 +88,7 @@ for (const origin of [apiOrigin, adminOrigin].filter(Boolean)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['@nourplay/ui', '@nourplay/i18n'],
   output: process.platform === 'win32' ? undefined : 'standalone',
   reactStrictMode: true,
   skipTrailingSlashRedirect: true,

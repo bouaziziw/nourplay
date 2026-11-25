@@ -413,10 +413,6 @@ importers:
         version: 5.9.3
 
   packages/i18n:
-    dependencies:
-      next-intl:
-        specifier: ^3.19.3
-        version: 3.26.5(next@15.5.28(@playwright/test@1.60.0)(@types/node@22.19.19)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -13719,14 +13715,6 @@ snapshots:
       react: 18.3.1
       use-intl: 3.26.5(react@18.3.1)
 
-  next-intl@3.26.5(next@15.5.28(@playwright/test@1.60.0)(@types/node@22.19.19)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0):
-    dependencies:
-      '@formatjs/intl-localematcher': 0.5.10
-      negotiator: 1.0.0
-      next: 15.5.28(@playwright/test@1.60.0)(@types/node@22.19.19)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      react: 19.3.0
-      use-intl: 3.26.5(react@19.3.0)
-
   next@15.5.28(@babel/core@7.29.13)(@playwright/test@1.60.0)(@types/node@22.19.19)(babel-plugin-react-compiler@1.0.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@next/env': 15.5.28
@@ -13736,32 +13724,6 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       styled-jsx: 5.1.6(@babel/core@7.29.13)(react@18.3.1)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 15.5.28
-      '@next/swc-darwin-x64': 15.5.28
-      '@next/swc-linux-arm64-gnu': 15.5.28
-      '@next/swc-linux-arm64-musl': 15.5.28
-      '@next/swc-linux-x64-gnu': 15.5.28
-      '@next/swc-linux-x64-musl': 15.5.28
-      '@next/swc-win32-arm64-msvc': 15.5.28
-      '@next/swc-win32-x64-msvc': 15.5.28
-      '@playwright/test': 1.60.0
-      babel-plugin-react-compiler: 1.0.0
-      sharp: 0.35.5(@types/node@22.19.19)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - '@types/node'
-      - babel-plugin-macros
-
-  next@15.5.28(@playwright/test@1.60.0)(@types/node@22.19.19)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
-    dependencies:
-      '@next/env': 15.5.28
-      '@swc/helpers': 0.5.15
-      caniuse-lite: 1.0.30001826
-      postcss: 8.5.23
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      styled-jsx: 5.1.6(react@19.3.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.28
       '@next/swc-darwin-x64': 15.5.28
@@ -14934,11 +14896,6 @@ snapshots:
     optionalDependencies:
       '@babel/core': 7.29.13
 
-  styled-jsx@5.1.6(react@19.3.0):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.3.0
-
   styleq@0.1.3: {}
 
   sucrase@3.35.1:
@@ -15345,12 +15302,6 @@ snapshots:
       '@formatjs/fast-memoize': 2.2.7
       intl-messageformat: 10.7.18
       react: 18.3.1
-
-  use-intl@3.26.5(react@19.3.0):
-    dependencies:
-      '@formatjs/fast-memoize': 2.2.7
-      intl-messageformat: 10.7.18
-      react: 19.3.0
 
   use-latest-callback@0.2.6(react@19.3.0):
     dependencies:

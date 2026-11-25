@@ -6,9 +6,6 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "next-intl": "^3.19.3"
-  },
   "devDependencies": {
     "typescript": "^5.5.4"
   },

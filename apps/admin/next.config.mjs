@@ -33,6 +33,7 @@ if (apiOrigin) {
 }
 
 const nextConfig = {
+  transpilePackages: ['@nourplay/ui'],
   basePath,
   reactStrictMode: true,
   async rewrites() {
