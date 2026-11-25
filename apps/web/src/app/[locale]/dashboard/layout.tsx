@@ -218,7 +218,7 @@ function DashboardFooter() {
                     : 'text-slate-700 hover:text-[#1c90d8] hover:bg-sky-50/50 border border-transparent'
                 }`}
               >
-                <span>{link.icon}</span>
+                <span aria-hidden="true">{link.icon}</span>
                 <span>{link.label}</span>
               </Link>
             )

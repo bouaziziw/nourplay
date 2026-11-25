@@ -6,14 +6,14 @@ test.describe('Subscription page (public plans)', () => {
 
   test('subscription page is reachable from nav', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.locator('nav').getByRole('link', { name: 'Abonnement', exact: true }).first().click()
+    await page.locator('nav').getByRole('link', { name: /Abonnement/i }).first().click()
     await expect(page).toHaveURL(/\/dashboard\/subscription/, { timeout: 15_000 })
     await expect(page.locator('h1')).toContainText('Abonnement')
   })
 
   test('plan cards render after load', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.locator('nav').getByRole('link', { name: 'Abonnement', exact: true }).first().click()
+    await page.locator('nav').getByRole('link', { name: /Abonnement/i }).first().click()
 
     // Skeleton disappears and plan cards appear
     await expect(page.locator('text=Gratuit')).toBeVisible({ timeout: 10_000 })
@@ -21,7 +21,7 @@ test.describe('Subscription page (public plans)', () => {
 
   test('free plan card shows "Gratuit" with no subscribe button', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.locator('nav').getByRole('link', { name: 'Abonnement', exact: true }).first().click()
+    await page.locator('nav').getByRole('link', { name: /Abonnement/i }).first().click()
 
     await expect(page.locator('text=Gratuit').first()).toBeVisible({ timeout: 10_000 })
     // The free plan card should NOT have an "S'abonner" button
@@ -31,7 +31,7 @@ test.describe('Subscription page (public plans)', () => {
 
   test('premium plan cards show subscribe button for authenticated users', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.locator('nav').getByRole('link', { name: 'Abonnement', exact: true }).first().click()
+    await page.locator('nav').getByRole('link', { name: /Abonnement/i }).first().click()
 
     // Wait for plans to load
     await expect(page.locator('text=Gratuit')).toBeVisible({ timeout: 10_000 })
@@ -46,7 +46,7 @@ test.describe('Subscription page (public plans)', () => {
 
   test('plan feature lists are visible', async ({ page }) => {
     await loginAs(page, process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!)
-    await page.locator('nav').getByRole('link', { name: 'Abonnement', exact: true }).first().click()
+    await page.locator('nav').getByRole('link', { name: /Abonnement/i }).first().click()
 
     await expect(page.locator('text=Gratuit')).toBeVisible({ timeout: 10_000 })
     // Features like "1 profil enfant" should be visible in the free plan
