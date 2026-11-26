@@ -26,7 +26,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U nourplay"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -86,7 +86,7 @@ jobs:
         run: pnpm --filter @nourplay/api build
 
       - name: Start API server
-        run: pnpm --filter @nourplay/api start &
+        run: pnpm --filter @nourplay/api start > /tmp/api.log 2>&1 &
 
       - name: Build web app
         run: pnpm --filter @nourplay/web build
@@ -94,14 +94,14 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
 
       - name: Start web server
-        run: pnpm --filter @nourplay/web start &
+        run: pnpm --filter @nourplay/web start > /tmp/web.log 2>&1 &
         env:
           PORT: 3000
 
       - name: Wait for servers to be ready
         run: |
-          npx wait-on http://localhost:4000/api/v1/health --timeout 30000
-          npx wait-on http://localhost:3000 --timeout 30000
+          npx wait-on http://localhost:4000/api/v1/health --timeout 45000 || (cat /tmp/api.log && exit 1)
+          npx wait-on http://localhost:3000 --timeout 45000 || (cat /tmp/web.log && exit 1)
 
       - name: Run Playwright tests
         id: playwright

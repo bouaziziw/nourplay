@@ -41,7 +41,7 @@ export default function LoginPage() {
         setShowTotp(true)
       } else {
         const redirectParam = searchParams.get('redirect')
-        router.push(redirectParam || `/${locale}/dashboard`)
+        router.push(redirectParam || `/${locale}/child`)
       }
     } catch (err) {
       setError(getAuthErrorMessage(err, 'Erreur de connexion'))
@@ -52,7 +52,7 @@ export default function LoginPage() {
 
   if (showTotp) {
     const redirectParam = searchParams.get('redirect')
-    return <TotpStep userId={userId!} locale={locale} onSuccess={async () => { router.push(redirectParam || `/${locale}/dashboard`) }} />
+    return <TotpStep userId={userId!} locale={locale} onSuccess={async () => { router.push(redirectParam || `/${locale}/child`) }} />
   }
 
   return (
