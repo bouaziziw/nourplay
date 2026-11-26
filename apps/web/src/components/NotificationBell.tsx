@@ -103,6 +103,10 @@ export function NotificationBell({ token }: { token: string }) {
         return typeof p.videoTitle === 'string' ? `"${p.videoTitle}"${p.reason ? ` — ${p.reason}` : ''}` : null
       case 'PLAYLIST_SHARED':
         return typeof p.playlistName === 'string' ? `"${p.playlistName}"` : null
+      case 'SUPPORT_MESSAGE':
+        return typeof p.subject === 'string'
+          ? `${p.parentEmail ? `${p.parentEmail} : ` : ''}${p.subject}`
+          : null
       default:
         return null
     }
@@ -110,6 +114,7 @@ export function NotificationBell({ token }: { token: string }) {
 
   const typeLabel = (type: string): string => {
     const map: Record<string, string> = {
+      SUPPORT_MESSAGE: 'Support Parent / Contact',
       VIDEO_APPROVED: 'Vidéo approuvée',
       VIDEO_REJECTED: 'Vidéo rejetée',
       VIDEO_PUBLISHED: 'Nouveau contenu disponible',

@@ -14,6 +14,7 @@ const HEADER_NAV_LINKS = [
   { href: '/dashboard', label: 'Accueil', exact: true },
   { href: '/dashboard/playlists', label: 'Playlists', exact: false },
   { href: '/dashboard/videos', label: 'Vidéothèque', exact: false },
+  { href: '/dashboard/support', label: 'Support & Contact', exact: false },
 ]
 
 function DashboardNav() {
@@ -182,6 +183,7 @@ function DashboardFooter() {
 
   // Menu déplacé en bas de page comme demandé : Abonnement, Approbations, Confidentialité, Modération, Sources, RGPD
   const FOOTER_LINKS = [
+    { href: '/dashboard/support', label: 'Support & Contact', icon: '💬' },
     { href: '/dashboard/subscription', label: 'Abonnement', icon: '💳' },
     { href: '/dashboard/approvals', label: 'Approbations', icon: '✅' },
     { href: '/dashboard/privacy', label: 'Confidentialité', icon: '🛡️' },

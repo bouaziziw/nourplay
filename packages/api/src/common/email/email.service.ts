@@ -2,10 +2,11 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { safeFetch } from '../http/safe-fetch'
 interface SendOptions {
-  to: string
+  to: string | string[]
   subject: string
   html: string
   text?: string
+  replyTo?: string
 }
 
 @Injectable()
@@ -287,6 +288,125 @@ export class EmailService {
     })
   }
 
+  async sendSupportMessageToAdmins(
+    adminEmails: string[],
+    data: {
+      parentEmail: string
+      parentName?: string
+      category: string
+      subject: string
+      message: string
+      childProfileName?: string
+    },
+  ) {
+    if (!adminEmails.length) return
+
+    const categoryLabels: Record<string, string> = {
+      QUESTION_GENERAL: 'Question générale',
+      TECHNICAL_ISSUE: 'Problème technique / Bug',
+      CONTENT_SUGGESTION: 'Suggestion de contenu / vidéo',
+      PARENTAL_CONTROL: 'Contrôle parental & Minuteur',
+      BILLING_SUBSCRIPTION: 'Abonnement & Facturation',
+      SAFETY_CONCERN: 'Signalement de sécurité / Contenu',
+      OTHER: 'Autre demande',
+    }
+    const categoryName = categoryLabels[data.category] ?? data.category
+
+    const subject = `[Support Parent] ${categoryName} : ${data.subject}`
+    const parentDisplay = data.parentName ? `${data.parentName} &lt;${data.parentEmail}&gt;` : data.parentEmail
+
+    const contentHtml = `
+      <div style="background:#f3f4f6;padding:16px;border-radius:8px;margin-bottom:20px;font-size:14px;color:#374151">
+        <p style="margin:0 0 8px"><strong>Parent expéditeur :</strong> ${parentDisplay}</p>
+        <p style="margin:0 0 8px"><strong>Catégorie :</strong> <span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:4px;font-weight:600">${categoryName}</span></p>
+        ${data.childProfileName ? `<p style="margin:0 0 8px"><strong>Profil enfant concerné :</strong> ${data.childProfileName}</p>` : ''}
+        <p style="margin:0"><strong>Objet :</strong> ${data.subject}</p>
+      </div>
+
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-left:4px solid #1c90d8;padding:16px;border-radius:6px;margin-bottom:20px">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:bold;text-transform:uppercase;color:#6b7280;letter-spacing:0.5px">Message du parent :</p>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#111827;white-space:pre-wrap">${data.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+      </div>
+
+      <div style="text-align:center;margin-top:24px">
+        <a href="mailto:${data.parentEmail}?subject=Re: [NourPlay Support] ${encodeURIComponent(data.subject)}"
+           style="background:#1c90d8;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
+          ✉️ Répondre directement au parent
+        </a>
+      </div>
+    `
+
+    const html = this.layout('Nouveau message du support parent', contentHtml)
+    const text = `Nouveau message support NourPlay\nParent: ${data.parentEmail}\nCatégorie: ${categoryName}\nObjet: ${data.subject}\nMessage:\n${data.message}`
+
+    for (const adminEmail of adminEmails) {
+      await this.send({
+        to: adminEmail,
+        subject,
+        html,
+        text,
+        replyTo: data.parentEmail,
+      }).catch(err => {
+        this.logger.error(`Erreur envoi email support à l'admin ${adminEmail}: ${err instanceof Error ? err.message : err}`)
+      })
+    }
+  }
+
+  async sendSupportConfirmationToParent(
+    to: string,
+    data: {
+      parentName?: string
+      category: string
+      subject: string
+      message: string
+      locale?: string
+    },
+  ) {
+    const locale = data.locale ?? 'fr'
+    const isAr = locale === 'ar'
+    const isEn = locale === 'en'
+
+    const subject = isAr
+      ? `[NourPlay] تم استلام طلب الدعم الخاص بك: ${data.subject}`
+      : isEn
+        ? `[NourPlay] Support request received: ${data.subject}`
+        : `[NourPlay] Nous avons bien reçu votre demande : ${data.subject}`
+
+    const title = isAr
+      ? 'تم استلام طلبك بنجاح'
+      : isEn
+        ? 'Support Request Received'
+        : 'Demande de support bien reçue'
+
+    const intro = isAr
+      ? `مرحبًا ${data.parentName || ''}، لقد استلمنا رسالتك بنجاح. سيقوم فريق الإدارة بمراجعتها والرد عليك في أقرب وقت ممكن.`
+      : isEn
+        ? `Hello ${data.parentName || ''}, we have received your support message. Our administration team will review it and reply as soon as possible.`
+        : `Bonjour ${data.parentName || ''}, nous avons bien reçu votre message. Notre équipe d'administration et support va traiter votre demande et vous répondra dans les plus brefs délais.`
+
+    const contentHtml = `
+      <p style="color:#374151;font-size:15px;line-height:1.6">${intro}</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;padding:16px;border-radius:8px;margin:20px 0">
+        <p style="margin:0 0 6px;font-size:13px;color:#6b7280"><strong>Objet :</strong> ${data.subject}</p>
+        <p style="margin:0 0 6px;font-size:13px;color:#6b7280"><strong>Catégorie :</strong> ${data.category}</p>
+        <p style="margin:8px 0 0;font-size:13px;color:#374151;border-top:1px dashed #e5e7eb;padding-top:8px;white-space:pre-wrap">${data.message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+      </div>
+      <p style="color:#6b7280;font-size:13px;line-height:1.5">
+        ${isEn ? 'If you have any further questions, simply reply to this email.' : 'Si vous avez des informations complémentaires, vous pouvez répondre directement à cet email.'}
+      </p>
+    `
+
+    const html = this.layout(title, contentHtml, isAr)
+    await this.send({
+      to,
+      subject,
+      html,
+      text: `${title}\n${intro}\n\nObjet: ${data.subject}\nMessage:\n${data.message}`,
+    }).catch(err => {
+      this.logger.error(`Erreur envoi accusé réception support au parent ${to}: ${err instanceof Error ? err.message : err}`)
+    })
+  }
+
   private async sendViaResend(options: SendOptions) {
     const rawApiKey = this.config.get<string>('RESEND_API_KEY')?.trim()
     const isPlaceholder = !rawApiKey || rawApiKey === '[SENSITIVE]' || !rawApiKey.startsWith('re_')
@@ -319,6 +439,9 @@ export class EmailService {
       }
       if (options.text) {
         body.text = options.text
+      }
+      if (options.replyTo) {
+        body.reply_to = options.replyTo
       }
       return body
     }

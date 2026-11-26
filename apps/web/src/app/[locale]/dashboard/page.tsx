@@ -231,6 +231,32 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {/* ── Section Contact / Support ── */}
+      <section className="rounded-3xl border border-sky-100 bg-gradient-to-r from-sky-50/70 via-indigo-50/50 to-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-sky-200 text-[#1c90d8] flex items-center justify-center text-2xl shrink-0 shadow-xs">
+            💬
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900">
+              Besoin d’aide ou suggestion pour la plateforme ?
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1 max-w-xl">
+              Notre équipe d’administration et support est à votre écoute pour toute question relative au contrôle parental, à vos abonnements ou pour proposer de nouveaux contenus éducatifs.
+            </p>
+          </div>
+        </div>
+
+        <Link
+          href={`/${locale}/dashboard/support`}
+          className="shrink-0 px-5 py-2.5 rounded-xl bg-[#1c90d8] hover:bg-[#1572ab] text-white text-xs sm:text-sm font-bold shadow-sm transition-all active:scale-95 flex items-center gap-2"
+        >
+          <span>✉️</span>
+          <span>Contacter le support</span>
+        </Link>
+      </section>
+
       {selectedProfile && (
         <PinModal
           profileName={selectedProfile.displayName}

@@ -1021,4 +1021,24 @@ export const api = {
     getByCode: (code: string) =>
       request<WatchPartyInfo>(`/watch-parties/code/${encodeURIComponent(code)}`),
   },
+
+  support: {
+    getCategories: () =>
+      request<Array<{ value: string; label: string; icon: string }>>('/support/categories'),
+
+    contact: (
+      token: string,
+      data: {
+        category: string
+        subject: string
+        message: string
+        childProfileId?: string
+      },
+    ) =>
+      request<{ success: boolean; message: string; recipientsCount?: number }>('/support/contact', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        ...bearer(token),
+      }),
+  },
 }

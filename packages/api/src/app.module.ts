@@ -26,6 +26,7 @@ import { StorageModule } from './modules/storage/storage.module'
 import { WatchPartyModule } from './modules/watch-party/watch-party.module'
 import { CronModule } from './modules/cron/cron.module'
 import { HealthModule } from './modules/health/health.module'
+import { SupportModule } from './modules/support/support.module'
 import { appConfig, validateConfig } from './config/app.config'
 
 @Module({
@@ -77,6 +78,7 @@ import { appConfig, validateConfig } from './config/app.config'
     WatchPartyModule,
     CronModule,
     HealthModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
