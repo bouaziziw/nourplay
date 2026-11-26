@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  OnModuleInit,
 } from '@nestjs/common'
 import * as argon2 from 'argon2'
 import type { Prisma } from '@nourplay/db'
@@ -18,7 +19,7 @@ import { RecordWatchDto } from './dto/record-watch.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
 
-const PIN_SELECT = {
+const BASE_PIN_SELECT = {
   id: true,
   displayName: true,
   ageGroup: true,
@@ -27,18 +28,32 @@ const PIN_SELECT = {
   dailyLimitMin: true,
   sessionLimitMin: true,
   viewingSchedule: true,
-  isViewingBlocked: true,
   createdAt: true,
 }
 
+const PIN_SELECT = {
+  ...BASE_PIN_SELECT,
+  isViewingBlocked: true,
+}
+
 @Injectable()
-export class UserService {
+export class UserService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subscriptionService: SubscriptionService,
     private readonly emailService: EmailService,
     private readonly notificationService: NotificationService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.prisma.$executeRawUnsafe(
+        'ALTER TABLE "child_profiles" ADD COLUMN IF NOT EXISTS "is_viewing_blocked" BOOLEAN NOT NULL DEFAULT false;'
+      )
+    } catch {
+      // Toléré si la base distante interdit les DDL bruts ou si la table n'existe pas encore
+    }
+  }
 
   async findById(id: string) {
     const user = await this.prisma.user.findUnique({
@@ -179,11 +194,23 @@ export class UserService {
   // ── Profils enfants ──────────────────────────────────────────
 
   async getProfiles(userId: string) {
-    return this.prisma.childProfile.findMany({
-      where: { userId, deletedAt: null },
-      select: PIN_SELECT,
-      orderBy: { createdAt: 'asc' },
-    })
+    try {
+      return await this.prisma.childProfile.findMany({
+        where: { userId, deletedAt: null },
+        select: PIN_SELECT,
+        orderBy: { createdAt: 'asc' },
+      })
+    } catch (err: any) {
+      if (err?.message?.includes('is_viewing_blocked') || err?.code === 'P2021' || err?.code === 'P2022') {
+        const rows = await this.prisma.childProfile.findMany({
+          where: { userId, deletedAt: null },
+          select: BASE_PIN_SELECT,
+          orderBy: { createdAt: 'asc' },
+        })
+        return rows.map(r => ({ ...r, isViewingBlocked: false }))
+      }
+      throw err
+    }
   }
 
   async getMyLimits(userId: string) {
@@ -252,12 +279,25 @@ export class UserService {
   }
 
   async getProfile(userId: string, profileId: string) {
-    const profile = await this.prisma.childProfile.findFirst({
-      where: { id: profileId, userId, deletedAt: null },
-      select: PIN_SELECT,
-    })
-    if (!profile) throw new NotFoundException('Profil introuvable')
-    return profile
+    try {
+      const profile = await this.prisma.childProfile.findFirst({
+        where: { id: profileId, userId, deletedAt: null },
+        select: PIN_SELECT,
+      })
+      if (!profile) throw new NotFoundException('Profil introuvable')
+      return profile
+    } catch (err: any) {
+      if (err instanceof NotFoundException) throw err
+      if (err?.message?.includes('is_viewing_blocked') || err?.code === 'P2021' || err?.code === 'P2022') {
+        const profile = await this.prisma.childProfile.findFirst({
+          where: { id: profileId, userId, deletedAt: null },
+          select: BASE_PIN_SELECT,
+        })
+        if (!profile) throw new NotFoundException('Profil introuvable')
+        return { ...profile, isViewingBlocked: false }
+      }
+      throw err
+    }
   }
 
   async updateProfile(userId: string, profileId: string, dto: UpdateProfileDto) {
@@ -1005,12 +1045,25 @@ export class UserService {
   }
 
   private async assertProfileOwner(userId: string, profileId: string) {
-    const profile = await this.prisma.childProfile.findFirst({
-      where: { id: profileId, userId, deletedAt: null },
-      select: { id: true, isViewingBlocked: true },
-    })
-    if (!profile) throw new NotFoundException('Profil introuvable')
-    return profile
+    try {
+      const profile = await this.prisma.childProfile.findFirst({
+        where: { id: profileId, userId, deletedAt: null },
+        select: { id: true, isViewingBlocked: true },
+      })
+      if (!profile) throw new NotFoundException('Profil introuvable')
+      return profile
+    } catch (err: any) {
+      if (err instanceof NotFoundException) throw err
+      if (err?.message?.includes('is_viewing_blocked') || err?.code === 'P2021' || err?.code === 'P2022') {
+        const profile = await this.prisma.childProfile.findFirst({
+          where: { id: profileId, userId, deletedAt: null },
+          select: { id: true },
+        })
+        if (!profile) throw new NotFoundException('Profil introuvable')
+        return { ...profile, isViewingBlocked: false }
+      }
+      throw err
+    }
   }
 
   private async hashPin(pin: string): Promise<string> {

@@ -73,7 +73,7 @@
     "db:studio": "dotenv -e .env -- pnpm --filter @nourplay/db studio",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "vercel:validate": "node scripts/validate-vercel.js",
-    "vercel:build:api": "cd ../.. && pnpm --filter @nourplay/db generate && pnpm --filter @nourplay/db build && pnpm --filter @nourplay/api build",
+    "vercel:build:api": "cd ../.. && pnpm --filter @nourplay/db generate && pnpm --filter @nourplay/db migrate:deploy && pnpm --filter @nourplay/db build && pnpm --filter @nourplay/api build",
     "vercel:build:web": "cd ../.. && pnpm --filter @nourplay/web build",
     "vercel:build:admin": "cd ../.. && pnpm --filter @nourplay/admin build"
   },

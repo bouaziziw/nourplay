@@ -384,11 +384,19 @@ export class VideoService implements OnModuleInit {
 
   async findById(id: string, userId?: string, profileId?: string) {
     if (profileId && userId) {
-      const profile = await this.prisma.childProfile.findFirst({
-        where: { id: profileId, userId, deletedAt: null },
-        select: { isViewingBlocked: true },
-      })
-      if (profile?.isViewingBlocked) {
+      let isBlocked = false
+      try {
+        const profile = await this.prisma.childProfile.findFirst({
+          where: { id: profileId, userId, deletedAt: null },
+          select: { isViewingBlocked: true },
+        })
+        isBlocked = Boolean(profile?.isViewingBlocked)
+      } catch (err: any) {
+        if (!err?.message?.includes('is_viewing_blocked') && err?.code !== 'P2021' && err?.code !== 'P2022') {
+          throw err
+        }
+      }
+      if (isBlocked) {
         throw new ForbiddenException('Le visionnage a été mis en pause par un parent.')
       }
     }
@@ -483,10 +491,22 @@ export class VideoService implements OnModuleInit {
 
     let ageRatingFilter: string | string[] | undefined = ageRating
     if (profileId && userId) {
-      const profile = await this.prisma.childProfile.findFirst({
-        where: { id: profileId, userId, deletedAt: null },
-        select: { ageGroup: true, isViewingBlocked: true },
-      })
+      let profile: { ageGroup: any; isViewingBlocked?: boolean } | null = null
+      try {
+        profile = await this.prisma.childProfile.findFirst({
+          where: { id: profileId, userId, deletedAt: null },
+          select: { ageGroup: true, isViewingBlocked: true },
+        })
+      } catch (err: any) {
+        if (err?.message?.includes('is_viewing_blocked') || err?.code === 'P2021' || err?.code === 'P2022') {
+          profile = await this.prisma.childProfile.findFirst({
+            where: { id: profileId, userId, deletedAt: null },
+            select: { ageGroup: true },
+          })
+        } else {
+          throw err
+        }
+      }
       if (profile?.isViewingBlocked) {
         return { items: [], total: 0, page, limit, pages: 0 }
       }
