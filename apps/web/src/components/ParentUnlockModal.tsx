@@ -60,7 +60,7 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
           Mode Parent
         </h2>
         <p className="mb-6 text-center text-sm text-gray-500">
-          Entrez le mot de passe de votre compte ou votre code PIN pour accéder à l'espace parent.
+          Entrez le mot de passe de votre compte ou votre code PIN pour accéder à l’espace parent.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input

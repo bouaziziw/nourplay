@@ -89,3 +89,13 @@ test('locale switching navigation properly prefixes routes and prevents 404', as
   assert.equal(getPathname({ href: '/child', locale: 'en' }), '/en/child')
   assert.equal(getPathname({ href: '/child', locale: 'fr' }), '/child')
 })
+
+test('ParentUnlockModal component source code is free of unescaped ASCII apostrophes', async () => {
+  const fs = await import('node:fs')
+  const path = await import('node:path')
+  const content = fs.readFileSync(path.resolve('src/components/ParentUnlockModal.tsx'), 'utf-8')
+  // Vérifie qu'il n'y a pas de l'espace non échappé provoquant react/no-unescaped-entities
+  assert.equal(content.includes("l'espace"), false, "ParentUnlockModal must not contain unescaped l'espace")
+  assert.equal(content.includes("l’espace"), true, "ParentUnlockModal should use typographic quote l’espace")
+})
+
