@@ -40,8 +40,13 @@ connection.on('connect', () => {
   console.log('[validator] Redis connection established')
 })
 
+let lastRedisError = 0
 connection.on('error', (err) => {
-  console.error('[validator] Redis connection error:', err.message)
+  const now = Date.now()
+  if (now - lastRedisError > 10000) {
+    lastRedisError = now
+    console.warn('[validator] Redis connection error:', err.message)
+  }
 })
 
 // File BullMQ dédiée pour l'export éventuel sans bloquer la connexion du worker
@@ -221,8 +226,13 @@ worker.on('failed', (job, err) => {
   console.error(`[validator] Job ${job?.id} failed:`, err.message)
 })
 
+let lastWorkerError = 0
 worker.on('error', (err) => {
-  console.error('[validator] Worker error:', err.message)
+  const now = Date.now()
+  if (now - lastWorkerError > 10000) {
+    lastWorkerError = now
+    console.warn('[validator] Worker error:', err.message)
+  }
 })
 
 let isShuttingDown = false

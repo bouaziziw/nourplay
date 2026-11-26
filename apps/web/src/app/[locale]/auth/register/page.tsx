@@ -17,8 +17,10 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [emailSent, setEmailSent] = useState(true)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
+  const [resendError, setResendError] = useState<string | null>(null)
 
   const passwordStrength = (() => {
     if (password.length < 8) return 0
@@ -35,7 +37,10 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
     try {
-      await api.auth.register({ email, password, role, locale })
+      const res = await api.auth.register({ email, password, role, locale })
+      if (res && typeof (res as { emailSent?: boolean }).emailSent === 'boolean') {
+        setEmailSent((res as { emailSent?: boolean }).emailSent !== false)
+      }
       setDone(true)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erreur lors de la création du compte')
@@ -53,15 +58,24 @@ export default function RegisterPage() {
           </svg>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Compte créé !</h2>
-        <p className="text-gray-500 text-sm">Un email de vérification a été envoyé à <strong>{email}</strong>. Vérifiez votre boîte de réception.</p>
+        {emailSent ? (
+          <p className="text-gray-500 text-sm">Un email de vérification a été envoyé à <strong>{email}</strong>. Vérifiez votre boîte de réception.</p>
+        ) : (
+          <p className="text-amber-700 bg-amber-50 rounded-xl p-3 text-sm">
+            Votre compte a été créé. Toutefois, l&apos;envoi automatique de l&apos;email a rencontré un délai. Vous pouvez cliquer sur <strong>Renvoyer</strong> ci-dessous pour déclencher un nouvel envoi.
+          </p>
+        )}
         <div className="mt-4">
           <button
             type="button"
             onClick={async () => {
               setResending(true)
+              setResendError(null)
               try {
                 await api.auth.resendVerification({ email })
                 setResent(true)
+              } catch (err) {
+                setResendError(err instanceof ApiError ? err.message : "Erreur lors de l'envoi de l'email.")
               } finally {
                 setResending(false)
               }
@@ -71,6 +85,9 @@ export default function RegisterPage() {
           >
             {resent ? 'Email de vérification renvoyé !' : resending ? 'Envoi en cours…' : 'Vous n\'avez pas reçu l\'email ? Renvoyer'}
           </button>
+          {resendError && (
+            <p className="text-xs text-red-600 mt-2">{resendError}</p>
+          )}
         </div>
         <Link href={`/${locale}/auth/login`} className="mt-6 inline-block text-primary text-sm font-medium hover:underline">
           Retour à la connexion

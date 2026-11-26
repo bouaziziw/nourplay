@@ -140,6 +140,40 @@ describe('EmailService', () => {
       expect(body.from).toBe('Custom Name <custom@nourplay.app>')
     })
 
+    it('should retry and succeed via onboarding@resend.dev when custom domain returns 403', async () => {
+      process.env.NODE_ENV = 'production'
+      const fetchSpy = vi.spyOn(safeFetchModule, 'safeFetch')
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+          json: async () => ({ message: 'Domain not verified' }),
+          text: async () => '{"message":"Domain not verified"}',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ id: 'fallback-msg-789' }),
+          text: async () => '{"id":"fallback-msg-789"}',
+        })
+
+      const service = createService({
+        EMAIL_PROVIDER: 'resend',
+        EMAIL_FROM: 'noreply@nour-play.app',
+        RESEND_API_KEY: 're_test_key_abc',
+      })
+
+      await service.send({
+        to: 'user@example.com',
+        subject: 'Test',
+        html: '<p>Hi</p>',
+      })
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2)
+      const secondCallArgs = fetchSpy.mock.calls[1]
+      const secondBody = JSON.parse(secondCallArgs[1]?.body as string)
+      expect(secondBody.from).toBe('NourPlay <onboarding@resend.dev>')
+    })
+
     it('should throw an error with response details when Resend returns non-200', async () => {
       process.env.NODE_ENV = 'production'
       vi.spyOn(safeFetchModule, 'safeFetch').mockResolvedValue({

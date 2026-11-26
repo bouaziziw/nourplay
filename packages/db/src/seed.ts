@@ -106,13 +106,20 @@ async function main() {
     },
   })
 
+  // ── Profil enfant et code PIN de test ─────────────────────────
+  const demoPinHash = await hashPin('1234')
+
   // ── Utilisateur parent de test ────────────────────────────────
   const parent = await prisma.user.upsert({
     where: { email: 'parent@nourplay.local' },
-    update: { passwordHash: await hashPassword('Parent1234!') },
+    update: {
+      passwordHash: await hashPassword('Parent1234!'),
+      parentPinHash: demoPinHash,
+    },
     create: {
       email: 'parent@nourplay.local',
       passwordHash: await hashPassword('Parent1234!'),
+      parentPinHash: demoPinHash,
       role: UserRole.PARENT,
       emailVerified: true,
       emailVerifiedAt: new Date(),
@@ -121,7 +128,6 @@ async function main() {
   })
 
   // ── Profil enfant de test ────────────────────────────────────
-  const demoPinHash = await hashPin('1234')
   await prisma.childProfile.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
     update: { pinHash: demoPinHash },

@@ -83,15 +83,17 @@ export class AuthService {
       select: { id: true, email: true, role: true, locale: true, createdAt: true },
     })
 
+    let emailSent = true
     if (!isAutoVerified) {
       try {
         await this.sendVerificationEmail(user.id, dto.email, dto.locale)
       } catch (err) {
+        emailSent = false
         this.logger.error(`Failed to send verification email to ${dto.email}: ${err instanceof Error ? err.message : err}`)
       }
     }
-    this.logger.log(`New user registered: ${user.email} (${user.role})`)
-    return user
+    this.logger.log(`New user registered: ${user.email} (${user.role}) - emailSent: ${emailSent}`)
+    return { ...user, emailSent }
   }
 
   async sendVerificationEmail(userId: string, email: string, locale = 'fr') {
@@ -147,11 +149,12 @@ export class AuthService {
 
     try {
       await this.sendVerificationEmail(user.id, user.email, user.locale)
+      return { sent: true }
     } catch (err) {
-      this.logger.error(`Failed to resend verification email to ${user.email}: ${err instanceof Error ? err.message : err}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      this.logger.error(`Failed to resend verification email to ${user.email}: ${msg}`)
+      throw new BadRequestException("Impossible d'envoyer l'email de vérification pour le moment. Veuillez vérifier la configuration ou réessayer.")
     }
-
-    return { sent: true }
   }
 
   private isSuperAdminEmail(email: string): boolean {

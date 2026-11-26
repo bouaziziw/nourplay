@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "start:prod": "node dist/index.js",
     "test:ai": "tsx scripts/test-ai.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@nourplay/db": "workspace:*",

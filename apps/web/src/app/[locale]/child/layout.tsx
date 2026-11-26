@@ -55,8 +55,8 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (!token || !session) return
-    const profileId = session.profileId
+    const profileId = session?.profileId
+    if (!token || !profileId) return
     const fetch = async () => {
       try {
         const { watchedSec } = await api.users.getDailyWatchTime(token, profileId)

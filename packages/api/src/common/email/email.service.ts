@@ -15,7 +15,7 @@ export class EmailService {
   private readonly provider: string
 
   constructor(private readonly config: ConfigService) {
-    this.from = config.get<string>('EMAIL_FROM', 'noreply@nourplay.app')
+    this.from = config.get<string>('EMAIL_FROM', 'NourPlay <noreply@nour-play.app>')
     this.provider = config.get<string>('EMAIL_PROVIDER', 'console')
   }
 
@@ -34,7 +34,8 @@ export class EmailService {
   }
 
   async sendVerificationEmail(to: string, token: string, locale = 'fr') {
-    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000')
+    const rawAppUrl = this.config.get<string>('APP_URL', 'http://localhost:3000')
+    const appUrl = rawAppUrl.replace(/\/+$/, '')
     const link = `${appUrl}/${locale}/auth/verify-email?token=${token}`
 
     const subjects: Record<string, string> = {
@@ -236,42 +237,73 @@ export class EmailService {
   }
 
   private async sendViaResend(options: SendOptions) {
-    const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim()
-    if (!apiKey) {
-      if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
-        this.logger.warn(`[EMAIL] RESEND_API_KEY non configuré — bascule automatique en console`)
+    const rawApiKey = this.config.get<string>('RESEND_API_KEY')?.trim()
+    const isPlaceholder = !rawApiKey || rawApiKey === '[SENSITIVE]' || !rawApiKey.startsWith('re_')
+    const isPreview = process.env.VERCEL_ENV === 'preview'
+    const isProd = process.env.NODE_ENV === 'production' && !isPreview
+
+    if (isPlaceholder) {
+      if (!isProd) {
+        this.logger.warn(`[EMAIL] RESEND_API_KEY non configuré ou factice — bascule automatique en console/simulation`)
         this.logger.log(`[EMAIL SIMULÉ] Pour: ${options.to} | Sujet: ${options.subject}`)
         if (options.text) {
-          this.logger.log(`[EMAIL TEXT] ${options.text}`)
+          this.logger.log(`[EMAIL TEXT/LIEN] ${options.text}`)
         }
         return
       }
-      throw new Error('RESEND_API_KEY manquant')
+      throw new Error('RESEND_API_KEY manquant ou invalide')
     }
 
+    const apiKey = rawApiKey
     const appName = this.config.get<string>('APP_NAME', 'NourPlay')
     const from = this.from.includes('<') ? this.from : `${appName} <${this.from}>`
     const to = Array.isArray(options.to) ? options.to : [options.to]
 
-    const body: Record<string, unknown> = {
-      from,
-      to,
-      subject: options.subject,
-      html: options.html,
-    }
-    if (options.text) {
-      body.text = options.text
+    const makeBody = (fromAddr: string): Record<string, unknown> => {
+      const body: Record<string, unknown> = {
+        from: fromAddr,
+        to,
+        subject: options.subject,
+        html: options.html,
+      }
+      if (options.text) {
+        body.text = options.text
+      }
+      return body
     }
 
     try {
-      const response = await safeFetch('https://api.resend.com/emails', {
+      let response = await safeFetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(makeBody(from)),
       })
+
+      // Si le domaine n'est pas encore vérifié sur Resend (HTTP 403),
+      // on tente automatiquement un renvoi de secours via l'adresse de test Resend 'onboarding@resend.dev'
+      if (response.status === 403 && !from.includes('onboarding@resend.dev')) {
+        const initialErr = await response.text()
+        this.logger.warn(`[EMAIL] Domaine non vérifié sur Resend (${initialErr}). Tentative de secours avec onboarding@resend.dev...`)
+        const fallbackFrom = `${appName} <onboarding@resend.dev>`
+        const retryResponse = await safeFetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(makeBody(fallbackFrom)),
+        })
+        if (retryResponse.ok) {
+          response = retryResponse
+          this.logger.log(`[EMAIL] Envoi de secours réussi via onboarding@resend.dev pour ${options.to}`)
+        } else {
+          // Si le secours échoue aussi, on conserve l'erreur initiale
+          this.logger.error(`[EMAIL] Échec du renvoi de secours Resend (${retryResponse.status}): ${await retryResponse.text()}`)
+        }
+      }
 
       if (!response.ok) {
         const err = await response.text()
@@ -292,22 +324,39 @@ export class EmailService {
   }
 
   private verificationTemplate(link: string, locale: string): string {
-    const texts: Record<string, { title: string; body: string; cta: string }> = {
-      fr: { title: 'Vérifiez votre email', body: 'Cliquez sur le bouton ci-dessous pour vérifier votre adresse email.', cta: 'Vérifier mon email' },
-      en: { title: 'Verify your email', body: 'Click the button below to verify your email address.', cta: 'Verify my email' },
+    const texts: Record<string, { title: string; body: string; cta: string; note: string }> = {
+      fr: { title: 'Vérifiez votre email', body: 'Cliquez sur le bouton ci-dessous pour vérifier votre adresse email.', cta: 'Vérifier mon email', note: 'Lien valide 24h. Si vous n\'avez pas créé de compte, ignorez cet email.' },
+      en: { title: 'Verify your email', body: 'Click the button below to verify your email address.', cta: 'Verify my email', note: 'Link valid for 24h. If you didn\'t create an account, ignore this email.' },
+      ar: { title: 'تأكيد بريدك الإلكتروني', body: 'انقر على الزر أدناه لتأكيد عنوان بريدك الإلكتروني.', cta: 'تأكيد بريدي الإلكتروني', note: 'الرابط صالح لمدة 24 ساعة. إذا لم تكن قد أنشأت حسابًا، يرجى تجاهل هذه الرسالة.' },
+      es: { title: 'Verifica tu correo', body: 'Haz clic en el botón a continuación para verificar tu dirección de correo electrónico.', cta: 'Verificar mi correo', note: 'Enlace válido durante 24 horas. Si no creaste una cuenta, ignora este correo.' },
     }
     const t = texts[locale] ?? texts['fr']
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 24h. Si vous n'avez pas créé de compte, ignorez cet email.</p>`)
+    const isRtl = locale === 'ar'
+    return this.layout(
+      t.title,
+      `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`,
+      isRtl,
+    )
   }
 
   private resetTemplate(link: string, locale: string): string {
-    const t = locale === 'fr'
-      ? { title: 'Réinitialiser votre mot de passe', body: 'Vous avez demandé la réinitialisation de votre mot de passe.', cta: 'Choisir un nouveau mot de passe' }
-      : { title: 'Reset your password', body: 'You requested a password reset.', cta: 'Choose a new password' }
-    return this.layout(t.title, `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">Lien valide 1h. Si vous n'avez pas fait cette demande, ignorez cet email.</p>`)
+    const texts: Record<string, { title: string; body: string; cta: string; note: string }> = {
+      fr: { title: 'Réinitialiser votre mot de passe', body: 'Vous avez demandé la réinitialisation de votre mot de passe.', cta: 'Choisir un nouveau mot de passe', note: 'Lien valide 1h. Si vous n\'avez pas fait cette demande, ignorez cet email.' },
+      en: { title: 'Reset your password', body: 'You requested a password reset.', cta: 'Choose a new password', note: 'Link valid for 1h. If you didn\'t request this, ignore this email.' },
+      ar: { title: 'إعادة تعيين كلمة المرور', body: 'لقد طلبت إعادة تعيين كلمة المرور الخاصة بك.', cta: 'اختيار كلمة مرور جديدة', note: 'الرابط صالح لمدة ساعة واحدة. إذا لم تكن قد طلبت ذلك، يرجى تجاهل هذه الرسالة.' },
+      es: { title: 'Restablecer contraseña', body: 'Has solicitado restablecer tu contraseña.', cta: 'Elegir nueva contraseña', note: 'Enlace válido durante 1 hora. Si no solicitaste esto, ignora este correo.' },
+    }
+    const t = texts[locale] ?? texts['fr']
+    const isRtl = locale === 'ar'
+    return this.layout(
+      t.title,
+      `<p>${t.body}</p><a href="${link}" style="background:#1c90d8;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;margin-top:16px">${t.cta}</a><p style="color:#9ca3af;font-size:12px;margin-top:24px">${t.note}</p>`,
+      isRtl,
+    )
   }
 
-  private layout(title: string, content: string): string {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nour-play.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
+  private layout(title: string, content: string, isRtl = false): string {
+    const dirAttr = isRtl ? 'dir="rtl"' : 'dir="ltr"'
+    return `<!DOCTYPE html><html ${dirAttr}><head><meta charset="utf-8"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;background:#f9fafb;margin:0;padding:40px 16px"${isRtl ? ' dir="rtl"' : ''}><div style="max-width:480px;margin:auto;background:#fff;border-radius:12px;padding:40px;border:1px solid #e5e7eb"><img src="https://nour-play.app/logo.png" alt="NourPlay" style="height:32px;margin-bottom:24px"><h1 style="font-size:20px;color:#111827;margin:0 0 16px">${title}</h1>${content}<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0"><p style="color:#9ca3af;font-size:12px;margin:0">NourPlay — Plateforme de curation vidéo sécurisée</p></div></body></html>`
   }
 }
