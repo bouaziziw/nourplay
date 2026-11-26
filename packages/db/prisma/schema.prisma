@@ -170,9 +170,10 @@ model ChildProfile {
   pinHash     String // PIN de déverrouillage
 
   // Contrôle parental
-  viewingSchedule Json? // { "mon": ["08:00-12:00"], ... }
-  dailyLimitMin   Int?
-  sessionLimitMin Int?
+  viewingSchedule  Json? // { "mon": ["08:00-12:00"], ... }
+  dailyLimitMin    Int?
+  sessionLimitMin  Int?
+  isViewingBlocked Boolean   @default(false) @map("is_viewing_blocked")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

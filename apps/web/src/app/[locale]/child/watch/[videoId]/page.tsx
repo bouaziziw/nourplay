@@ -28,7 +28,7 @@ export default function ChildWatchPage() {
   const locale = useLocale()
   const router = useRouter()
   const { token } = useAuth()
-  const { session } = useChildSession()
+  const { session, updateViewingBlocked } = useChildSession()
   const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null)
   const [directVideo, setDirectVideo] = useState<VideoSearchResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,12 +59,16 @@ export default function ChildWatchPage() {
         .catch(() => {})
         .finally(() => setLoading(false))
     } else {
-      api.videos.getById(token, videoId)
+      api.videos.getById(token, videoId, session?.profileId)
         .then(setDirectVideo)
-        .catch(() => {})
+        .catch((err: unknown) => {
+          if (err instanceof Error && (err.message.includes('pause') || err.message.includes('bloqué'))) {
+            updateViewingBlocked(true)
+          }
+        })
         .finally(() => setLoading(false))
     }
-  }, [token, playlistId, videoId])
+  }, [token, playlistId, videoId, session?.profileId, updateViewingBlocked])
 
   useEffect(() => {
     if (!token || !videoId) return
@@ -112,7 +116,11 @@ export default function ChildWatchPage() {
       videoId,
       durationWatchedSec: durationSec,
       completed,
-    }).catch(() => {})
+    }).catch((err: unknown) => {
+      if (err instanceof Error && (err.message.includes('pause') || err.message.includes('bloqué'))) {
+        updateViewingBlocked(true)
+      }
+    })
   }
 
   const handleCCToggle = () => {

@@ -63,6 +63,7 @@ export default function DashboardPage() {
         dailyLimitMin: selectedProfile.dailyLimitMin,
         sessionLimitMin: selectedProfile.sessionLimitMin,
         viewingSchedule: selectedProfile.viewingSchedule,
+        isViewingBlocked: selectedProfile.isViewingBlocked,
       })
       router.push(`/${locale}/child/playlists`)
     })
@@ -128,7 +129,13 @@ export default function DashboardPage() {
                   </div>
                   <p className="font-medium text-gray-900 text-sm truncate">{p.displayName}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{ageLabels[p.ageGroup] ?? p.ageGroup}</p>
-                  <span className="text-xs text-[#1c90d8] font-semibold mt-1 block">▶ Mode enfant</span>
+                  {p.isViewingBlocked ? (
+                    <span className="text-xs text-rose-600 font-semibold mt-1 block bg-rose-50 rounded-md py-0.5 border border-rose-200">
+                      ⏸️ Visionnage bloqué
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[#1c90d8] font-semibold mt-1 block">▶ Mode enfant</span>
+                  )}
                 </button>
                 <Link
                   href={`/${locale}/dashboard/profiles/${p.id}`}

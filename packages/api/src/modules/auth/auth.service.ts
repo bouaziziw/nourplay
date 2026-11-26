@@ -202,11 +202,35 @@ export class AuthService {
     return Boolean(user?.passwordHash && await argon2.verify(user.passwordHash, password))
   }
 
-  async verifyParentPassword(userId: string, password: string): Promise<{ verified: true }> {
-    if (!(await this.verifyAccountPassword(userId, password))) {
-      throw new UnauthorizedException('Mot de passe incorrect')
+  async verifyParentPassword(userId: string, passwordOrPin: string): Promise<{ verified: true }> {
+    // 1. Vérifier si c'est le mot de passe principal du compte
+    if (await this.verifyAccountPassword(userId, passwordOrPin)) {
+      return { verified: true }
     }
-    return { verified: true }
+
+    // 2. Vérifier si c'est le code PIN parent configuré
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+      select: { parentPinHash: true },
+    })
+    if (user?.parentPinHash && (await argon2.verify(user.parentPinHash, passwordOrPin))) {
+      return { verified: true }
+    }
+
+    // 3. Secours : vérifier si le parent a saisi le PIN d'un de ses profils enfants
+    if (this.prisma.childProfile?.findMany) {
+      const childProfiles = await this.prisma.childProfile.findMany({
+        where: { userId, deletedAt: null },
+        select: { pinHash: true },
+      })
+      for (const cp of childProfiles) {
+        if (cp.pinHash && (await argon2.verify(cp.pinHash, passwordOrPin))) {
+          return { verified: true }
+        }
+      }
+    }
+
+    throw new UnauthorizedException('Mot de passe ou code PIN incorrect')
   }
 
   async setParentPin(userId: string, password: string, pin: string): Promise<{ configured: true }> {

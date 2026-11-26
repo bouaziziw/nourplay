@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '../../../../hooks/useAuth'
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const t = useTranslations('auth')
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -39,7 +40,8 @@ export default function LoginPage() {
         setUserId(result.userId)
         setShowTotp(true)
       } else {
-        router.push(`/${locale}/child`)
+        const redirectParam = searchParams.get('redirect')
+        router.push(redirectParam || `/${locale}/dashboard`)
       }
     } catch (err) {
       setError(getAuthErrorMessage(err, 'Erreur de connexion'))
@@ -49,7 +51,8 @@ export default function LoginPage() {
   }
 
   if (showTotp) {
-    return <TotpStep userId={userId!} locale={locale} onSuccess={async () => { router.push(`/${locale}/child`) }} />
+    const redirectParam = searchParams.get('redirect')
+    return <TotpStep userId={userId!} locale={locale} onSuccess={async () => { router.push(redirectParam || `/${locale}/dashboard`) }} />
   }
 
   return (

@@ -12,6 +12,7 @@ vi.mock('argon2', () => ({
 const makePrisma = () => ({
   user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), findFirst: vi.fn() },
   refreshToken: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+  childProfile: { findMany: vi.fn().mockResolvedValue([]) },
 })
 
 const makeJwt = () => ({
@@ -54,8 +55,10 @@ describe('AuthService', () => {
   let emailService: ReturnType<typeof makeEmailService>
   let tokenService: ReturnType<typeof makeTokenService>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    const argon2 = await import('argon2')
+    vi.mocked(argon2.verify).mockResolvedValue(true)
     prisma = makePrisma()
     jwt = makeJwt()
     config = makeConfig()
@@ -197,13 +200,25 @@ describe('AuthService', () => {
     })
 
     it('refuse un compte sans mot de passe ou un mot de passe incorrect', async () => {
-      prisma.user.findUnique.mockResolvedValue({ passwordHash: null })
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: null, parentPinHash: null })
       await expect(service.verifyParentPassword('uuid-1', 'wrong')).rejects.toThrow(UnauthorizedException)
 
-      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed' })
+      prisma.user.findUnique.mockResolvedValue({ passwordHash: '$argon2id$hashed', parentPinHash: null })
       const argon2 = await import('argon2')
       vi.mocked(argon2.verify).mockResolvedValueOnce(false)
       await expect(service.verifyParentPassword('uuid-1', 'wrong')).rejects.toThrow(UnauthorizedException)
+    })
+
+    it('accepte le code PIN parent comme mot de passe de secours', async () => {
+      prisma.user.findUnique
+        .mockResolvedValueOnce({ passwordHash: '$argon2id$wrong' })
+        .mockResolvedValueOnce({ parentPinHash: '$argon2id$pin' })
+      const argon2 = await import('argon2')
+      vi.mocked(argon2.verify)
+        .mockResolvedValueOnce(false) // passwordHash check fails
+        .mockResolvedValueOnce(true)  // parentPinHash check succeeds
+
+      await expect(service.verifyParentPassword('uuid-1', '1234')).resolves.toEqual({ verified: true })
     })
   })
 

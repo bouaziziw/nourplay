@@ -31,16 +31,34 @@ interface AuthContext extends AuthState {
 
 const AuthCtx = createContext<AuthContext | null>(null)
 
+const PARENT_UNLOCKED_STORAGE_KEY = 'nourplay_parent_unlocked'
+
+function isParentUnlockedStored(): boolean {
+  try {
+    return typeof window !== 'undefined' && sessionStorage.getItem(PARENT_UNLOCKED_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null, token: null, loading: true, parentModeUnlocked: false,
-  })
+  const [state, setState] = useState<AuthState>(() => ({
+    user: null,
+    token: null,
+    loading: true,
+    parentModeUnlocked: isParentUnlockedStored(),
+  }))
   const refreshInFlight = useRef<Promise<void> | null>(null)
 
   const loadUser = useCallback(async (token: string) => {
     try {
       const user = await api.users.me(token)
-      setState({ user, token, loading: false, parentModeUnlocked: false })
+      setState(current => ({
+        user,
+        token,
+        loading: false,
+        parentModeUnlocked: current.parentModeUnlocked || isParentUnlockedStored(),
+      }))
     } catch {
       setState({ user: null, token: null, loading: false, parentModeUnlocked: false })
     }
@@ -89,11 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const result = await api.auth.login({ email, password })
     if (result.requiresTwoFactor) return result
+    try {
+      sessionStorage.setItem(PARENT_UNLOCKED_STORAGE_KEY, '1')
+    } catch {}
     if (result.accessToken) await loadUser(result.accessToken)
+    setState(current => ({ ...current, parentModeUnlocked: true }))
     return result
   }
 
   const logout = async () => {
+    try {
+      sessionStorage.removeItem(PARENT_UNLOCKED_STORAGE_KEY)
+    } catch {}
     if (state.token) await api.auth.logout(state.token).catch(() => {})
     setState({ user: null, token: null, loading: false, parentModeUnlocked: false })
   }
@@ -108,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [state.token, loadUser])
 
-  const unlockParentMode = useCallback(async (password: string) => {
+  const unlockParentMode = useCallback(async (passwordOrPin: string) => {
     let currentToken = state.token
     if (!currentToken) {
       const session = await api.auth.refresh().catch(() => null)
@@ -120,23 +145,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentToken) throw new Error('Vous devez être connecté pour déverrouiller le mode parent.')
 
     try {
-      await api.auth.verifyParentPassword(currentToken, password)
+      await api.auth.verifyParentPassword(currentToken, passwordOrPin)
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401 && err.message !== 'Mot de passe incorrect') {
+      const isIncorrect = err instanceof ApiError && err.status === 401 && (
+        err.message === 'Mot de passe ou code PIN incorrect' ||
+        err.message === 'Mot de passe incorrect' ||
+        err.message === 'Code PIN incorrect'
+      )
+      if (err instanceof ApiError && err.status === 401 && !isIncorrect) {
         const session = await api.auth.refresh().catch(() => null)
         if (session?.accessToken) {
           await loadUser(session.accessToken)
-          await api.auth.verifyParentPassword(session.accessToken, password)
+          await api.auth.verifyParentPassword(session.accessToken, passwordOrPin)
+          try {
+            sessionStorage.setItem(PARENT_UNLOCKED_STORAGE_KEY, '1')
+          } catch {}
           setState(current => ({ ...current, parentModeUnlocked: true }))
           return
         }
       }
       throw err
     }
+    try {
+      sessionStorage.setItem(PARENT_UNLOCKED_STORAGE_KEY, '1')
+    } catch {}
     setState(current => ({ ...current, parentModeUnlocked: true }))
   }, [state.token, loadUser])
 
   const lockParentMode = useCallback(() => {
+    try {
+      sessionStorage.removeItem(PARENT_UNLOCKED_STORAGE_KEY)
+    } catch {}
     setState(current => ({ ...current, parentModeUnlocked: false }))
   }, [])
 

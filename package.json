@@ -57,6 +57,7 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "db:migrate": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:dev",
     "db:migrate:prod": "dotenv -e .env -- pnpm --filter @nourplay/db migrate:deploy",
+    "db:push": "dotenv -e .env -- pnpm --filter @nourplay/db db:push",
     "db:seed": "dotenv -e .env -- pnpm --filter @nourplay/db seed",
     "db:make-admin": "dotenv -e .env -- tsx scripts/make-admin.ts",
     "db:studio": "dotenv -e .env -- pnpm --filter @nourplay/db studio",

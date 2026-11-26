@@ -28,6 +28,8 @@ import { ChangePinDto } from './dto/change-pin.dto'
 import { RecordWatchDto } from './dto/record-watch.dto'
 import { UpdateUserDto } from './dto/update-user.dto'
 import { ChangePasswordDto } from './dto/change-password.dto'
+import { SetViewingBlockedDto } from './dto/set-viewing-blocked.dto'
+import { AddWatchTimeDto } from './dto/add-watch-time.dto'
 
 @ApiTags('Users & Profils')
 @ApiBearerAuth()
@@ -121,6 +123,52 @@ export class UserController {
     @Param('profileId', ParseUUIDPipe) profileId: string,
   ) {
     return this.userService.deleteProfile(user.sub, profileId)
+  }
+
+  @Patch('me/profiles/:profileId/block-viewing')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Bloquer ou débloquer immédiatement le visionnage d\'un profil enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  setViewingBlocked(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() dto: SetViewingBlockedDto,
+  ) {
+    return this.userService.setViewingBlocked(user.sub, profileId, dto.blocked)
+  }
+
+  @Post('me/profiles/:profileId/reactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Réactiver immédiatement le profil enfant (débloque et réinitialise le temps du jour)' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  reactivateProfile(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.reactivateProfile(user.sub, profileId)
+  }
+
+  @Patch('me/profiles/:profileId/add-time')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Ajouter du temps de visionnage au profil enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  addWatchTime(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+    @Body() dto: AddWatchTimeDto,
+  ) {
+    return this.userService.addProfileWatchTime(user.sub, profileId, dto.additionalMinutes)
+  }
+
+  @Patch('me/profiles/:profileId/disable-timer')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Désactiver le timer et les limites pour ce profil enfant' })
+  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid' })
+  disableTimer(
+    @CurrentUser() user: JwtPayload,
+    @Param('profileId', ParseUUIDPipe) profileId: string,
+  ) {
+    return this.userService.disableProfileTimer(user.sub, profileId)
   }
 
   @Post('me/profiles/:profileId/pin/verify')

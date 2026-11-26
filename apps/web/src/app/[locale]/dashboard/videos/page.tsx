@@ -604,9 +604,21 @@ export default function VideosPage() {
                         <p className="line-clamp-2 min-h-10 text-sm font-medium leading-5 text-gray-900">
                           {video.title}
                         </p>
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusColor}`}>
-                          {statusLabel}
-                        </span>
+                        <div>
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        {video.validationStatus === 'REJECTED' && video.rejectionReason && (
+                          <div className="rounded-lg bg-red-50 border border-red-200 p-2 text-xs text-red-700">
+                            <p className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wide text-red-800">
+                              <span>⚠️</span> Motif du refus :
+                            </p>
+                            <p className="mt-0.5 text-xs text-red-700 leading-snug">
+                              {video.rejectionReason}
+                            </p>
+                          </div>
+                        )}
                         {video.validationStatus === 'PENDING' && (
                           <button
                             type="button"

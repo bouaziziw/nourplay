@@ -27,6 +27,7 @@ const PIN_SELECT = {
   dailyLimitMin: true,
   sessionLimitMin: true,
   viewingSchedule: true,
+  isViewingBlocked: true,
   createdAt: true,
 }
 
@@ -283,6 +284,75 @@ export class UserService {
     })
   }
 
+  async setViewingBlocked(userId: string, profileId: string, blocked: boolean) {
+    await this.assertProfileOwner(userId, profileId)
+    return this.prisma.childProfile.update({
+      where: { id: profileId },
+      data: { isViewingBlocked: blocked },
+      select: PIN_SELECT,
+    })
+  }
+
+  async reactivateProfile(userId: string, profileId: string) {
+    await this.assertProfileOwner(userId, profileId)
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    await this.prisma.watchHistory.deleteMany({
+      where: {
+        profileId,
+        watchedAt: { gte: startOfDay },
+      },
+    })
+
+    return this.prisma.childProfile.update({
+      where: { id: profileId },
+      data: { isViewingBlocked: false },
+      select: PIN_SELECT,
+    })
+  }
+
+  async addProfileWatchTime(userId: string, profileId: string, additionalMinutes: number) {
+    await this.assertProfileOwner(userId, profileId)
+    const current = await this.prisma.childProfile.findFirst({
+      where: { id: profileId, userId, deletedAt: null },
+      select: { dailyLimitMin: true, sessionLimitMin: true },
+    })
+
+    const data: { dailyLimitMin?: number; sessionLimitMin?: number; isViewingBlocked: boolean } = {
+      isViewingBlocked: false,
+    }
+
+    if (current?.dailyLimitMin != null) {
+      data.dailyLimitMin = current.dailyLimitMin + additionalMinutes
+    }
+    if (current?.sessionLimitMin != null) {
+      data.sessionLimitMin = current.sessionLimitMin + additionalMinutes
+    }
+    if (current?.dailyLimitMin == null && current?.sessionLimitMin == null) {
+      data.dailyLimitMin = additionalMinutes
+    }
+
+    return this.prisma.childProfile.update({
+      where: { id: profileId },
+      data,
+      select: PIN_SELECT,
+    })
+  }
+
+  async disableProfileTimer(userId: string, profileId: string) {
+    await this.assertProfileOwner(userId, profileId)
+    return this.prisma.childProfile.update({
+      where: { id: profileId },
+      data: {
+        dailyLimitMin: null,
+        sessionLimitMin: null,
+        isViewingBlocked: false,
+      },
+      select: PIN_SELECT,
+    })
+  }
+
   async verifyPin(userId: string, profileId: string, pin: string): Promise<boolean> {
     const profile = await this.prisma.childProfile.findFirst({
       where: { id: profileId, userId, deletedAt: null },
@@ -333,7 +403,7 @@ export class UserService {
     const [profile, video] = await Promise.all([
       this.prisma.childProfile.findFirst({
         where: { id: profileId, userId, deletedAt: null },
-        select: { id: true, displayName: true, dailyLimitMin: true, userId: true, viewingSchedule: true },
+        select: { id: true, displayName: true, dailyLimitMin: true, userId: true, viewingSchedule: true, isViewingBlocked: true },
       }),
       this.prisma.video.findUnique({
         where: { id: dto.videoId },
@@ -343,6 +413,9 @@ export class UserService {
 
     if (!profile) throw new NotFoundException('Profil introuvable')
     if (!video) throw new NotFoundException('Vidéo introuvable')
+    if (profile.isViewingBlocked) {
+      throw new ForbiddenException('Le visionnage a été mis en pause par un parent.')
+    }
     if (!this.isWithinSchedule(profile.viewingSchedule as Record<string, string[]> | null)) {
       throw new ForbiddenException('Visionnage non autorisé en dehors des plages horaires configurées')
     }
@@ -532,7 +605,10 @@ export class UserService {
   }
 
   async upsertVideoProgress(userId: string, profileId: string, videoId: string, positionSec: number) {
-    await this.assertProfileOwner(userId, profileId)
+    const profile = await this.assertProfileOwner(userId, profileId)
+    if (profile.isViewingBlocked) {
+      throw new ForbiddenException('Le visionnage a été mis en pause par un parent.')
+    }
     const video = await this.prisma.video.findUnique({ where: { id: videoId }, select: { id: true } })
     if (!video) throw new NotFoundException('Vidéo introuvable')
 
@@ -664,15 +740,18 @@ export class UserService {
 
   // ── Temps de visionnage quotidien ───────────────────────────
 
-  async getDailyWatchTime(userId: string, profileId: string): Promise<{ watchedSec: number }> {
-    await this.assertProfileOwner(userId, profileId)
+  async getDailyWatchTime(userId: string, profileId: string): Promise<{ watchedSec: number; isViewingBlocked: boolean }> {
+    const profile = await this.assertProfileOwner(userId, profileId)
     const now = new Date()
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const agg = await this.prisma.watchHistory.aggregate({
       where: { profileId, watchedAt: { gte: startOfDay } },
       _sum: { durationWatchedSec: true },
     })
-    return { watchedSec: agg._sum.durationWatchedSec ?? 0 }
+    return {
+      watchedSec: agg._sum.durationWatchedSec ?? 0,
+      isViewingBlocked: profile.isViewingBlocked,
+    }
   }
 
   async notifySessionExpired(userId: string, profileId: string): Promise<{ notified: boolean }> {
@@ -928,9 +1007,10 @@ export class UserService {
   private async assertProfileOwner(userId: string, profileId: string) {
     const profile = await this.prisma.childProfile.findFirst({
       where: { id: profileId, userId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, isViewingBlocked: true },
     })
     if (!profile) throw new NotFoundException('Profil introuvable')
+    return profile
   }
 
   private async hashPin(pin: string): Promise<string> {

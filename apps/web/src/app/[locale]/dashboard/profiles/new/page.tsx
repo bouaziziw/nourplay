@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
@@ -29,6 +30,7 @@ export default function NewProfilePage() {
   })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [timerEnabled, setTimerEnabled] = useState(false)
 
   const set = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }))
 
@@ -52,8 +54,8 @@ export default function NewProfilePage() {
         displayName: form.displayName.trim(),
         ageGroup: form.ageGroup,
         pin: form.pin,
-        ...(form.dailyLimitMin && { dailyLimitMin: Number(form.dailyLimitMin) }),
-        ...(form.sessionLimitMin && { sessionLimitMin: Number(form.sessionLimitMin) }),
+        ...(timerEnabled && form.dailyLimitMin && { dailyLimitMin: Number(form.dailyLimitMin) }),
+        ...(timerEnabled && form.sessionLimitMin && { sessionLimitMin: Number(form.sessionLimitMin) }),
       })
       router.push(`/${locale}/dashboard`)
     } catch (err: unknown) {
@@ -76,7 +78,20 @@ export default function NewProfilePage() {
 
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 space-y-2">
+            <p className="font-medium">{error}</p>
+            {(error.includes('forfait') || error.includes('limité') || error.includes('Premium')) && (
+              <div className="pt-1">
+                <Link
+                  href={`/${locale}/dashboard/subscription`}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-2xs"
+                >
+                  <span>⭐</span>
+                  <span>Passer à Premium pour des profils illimités</span>
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         <div>
@@ -143,34 +158,104 @@ export default function NewProfilePage() {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-sm font-medium text-gray-700 mb-3">Contrôles parentaux <span className="text-gray-400 font-normal">(optionnel)</span></p>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="border-t border-gray-100 pt-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Limite journalière (min)</label>
-              <input
-                type="number"
-                min={1}
-                max={480}
-                value={form.dailyLimitMin}
-                onChange={e => set('dailyLimitMin', e.target.value)}
-                placeholder="Ex : 60"
-                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-900">Limites de visionnage & Minuteur</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  timerEnabled ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {timerEnabled ? '⏱️ Actif' : '♾️ Illimité'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {timerEnabled
+                  ? 'Le visionnage s’arrêtera automatiquement au terme de la durée configurée.'
+                  : 'Désactivé (Visionnage libre sans contrainte de temps).'}
+              </p>
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Limite par session (min)</label>
-              <input
-                type="number"
-                min={1}
-                max={120}
-                value={form.sessionLimitMin}
-                onChange={e => set('sessionLimitMin', e.target.value)}
-                placeholder="Ex : 30"
-                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={timerEnabled}
+              onClick={() => {
+                const next = !timerEnabled
+                setTimerEnabled(next)
+                if (!next) {
+                  set('dailyLimitMin', '')
+                  set('sessionLimitMin', '')
+                } else if (!form.dailyLimitMin) {
+                  set('dailyLimitMin', '60')
+                }
+              }}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                timerEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+              }`}
+            >
+              <span className="sr-only">Activer ou désactiver le minuteur</span>
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  timerEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
               />
-            </div>
+            </button>
           </div>
+
+          {timerEnabled && (
+            <div className="space-y-4 pt-2 border-t border-gray-100 animate-fadeIn">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Sélection rapide de la limite :
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[15, 30, 45, 60, 90, 120].map(mins => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => set('dailyLimitMin', String(mins))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        form.dailyLimitMin === String(mins)
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300'
+                      }`}
+                    >
+                      {mins < 60 ? `${mins} min` : mins === 60 ? '1 heure' : `${mins / 60}h`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Limite journalière (min)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={480}
+                    value={form.dailyLimitMin}
+                    onChange={e => set('dailyLimitMin', e.target.value)}
+                    placeholder="Ex : 60"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Limite par session (min)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={form.sessionLimitMin}
+                    onChange={e => set('sessionLimitMin', e.target.value)}
+                    placeholder="Optionnelle"
+                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <button

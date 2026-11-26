@@ -96,6 +96,7 @@ export interface ProfileSummary {
   dailyLimitMin: number | null
   sessionLimitMin: number | null
   viewingSchedule: Record<string, string[]> | null
+  isViewingBlocked?: boolean
   createdAt: string
 }
 
@@ -185,6 +186,7 @@ export interface VideoSubmission {
   validationStatus: string
   submitterApprovedAt: string | null
   createdAt: string
+  rejectionReason?: string | null
 }
 
 export interface PlaylistAccess {
@@ -555,7 +557,33 @@ export const api = {
       }),
 
     getDailyWatchTime: (token: string, profileId: string) =>
-      request<{ watchedSec: number }>(`/users/me/profiles/${profileId}/daily-watch-time`, bearer(token)),
+      request<{ watchedSec: number; isViewingBlocked?: boolean }>(`/users/me/profiles/${profileId}/daily-watch-time`, bearer(token)),
+
+    setViewingBlocked: (token: string, profileId: string, blocked: boolean) =>
+      request<ProfileSummary>(`/users/me/profiles/${profileId}/block-viewing`, {
+        method: 'PATCH',
+        body: JSON.stringify({ blocked }),
+        ...bearer(token),
+      }),
+
+    reactivateProfile: (token: string, profileId: string) =>
+      request<ProfileSummary>(`/users/me/profiles/${profileId}/reactivate`, {
+        method: 'POST',
+        ...bearer(token),
+      }),
+
+    addWatchTime: (token: string, profileId: string, additionalMinutes: number) =>
+      request<ProfileSummary>(`/users/me/profiles/${profileId}/add-time`, {
+        method: 'PATCH',
+        body: JSON.stringify({ additionalMinutes }),
+        ...bearer(token),
+      }),
+
+    disableTimer: (token: string, profileId: string) =>
+      request<ProfileSummary>(`/users/me/profiles/${profileId}/disable-timer`, {
+        method: 'PATCH',
+        ...bearer(token),
+      }),
 
     notifySessionExpired: (token: string, profileId: string) =>
       request<{ notified: boolean }>(`/users/me/profiles/${profileId}/session-expired`, {
@@ -683,8 +711,8 @@ export const api = {
       )
     },
 
-    getById: (token: string, id: string) =>
-      request<VideoSearchResult>(`/videos/${id}`, bearer(token)),
+    getById: (token: string, id: string, profileId?: string) =>
+      request<VideoSearchResult>(`/videos/${id}${profileId ? `?profileId=${profileId}` : ''}`, bearer(token)),
 
     getSimilar: (token: string, id: string, limit = 4) =>
       request<VideoSummary[]>(`/videos/${id}/similar?limit=${limit}`, bearer(token)),

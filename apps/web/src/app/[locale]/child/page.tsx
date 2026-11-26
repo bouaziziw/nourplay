@@ -40,6 +40,7 @@ export default function ChildProfileSelector() {
             dailyLimitMin: autoProfile.dailyLimitMin,
             sessionLimitMin: autoProfile.sessionLimitMin,
             viewingSchedule: autoProfile.viewingSchedule,
+            isViewingBlocked: autoProfile.isViewingBlocked,
           })
           router.replace(`/${locale}/child/playlists`)
         }
@@ -58,6 +59,7 @@ export default function ChildProfileSelector() {
         dailyLimitMin: selected.dailyLimitMin,
         sessionLimitMin: selected.sessionLimitMin,
         viewingSchedule: selected.viewingSchedule,
+        isViewingBlocked: selected.isViewingBlocked,
       })
       router.push(`/${locale}/child/playlists`)
     })
@@ -102,11 +104,29 @@ export default function ChildProfileSelector() {
                 <p className="text-xs text-[#1c90d8] font-extrabold mt-1 bg-[#1c90d8]/10 px-2.5 py-0.5 rounded-full border border-[#1c90d8]/30 inline-block shadow-xs">
                   {AGE_LABELS[p.ageGroup] ?? p.ageGroup} ans
                 </p>
+                {p.isViewingBlocked && (
+                  <p className="text-[11px] text-rose-600 font-extrabold mt-1 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                    ⏸️ En pause
+                  </p>
+                )}
               </div>
             </button>
           ))}
         </div>
       )}
+
+      <div className="mt-10 text-center">
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('nourplay:open-parent-unlock'))
+          }}
+          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-extrabold transition-all shadow-xs active:scale-95"
+        >
+          <span>🔒</span>
+          <span>Accéder au Mode Parent</span>
+        </button>
+      </div>
 
       {selected && (
         <PinModal

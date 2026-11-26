@@ -223,17 +223,68 @@ export class EmailService {
     const subjects: Record<string, [string, string]> = {
       fr: ['Votre vidéo a été approuvée — NourPlay', 'Votre vidéo a été refusée — NourPlay'],
       en: ['Your video was approved — NourPlay', 'Your video was rejected — NourPlay'],
+      ar: ['تمت الموافقة على الفيديو الخاص بك — NourPlay', 'تم رفض الفيديو الخاص بك — NourPlay'],
+      es: ['Tu video ha sido aprobado — NourPlay', 'Tu video ha sido rechazado — NourPlay'],
     }
     const [subjectApproved, subjectRejected] = subjects[locale] ?? subjects['fr']
     const title = approved ? subjectApproved : subjectRejected
-    const bodyFr = approved
-      ? `Votre vidéo <strong>${videoTitle}</strong> a été approuvée et est maintenant disponible dans la bibliothèque.`
-      : `Votre vidéo <strong>${videoTitle}</strong> n'a pas été acceptée.${reason ? `<br><br><strong>Motif :</strong> ${reason}` : ''}`
-    const bodyEn = approved
-      ? `Your video <strong>${videoTitle}</strong> has been approved and is now available in the library.`
-      : `Your video <strong>${videoTitle}</strong> was not accepted.${reason ? `<br><br><strong>Reason:</strong> ${reason}` : ''}`
-    const body = locale === 'en' ? bodyEn : bodyFr
-    await this.send({ to, subject: title, html: this.layout(title, `<p>${body}</p>`) })
+
+    let contentHtml = ''
+    let textContent = ''
+
+    if (approved) {
+      if (locale === 'en') {
+        contentHtml = `<p style="color:#374151;font-size:15px;line-height:1.6">Your video <strong>${videoTitle}</strong> has been approved and is now available in the library.</p>`
+        textContent = `Your video "${videoTitle}" has been approved and is now available in the library.`
+      } else if (locale === 'ar') {
+        contentHtml = `<p style="color:#374151;font-size:15px;line-height:1.6;direction:rtl">تمت الموافقة على الفيديو الخاص بك <strong>${videoTitle}</strong> وهو الآن متاح في المكتبة.</p>`
+        textContent = `تمت الموافقة على الفيديو الخاص بك "${videoTitle}" وهو الآن متاح في المكتبة.`
+      } else {
+        contentHtml = `<p style="color:#374151;font-size:15px;line-height:1.6">Votre vidéo <strong>${videoTitle}</strong> a été approuvée et est maintenant disponible dans la bibliothèque.</p>`
+        textContent = `Votre vidéo "${videoTitle}" a été approuvée et est maintenant disponible dans la bibliothèque.`
+      }
+    } else {
+      const reasonLabel = locale === 'en' ? 'Reason for rejection' : locale === 'ar' ? 'سبب الرفض' : 'Motif du refus'
+      const explanation = reason || (locale === 'en' ? 'Does not comply with NourPlay child safety standards.' : 'Non conforme aux règles de sécurité et de bienveillance pour les enfants de NourPlay.')
+
+      if (locale === 'en') {
+        contentHtml = `
+          <p style="color:#374151;font-size:15px;line-height:1.6">We regret to inform you that your video <strong>${videoTitle}</strong> was not accepted on NourPlay.</p>
+          <div style="background-color:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;margin:16px 0;border-radius:6px">
+            <p style="margin:0;font-size:13px;font-weight:bold;color:#991b1b">${reasonLabel} :</p>
+            <p style="margin:4px 0 0 0;font-size:14px;color:#7f1d1d">${explanation}</p>
+          </div>
+          <p style="color:#6b7280;font-size:13px;line-height:1.5">NourPlay applies strict safety and child-protection rules. You can submit another video complying with our moderation guidelines.</p>
+        `
+        textContent = `Your video "${videoTitle}" was not accepted on NourPlay.\n${reasonLabel}: ${explanation}`
+      } else if (locale === 'ar') {
+        contentHtml = `
+          <p style="color:#374151;font-size:15px;line-height:1.6;direction:rtl">يؤسفنا إبلاغك بأنه تعذر قبول الفيديو الخاص بك <strong>${videoTitle}</strong> على NourPlay.</p>
+          <div style="background-color:#fef2f2;border-right:4px solid #ef4444;padding:12px 16px;margin:16px 0;border-radius:6px;direction:rtl">
+            <p style="margin:0;font-size:13px;font-weight:bold;color:#991b1b">${reasonLabel} :</p>
+            <p style="margin:4px 0 0 0;font-size:14px;color:#7f1d1d">${explanation}</p>
+          </div>
+        `
+        textContent = `تعذر قبول الفيديو الخاص بك "${videoTitle}" على NourPlay.\n${reasonLabel}: ${explanation}`
+      } else {
+        contentHtml = `
+          <p style="color:#374151;font-size:15px;line-height:1.6">Votre vidéo <strong>${videoTitle}</strong> n'a pas été acceptée sur NourPlay.</p>
+          <div style="background-color:#fef2f2;border-left:4px solid #ef4444;padding:12px 16px;margin:16px 0;border-radius:6px">
+            <p style="margin:0;font-size:13px;font-weight:bold;color:#991b1b">${reasonLabel} :</p>
+            <p style="margin:4px 0 0 0;font-size:14px;color:#7f1d1d">${explanation}</p>
+          </div>
+          <p style="color:#6b7280;font-size:13px;line-height:1.5">NourPlay applique des critères stricts de bienveillance et de protection des enfants. Vous pouvez proposer une autre vidéo respectant nos critères de modération.</p>
+        `
+        textContent = `Votre vidéo "${videoTitle}" n'a pas été acceptée sur NourPlay.\n${reasonLabel} : ${explanation}`
+      }
+    }
+
+    await this.send({
+      to,
+      subject: title,
+      html: this.layout(title, contentHtml),
+      text: textContent,
+    })
   }
 
   private async sendViaResend(options: SendOptions) {

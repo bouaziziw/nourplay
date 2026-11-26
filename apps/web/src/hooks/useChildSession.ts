@@ -9,6 +9,7 @@ export interface ChildSession {
   dailyLimitMin: number | null
   sessionLimitMin: number | null
   viewingSchedule: Record<string, string[]> | null
+  isViewingBlocked?: boolean
   activatedAt: number
 }
 
@@ -100,6 +101,45 @@ export function useChildSession() {
     setSessionState(null)
   }, [])
 
+  const updateViewingBlocked = useCallback((isViewingBlocked: boolean) => {
+    try {
+      const current = readSessionFromStorage()
+      if (current) {
+        const updated = { ...current, isViewingBlocked }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: updated }))
+        setSessionState(updated)
+      }
+    } catch {}
+  }, [])
+
+  const resetSessionTimer = useCallback(() => {
+    try {
+      const current = readSessionFromStorage()
+      if (current) {
+        const updated = { ...current, activatedAt: Date.now(), isViewingBlocked: false }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: updated }))
+        setSessionState(updated)
+      }
+    } catch {}
+  }, [])
+
+  const updateLimits = useCallback((dailyLimitMin: number | null, sessionLimitMin: number | null) => {
+    try {
+      const current = readSessionFromStorage()
+      if (current) {
+        const updated = { ...current, dailyLimitMin, sessionLimitMin, isViewingBlocked: false }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated))
+        window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: updated }))
+        setSessionState(updated)
+      }
+    } catch {}
+  }, [])
+
   const isSessionExpired = useCallback((): boolean => {
     if (!session) return false
     const { sessionLimitMin, activatedAt } = session
@@ -107,5 +147,5 @@ export function useChildSession() {
     return sessionElapsedMin(activatedAt) >= sessionLimitMin
   }, [session])
 
-  return { session, hydrated, set, clear, isSessionExpired }
+  return { session, hydrated, set, clear, updateViewingBlocked, resetSessionTimer, updateLimits, isSessionExpired }
 }

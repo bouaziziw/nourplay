@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, Optional } from '@nestjs/common'
 import { PrismaService } from '../../common/prisma/prisma.service'
-import { AgeRating, VideoValidationStatus } from '@nourplay/db'
+import { EmailService } from '../../common/email/email.service'
+import { AgeRating, Prisma, VideoValidationStatus } from '@nourplay/db'
 
 export type VideoStatus = 'APPROVED' | 'REJECTED' | 'NEEDS_REVIEW'
 
@@ -133,11 +134,28 @@ Réponds obligatoirement et UNIQUEMENT avec un objet JSON valide (sans texte d'i
   "review_priority": "low | medium | high"
 }`
 
+export function extractRejectionReason(log: Record<string, unknown> | null | undefined): string {
+  if (!log) return 'Contenu non conforme aux critères de sécurité et bienveillance pour les enfants.'
+  if (typeof log.rejectionReason === 'string' && log.rejectionReason.trim()) {
+    return log.rejectionReason.trim()
+  }
+  if (typeof log.summary === 'string' && log.summary.trim()) {
+    return log.summary.trim()
+  }
+  if (Array.isArray(log.reasons) && log.reasons.length > 0) {
+    return log.reasons.filter(Boolean).join(' — ')
+  }
+  return 'Contenu non conforme aux critères de sécurité et bienveillance pour les enfants.'
+}
+
 @Injectable()
 export class VideoValidationService {
   private readonly logger = new Logger(VideoValidationService.name)
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly email?: EmailService,
+  ) {}
 
   /**
    * Résout la configuration IA à partir des variables d'environnement.
@@ -592,6 +610,54 @@ export class VideoValidationService {
       },
     })
 
+    // Si la vidéo a été soumise par un utilisateur, le notifier par email + notification in-app
+    if (video.submittedById && (result.status === 'APPROVED' || result.status === 'REJECTED')) {
+      const isApproved = result.status === 'APPROVED'
+      const reason = isApproved ? undefined : extractRejectionReason(result.log)
+
+      const submitter = await this.prisma.user.findUnique({
+        where: { id: video.submittedById },
+        select: { email: true, locale: true },
+      })
+
+      if (submitter?.email && this.email) {
+        void this.email
+          .sendVideoReviewEmail(
+            submitter.email,
+            video.title,
+            isApproved ? 'approve' : 'reject',
+            reason,
+            submitter.locale,
+          )
+          .catch(error => {
+            this.logger.error(
+              `Failed to send auto-validation review email for video ${videoId}`,
+              error instanceof Error ? error.stack : String(error),
+            )
+          })
+      }
+
+      void this.prisma.notification
+        .create({
+          data: {
+            userId: video.submittedById,
+            type: isApproved ? 'VIDEO_APPROVED' : 'VIDEO_REJECTED',
+            payload: {
+              videoId,
+              videoTitle: video.title,
+              ...(reason ? { reason } : {}),
+              automated: true,
+            } as Prisma.InputJsonValue,
+          },
+        })
+        .catch(error => {
+          this.logger.error(
+            `Failed to create auto-validation notification for video ${videoId}`,
+            error instanceof Error ? error.stack : String(error),
+          )
+        })
+    }
+
     this.logger.log(`Vidéo ${videoId} validée en direct → ${result.status} (score: ${result.score.toFixed(2)}, modèle: ${result.log.model})`)
     return { success: true, status: result.status, score: result.score }
   }
@@ -686,6 +752,7 @@ export class VideoValidationService {
           title: true,
           description: true,
           ageRating: true,
+          submittedById: true,
           tags: { select: { tag: { select: { name: true } } } },
         },
         orderBy: { createdAt: 'desc' },
@@ -698,6 +765,7 @@ export class VideoValidationService {
           const text = `${video.title || ''} ${video.description || ''} ${video.tags.map(t => t.tag.name).join(' ')}`
           for (const guard of SENSITIVE_UNDER13_PATTERNS) {
             if (guard.pattern.test(text)) {
+              const sanitizeReason = `Rejet automatique de sécurité pour les enfants : ${guard.reason}.`
               await this.prisma.video.update({
                 where: { id: video.id },
                 data: {
@@ -707,12 +775,56 @@ export class VideoValidationService {
                     decision: 'REJETE',
                     age_rating: '16_plus',
                     confidence: 1.0,
-                    summary: `Rejet automatique de sécurité pour les enfants : ${guard.reason}.`,
+                    summary: sanitizeReason,
                     reasons: [guard.reason],
                     sanitized_at: new Date().toISOString(),
                   } as never,
                 },
               })
+
+              if (video.submittedById) {
+                const submitter = await this.prisma.user.findUnique({
+                  where: { id: video.submittedById },
+                  select: { email: true, locale: true },
+                })
+                if (submitter?.email && this.email) {
+                  void this.email
+                    .sendVideoReviewEmail(
+                      submitter.email,
+                      video.title,
+                      'reject',
+                      sanitizeReason,
+                      submitter.locale,
+                    )
+                    .catch(error => {
+                      this.logger.error(
+                        `Failed to send sanitization rejection email for video ${video.id}`,
+                        error instanceof Error ? error.stack : String(error),
+                      )
+                    })
+                }
+
+                void this.prisma.notification
+                  .create({
+                    data: {
+                      userId: video.submittedById,
+                      type: 'VIDEO_REJECTED',
+                      payload: {
+                        videoId: video.id,
+                        videoTitle: video.title,
+                        reason: sanitizeReason,
+                        automated: true,
+                      } as Prisma.InputJsonValue,
+                    },
+                  })
+                  .catch(error => {
+                    this.logger.error(
+                      `Failed to create sanitization rejection notification for video ${video.id}`,
+                      error instanceof Error ? error.stack : String(error),
+                    )
+                  })
+              }
+
               this.logger.warn(`Vidéo assainie rétroactivement (ID: ${video.id}) → REJECTED (${guard.reason})`)
               sanitized++
               break

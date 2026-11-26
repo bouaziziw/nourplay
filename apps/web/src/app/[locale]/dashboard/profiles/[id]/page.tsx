@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useLocale } from 'next-intl'
 import { useAuth } from '../../../../../hooks/useAuth'
@@ -49,6 +50,12 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isViewingBlocked, setIsViewingBlocked] = useState(false)
+  const [blockingLoading, setBlockingLoading] = useState(false)
+  const [blockToast, setBlockToast] = useState('')
+  const [dailyWatchedSec, setDailyWatchedSec] = useState<number | null>(null)
+  const [timerActionLoading, setTimerActionLoading] = useState<string | null>(null)
+  const [timerEnabled, setTimerEnabled] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [tab, setTab] = useState<'settings' | 'history' | 'filters' | 'stats' | 'favorites'>('settings')
@@ -111,6 +118,8 @@ export default function EditProfilePage() {
     api.users.getProfile(token, id)
       .then(p => {
         setProfile(p)
+        setIsViewingBlocked(Boolean(p.isViewingBlocked))
+        setTimerEnabled(Boolean(p.dailyLimitMin || p.sessionLimitMin))
         const sched = p.viewingSchedule ?? {}
         setForm({
           displayName: p.displayName,
@@ -122,6 +131,15 @@ export default function EditProfilePage() {
       })
       .catch(() => router.replace(`/${locale}/dashboard`))
       .finally(() => setLoading(false))
+
+    api.users.getDailyWatchTime(token, id)
+      .then(res => {
+        setDailyWatchedSec(res.watchedSec)
+        if (res.isViewingBlocked !== undefined) {
+          setIsViewingBlocked(res.isViewingBlocked)
+        }
+      })
+      .catch(() => {})
   }, [token, id, locale, router])
 
   useEffect(() => {
@@ -281,13 +299,14 @@ export default function EditProfilePage() {
     }
 
     try {
-      await api.users.updateProfile(token, id, {
+      const updated = await api.users.updateProfile(token, id, {
         displayName: form.displayName.trim(),
         ageGroup: form.ageGroup,
-        dailyLimitMin: form.dailyLimitMin ? Number(form.dailyLimitMin) : null,
-        sessionLimitMin: form.sessionLimitMin ? Number(form.sessionLimitMin) : null,
+        dailyLimitMin: timerEnabled && form.dailyLimitMin ? Number(form.dailyLimitMin) : null,
+        sessionLimitMin: timerEnabled && form.sessionLimitMin ? Number(form.sessionLimitMin) : null,
         viewingSchedule: Object.keys(schedule).length ? schedule : null,
       })
+      setProfile(updated)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err: unknown) {
@@ -347,6 +366,84 @@ export default function EditProfilePage() {
     }
   }
 
+  const handleToggleBlockViewing = async () => {
+    if (!token) return
+    const nextState = !isViewingBlocked
+    setBlockingLoading(true)
+    setError('')
+    try {
+      await api.users.setViewingBlocked(token, id, nextState)
+      setIsViewingBlocked(nextState)
+      setProfile(prev => prev ? { ...prev, isViewingBlocked: nextState } : null)
+      setBlockToast(nextState ? 'Visionnage bloqué immédiatement pour ce profil.' : 'Visionnage débloqué avec succès.')
+      setTimeout(() => setBlockToast(''), 3500)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la modification de l\'état de visionnage.')
+    } finally {
+      setBlockingLoading(false)
+    }
+  }
+
+  const handleReactivateProfile = async () => {
+    if (!token) return
+    setTimerActionLoading('reactivate')
+    try {
+      const updated = await api.users.reactivateProfile(token, id)
+      setProfile(updated)
+      setIsViewingBlocked(false)
+      setDailyWatchedSec(0)
+      setBlockToast('✅ Profil réactivé avec succès ! Le compteur d’aujourd’hui a été réinitialisé.')
+      setTimeout(() => setBlockToast(''), 4000)
+    } catch (err: unknown) {
+      setBlockToast(err instanceof Error ? err.message : 'Erreur lors de la réactivation')
+      setTimeout(() => setBlockToast(''), 4000)
+    } finally {
+      setTimerActionLoading(null)
+    }
+  }
+
+  const handleAddTime = async (minutes: number) => {
+    if (!token) return
+    setTimerActionLoading(`add-${minutes}`)
+    try {
+      const updated = await api.users.addWatchTime(token, id, minutes)
+      setProfile(updated)
+      setIsViewingBlocked(false)
+      setTimerEnabled(true)
+      setForm(f => ({
+        ...f,
+        dailyLimitMin: updated.dailyLimitMin ? String(updated.dailyLimitMin) : '',
+        sessionLimitMin: updated.sessionLimitMin ? String(updated.sessionLimitMin) : '',
+      }))
+      setBlockToast(`✅ +${minutes} minutes ajoutées au temps de visionnage !`)
+      setTimeout(() => setBlockToast(''), 4000)
+    } catch (err: unknown) {
+      setBlockToast(err instanceof Error ? err.message : 'Erreur lors de l’ajout de temps')
+      setTimeout(() => setBlockToast(''), 4000)
+    } finally {
+      setTimerActionLoading(null)
+    }
+  }
+
+  const handleDisableTimer = async () => {
+    if (!token) return
+    setTimerActionLoading('disable')
+    try {
+      const updated = await api.users.disableTimer(token, id)
+      setProfile(updated)
+      setIsViewingBlocked(false)
+      setTimerEnabled(false)
+      setForm(f => ({ ...f, dailyLimitMin: '', sessionLimitMin: '' }))
+      setBlockToast('✅ Timer désactivé. Le visionnage est désormais illimité pour ce profil.')
+      setTimeout(() => setBlockToast(''), 4000)
+    } catch (err: unknown) {
+      setBlockToast(err instanceof Error ? err.message : 'Erreur lors de la désactivation')
+      setTimeout(() => setBlockToast(''), 4000)
+    } finally {
+      setTimerActionLoading(null)
+    }
+  }
+
   const handleDelete = async () => {
     if (!token || !confirm(`Supprimer le profil "${profile?.displayName}" ?`)) return
     setDeleting(true)
@@ -385,6 +482,222 @@ export default function EditProfilePage() {
             size={40}
           />
           <h1 className="text-2xl font-bold text-gray-900">{profile.displayName}</h1>
+        </div>
+      </div>
+
+      {/* Contrôle Parental Immédiat : Arrêter / Débloquer le visionnage */}
+      <div className={`p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all shadow-xs ${
+        isViewingBlocked
+          ? 'bg-rose-50/90 border-rose-200'
+          : 'bg-emerald-50/80 border-emerald-200'
+      }`}>
+        <div className="flex items-center gap-3.5">
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xl shrink-0 shadow-xs ${
+            isViewingBlocked ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+          }`}>
+            {isViewingBlocked ? '⏸️' : '▶️'}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                Visionnage {isViewingBlocked ? 'bloqué' : 'autorisé'}
+              </h3>
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                isViewingBlocked ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+              }`}>
+                {isViewingBlocked ? 'Profil verrouillé' : 'Actif'}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-600 mt-0.5">
+              {isViewingBlocked
+                ? 'L’accès aux vidéos et à la navigation est immédiatement suspendu pour cet enfant.'
+                : 'L’enfant peut naviguer et regarder des vidéos selon ses limites et plages horaires.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={blockingLoading}
+          onClick={handleToggleBlockViewing}
+          className={`px-5 py-2.5 text-sm font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 shrink-0 active:scale-95 ${
+            isViewingBlocked
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-4 focus:ring-emerald-200'
+              : 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-4 focus:ring-rose-200'
+          }`}
+        >
+          {blockingLoading ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : isViewingBlocked ? (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
+              Débloquer le profil
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Arrêter le visionnage
+            </>
+          )}
+        </button>
+      </div>
+
+      {blockToast && (
+        <div className="bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
+          <span>ℹ️</span>
+          <span>{blockToast}</span>
+        </div>
+      )}
+
+      {/* ── Carte Gestion du Temps & Minuteur ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl shrink-0">
+              ⏱️
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-900 text-base">Gestion du Temps & Timer</h2>
+              <p className="text-xs text-gray-500">
+                Ajustez le minuteur, ajoutez du temps supplémentaire ou réactivez immédiatement la lecture pour {profile?.displayName}.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
+              isViewingBlocked
+                ? 'bg-rose-100 text-rose-800'
+                : (profile?.dailyLimitMin && dailyWatchedSec !== null && Math.floor(dailyWatchedSec / 60) >= profile.dailyLimitMin)
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-emerald-100 text-emerald-800'
+            }`}>
+              {isViewingBlocked ? '⏸️ Bloqué' : (profile?.dailyLimitMin && dailyWatchedSec !== null && Math.floor(dailyWatchedSec / 60) >= profile.dailyLimitMin) ? '⏰ Limite atteinte' : '✅ Prêt à visionner'}
+            </span>
+          </div>
+        </div>
+
+        {/* Statistiques rapides du jour */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-xs text-gray-500 font-medium">Temps visionné aujourd&apos;hui</span>
+            <div className="text-lg font-bold text-gray-900 mt-0.5">
+              {dailyWatchedSec !== null ? `${Math.floor(dailyWatchedSec / 60)} min` : '0 min'}
+            </div>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-xs text-gray-500 font-medium">Limite journalière configurée</span>
+            <div className="text-lg font-bold text-gray-900 mt-0.5">
+              {profile?.dailyLimitMin ? `${profile.dailyLimitMin} min/jour` : 'Illimitée'}
+            </div>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-xs text-gray-500 font-medium">Limite par session</span>
+            <div className="text-lg font-bold text-gray-900 mt-0.5">
+              {profile?.sessionLimitMin ? `${profile.sessionLimitMin} min/session` : 'Illimitée'}
+            </div>
+          </div>
+        </div>
+
+        {/* Boutons d'action rapides */}
+        <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          <button
+            type="button"
+            disabled={timerActionLoading !== null}
+            onClick={handleReactivateProfile}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+          >
+            {timerActionLoading === 'reactivate' ? (
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>🔄</span>
+            )}
+            Réactiver le profil
+          </button>
+
+          <button
+            type="button"
+            disabled={timerActionLoading !== null}
+            onClick={() => handleAddTime(15)}
+            className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+          >
+            {timerActionLoading === 'add-15' ? (
+              <div className="w-3.5 h-3.5 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>➕</span>
+            )}
+            +15 min
+          </button>
+
+          <button
+            type="button"
+            disabled={timerActionLoading !== null}
+            onClick={() => handleAddTime(30)}
+            className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+          >
+            {timerActionLoading === 'add-30' ? (
+              <div className="w-3.5 h-3.5 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>➕</span>
+            )}
+            +30 min
+          </button>
+
+          <button
+            type="button"
+            disabled={timerActionLoading !== null}
+            onClick={() => handleAddTime(60)}
+            className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+          >
+            {timerActionLoading === 'add-60' ? (
+              <div className="w-3.5 h-3.5 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>➕</span>
+            )}
+            +1 heure
+          </button>
+
+          {timerEnabled ? (
+            <button
+              type="button"
+              disabled={timerActionLoading !== null}
+              onClick={handleDisableTimer}
+              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+            >
+              {timerActionLoading === 'disable' ? (
+                <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>♾️</span>
+              )}
+              Désactiver le timer
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={timerActionLoading !== null}
+              onClick={() => handleAddTime(60)}
+              className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+            >
+              {timerActionLoading === 'add-60' ? (
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>⏱️</span>
+              )}
+              Activer le timer (60 min)
+            </button>
+          )}
+
+          <Link
+            href={`/${locale}/child`}
+            className="ml-auto px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5"
+          >
+            <span>🎈</span>
+            Lancer l&apos;espace enfant
+          </Link>
         </div>
       </div>
 
@@ -484,34 +797,131 @@ export default function EditProfilePage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            <h2 className="font-semibold text-gray-900">Limites de visionnage</h2>
-            <div className="grid grid-cols-2 gap-4">
+          {/* Limites de visionnage avec Bouton Activer / Désactiver accessible */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Limite journalière (min)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={480}
-                  value={form.dailyLimitMin}
-                  onChange={e => setForm(f => ({ ...f, dailyLimitMin: e.target.value }))}
-                  placeholder="Illimitée"
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+                <div className="flex items-center gap-2">
+                  <h2 className="font-semibold text-gray-900 text-base">Limites de visionnage & Minuteur</h2>
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                    timerEnabled
+                      ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                      : 'bg-gray-100 text-gray-600 border border-gray-200'
+                  }`}>
+                    {timerEnabled ? '⏱️ Timer activé' : '♾️ Désactivé (Illimité)'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {timerEnabled
+                    ? 'Le minuteur est actif. Le visionnage s’arrêtera automatiquement dès que le quota est atteint.'
+                    : 'Le minuteur est désactivé. L’enfant peut regarder les vidéos sans interruption de temps.'}
+                </p>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Limite par session (min)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={form.sessionLimitMin}
-                  onChange={e => setForm(f => ({ ...f, sessionLimitMin: e.target.value }))}
-                  placeholder="Illimitée"
-                  className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+
+              {/* Bouton / Switch Activer / Désactiver */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={timerEnabled}
+                onClick={() => {
+                  const next = !timerEnabled
+                  setTimerEnabled(next)
+                  if (!next) {
+                    setForm(f => ({ ...f, dailyLimitMin: '', sessionLimitMin: '' }))
+                  } else if (!form.dailyLimitMin) {
+                    setForm(f => ({ ...f, dailyLimitMin: '60' }))
+                  }
+                }}
+                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
+                  timerEnabled ? 'bg-sky-600' : 'bg-gray-300'
+                }`}
+              >
+                <span className="sr-only">Activer ou désactiver le minuteur</span>
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    timerEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
                 />
-              </div>
+              </button>
             </div>
+
+            {/* En cas d'activation : On affiche et règle le minuteur */}
+            {timerEnabled ? (
+              <div className="space-y-4 pt-3 border-t border-gray-100 animate-fadeIn">
+                {/* Raccourcis de sélection rapide */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Sélection rapide de la limite quotidienne :
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[15, 30, 45, 60, 90, 120].map(mins => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, dailyLimitMin: String(mins) }))}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                          form.dailyLimitMin === String(mins)
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50 hover:border-sky-300'
+                        }`}
+                      >
+                        {mins < 60 ? `${mins} min` : mins === 60 ? '1 heure' : `${mins / 60}h`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Limite journalière (minutes)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        max={480}
+                        value={form.dailyLimitMin}
+                        onChange={e => setForm(f => ({ ...f, dailyLimitMin: e.target.value }))}
+                        placeholder="Ex : 60"
+                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-medium">min</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Temps total accordé pour toute la journée.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Limite par session continue (optionnel)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={form.sessionLimitMin}
+                        onChange={e => setForm(f => ({ ...f, sessionLimitMin: e.target.value }))}
+                        placeholder="Optionnelle"
+                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-medium">min</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Impose une pause après ce nombre de minutes continues.</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 text-center">
+                <p className="text-sm text-slate-600 font-medium">
+                  Le minuteur est <span className="text-slate-800 font-bold">désactivé</span> pour ce profil.
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Activez l&apos;interrupteur ci-dessus pour définir une durée maximale de visionnage.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Per-category time limits */}

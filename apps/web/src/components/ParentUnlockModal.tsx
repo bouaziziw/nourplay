@@ -60,7 +60,7 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
           Mode Parent
         </h2>
         <p className="mb-6 text-center text-sm text-gray-500">
-          Entrez le mot de passe de votre compte pour accéder aux paramètres.
+          Entrez le mot de passe de votre compte ou votre code PIN pour accéder à l'espace parent.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -69,8 +69,8 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
             autoComplete="current-password"
             value={password}
             onChange={event => setPassword(event.target.value)}
-            placeholder="Mot de passe du compte"
-            aria-label="Mot de passe du compte"
+            placeholder="Mot de passe ou code PIN"
+            aria-label="Mot de passe ou code PIN"
             className="h-11 w-full rounded-xl border border-gray-300 px-3 text-sm focus:border-[#1c90d8] focus:outline-none focus:ring-2 focus:ring-sky-200"
           />
           {error && <p role="alert" className="text-center text-sm text-red-600 font-medium">{error}</p>}
@@ -82,14 +82,22 @@ export function ParentUnlockModal({ onSubmit, onClose }: Props) {
             {loading ? 'Vérification…' : 'Déverrouiller'}
           </button>
         </form>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={onClose}
-          className="mt-3 h-9 w-full text-sm font-medium text-gray-500 transition-colors hover:text-gray-800 disabled:opacity-50"
-        >
-          Annuler
-        </button>
+        <div className="mt-4 flex flex-col gap-2 text-center">
+          <a
+            href="/fr/auth/login"
+            className="text-xs text-[#1c90d8] hover:underline font-semibold"
+          >
+            Se reconnecter avec ses identifiants
+          </a>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onClose}
+            className="h-8 w-full text-xs font-medium text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-50"
+          >
+            Annuler
+          </button>
+        </div>
       </div>
     </div>
   )

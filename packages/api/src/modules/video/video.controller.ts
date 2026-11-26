@@ -264,8 +264,13 @@ export class VideoController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Détail d\'une vidéo' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.videoService.findById(id)
+  @ApiQuery({ name: 'profileId', required: false, description: 'ID du profil enfant pour vérifier le blocage parental' })
+  findOne(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('profileId') profileId?: string,
+  ) {
+    return this.videoService.findById(id, user.sub, profileId)
   }
 
   @Post(':id/report')

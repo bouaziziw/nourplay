@@ -10,11 +10,14 @@ const makePrisma = () => ({
     findMany: vi.fn(),
     create: vi.fn(),
     count: vi.fn(),
+    update: vi.fn(),
     updateMany: vi.fn(),
     delete: vi.fn(),
   },
   playlist: { findFirst: vi.fn() },
   videoReport: { create: vi.fn() },
+  notification: { create: vi.fn().mockResolvedValue({}) },
+  user: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
 })
 
 const makeQueue = () => ({
@@ -28,6 +31,7 @@ const makeCache = () => ({
   del: vi.fn().mockResolvedValue(undefined),
 })
 const makeAudit = () => ({ log: vi.fn().mockResolvedValue({}) })
+const makeEmail = () => ({ sendVideoReviewEmail: vi.fn().mockResolvedValue(undefined) })
 
 const YOUTUBE_URL = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
 const VIMEO_URL = 'https://vimeo.com/123456789'
@@ -38,6 +42,7 @@ describe('VideoService', () => {
   let queue: ReturnType<typeof makeQueue>
   let cache: ReturnType<typeof makeCache>
   let audit: ReturnType<typeof makeAudit>
+  let email: ReturnType<typeof makeEmail>
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,7 +50,15 @@ describe('VideoService', () => {
     queue = makeQueue()
     cache = makeCache()
     audit = makeAudit()
-    service = new VideoService(prisma as never, cache as never, queue as never, audit as never)
+    email = makeEmail()
+    service = new VideoService(
+      prisma as never,
+      cache as never,
+      queue as never,
+      audit as never,
+      undefined,
+      email as never,
+    )
   })
 
   // ── submit ────────────────────────────────────────────────────
@@ -384,6 +397,126 @@ describe('VideoService', () => {
     it('throws NotFoundException when video does not exist', async () => {
       prisma.video.findUnique.mockResolvedValue(null)
       await expect(service.report('user-1', 'missing', 'SPAM')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── bulkUpdateStatus ──────────────────────────────────────────
+
+  describe('bulkUpdateStatus', () => {
+    it('returns 0 when ids is empty', async () => {
+      const result = await service.bulkUpdateStatus([], 'REJECT')
+      expect(result).toEqual({ updated: 0 })
+    })
+
+    it('rejects videos, updates validationLog and notifies submitter with reason', async () => {
+      const video = {
+        id: 'vid-1',
+        title: 'Vidéo Test',
+        submittedById: 'user-submitter-1',
+        validationLog: null,
+      }
+      prisma.video.findMany.mockResolvedValue([video])
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'user-submitter-1', email: 'parent@nourplay.test', locale: 'fr' },
+      ])
+      prisma.video.update.mockResolvedValue({ id: 'vid-1', validationStatus: 'REJECTED' })
+
+      const result = await service.bulkUpdateStatus(['vid-1'], 'REJECT', 'Contenu trop violent')
+
+      expect(result).toEqual({ updated: 1 })
+      expect(prisma.video.update).toHaveBeenCalledWith({
+        where: { id: 'vid-1' },
+        data: {
+          validationStatus: 'REJECTED',
+          validationLog: { rejectionReason: 'Contenu trop violent' },
+        },
+      })
+      expect(email.sendVideoReviewEmail).toHaveBeenCalledWith(
+        'parent@nourplay.test',
+        'Vidéo Test',
+        'reject',
+        'Contenu trop violent',
+        'fr',
+      )
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-submitter-1',
+          type: 'VIDEO_REJECTED',
+          payload: expect.objectContaining({
+            videoId: 'vid-1',
+            videoTitle: 'Vidéo Test',
+            reason: 'Contenu trop violent',
+          }),
+        }),
+      })
+    })
+
+    it('approves videos and notifies submitter without reason', async () => {
+      const video = {
+        id: 'vid-2',
+        title: 'Comptine Enfants',
+        submittedById: 'user-submitter-2',
+        validationLog: null,
+      }
+      prisma.video.findMany.mockResolvedValue([video])
+      prisma.user.findMany.mockResolvedValue([
+        { id: 'user-submitter-2', email: 'parent2@nourplay.test', locale: 'ar' },
+      ])
+      prisma.video.update.mockResolvedValue({ id: 'vid-2', validationStatus: 'APPROVED' })
+
+      const result = await service.bulkUpdateStatus(['vid-2'], 'APPROVE')
+
+      expect(result).toEqual({ updated: 1 })
+      expect(prisma.video.update).toHaveBeenCalledWith({
+        where: { id: 'vid-2' },
+        data: { validationStatus: 'APPROVED' },
+      })
+      expect(email.sendVideoReviewEmail).toHaveBeenCalledWith(
+        'parent2@nourplay.test',
+        'Comptine Enfants',
+        'approve',
+        undefined,
+        'ar',
+      )
+      expect(prisma.notification.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-submitter-2',
+          type: 'VIDEO_APPROVED',
+        }),
+      })
+    })
+  })
+
+  // ── listMySubmissions ─────────────────────────────────────────
+
+  describe('listMySubmissions', () => {
+    it('returns mapped submissions with rejectionReason for rejected videos', async () => {
+      prisma.video.findMany.mockResolvedValue([
+        {
+          id: 'v-1',
+          title: 'Video Rejetée',
+          thumbnailUrl: 'thumb.jpg',
+          validationStatus: 'REJECTED',
+          validationLog: { rejectionReason: 'Scène choquante' },
+          submitterApprovedAt: null,
+          createdAt: new Date(),
+        },
+        {
+          id: 'v-2',
+          title: 'Video Approuvée',
+          thumbnailUrl: 'thumb2.jpg',
+          validationStatus: 'APPROVED',
+          validationLog: null,
+          submitterApprovedAt: new Date(),
+          createdAt: new Date(),
+        },
+      ])
+
+      const list = await service.listMySubmissions('user-1')
+
+      expect(list).toHaveLength(2)
+      expect(list[0].rejectionReason).toBe('Scène choquante')
+      expect(list[1].rejectionReason).toBeUndefined()
     })
   })
 })

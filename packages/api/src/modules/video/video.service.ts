@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   ServiceUnavailableException,
   Inject,
@@ -15,7 +16,8 @@ import { PrismaService } from '../../common/prisma/prisma.service'
 import { CacheService } from '../../common/cache/cache.service'
 import { AuditService } from '../../common/audit/audit.service'
 import { VIDEO_VALIDATION_QUEUE } from '../../common/bull/bull.module'
-import { VideoValidationService } from './video-validation.service'
+import { VideoValidationService, extractRejectionReason } from './video-validation.service'
+import { EmailService } from '../../common/email/email.service'
 import { allowedAgeRatings } from '../../common/age-utils'
 import { safeFetch } from '../../common/http/safe-fetch'
 import { SubmitVideoDto } from './dto/submit-video.dto'
@@ -42,6 +44,7 @@ export class VideoService implements OnModuleInit {
     @Inject(VIDEO_VALIDATION_QUEUE) private readonly validationQueue: Queue,
     private readonly audit: AuditService,
     @Optional() private readonly videoValidationService?: VideoValidationService,
+    @Optional() private readonly email?: EmailService,
   ) {}
 
   async onModuleInit() {
@@ -233,20 +236,33 @@ export class VideoService implements OnModuleInit {
     }
   }
 
-  listMySubmissions(userId: string) {
-    return this.prisma.video.findMany({
+  async listMySubmissions(userId: string) {
+    const videos = await this.prisma.video.findMany({
       where: { submittedById: userId },
       select: {
         id: true,
         title: true,
         thumbnailUrl: true,
         validationStatus: true,
+        validationLog: true,
         submitterApprovedAt: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
     })
+
+    return videos.map(video => ({
+      id: video.id,
+      title: video.title,
+      thumbnailUrl: video.thumbnailUrl,
+      validationStatus: video.validationStatus,
+      submitterApprovedAt: video.submitterApprovedAt,
+      createdAt: video.createdAt,
+      rejectionReason: video.validationStatus === 'REJECTED'
+        ? extractRejectionReason(video.validationLog as Record<string, unknown> | null)
+        : undefined,
+    }))
   }
 
   async approveSubmission(userId: string, userRole: string, videoId: string) {
@@ -366,7 +382,16 @@ export class VideoService implements OnModuleInit {
     return { id: videoId }
   }
 
-  async findById(id: string) {
+  async findById(id: string, userId?: string, profileId?: string) {
+    if (profileId && userId) {
+      const profile = await this.prisma.childProfile.findFirst({
+        where: { id: profileId, userId, deletedAt: null },
+        select: { isViewingBlocked: true },
+      })
+      if (profile?.isViewingBlocked) {
+        throw new ForbiddenException('Le visionnage a été mis en pause par un parent.')
+      }
+    }
     const video = await this.prisma.video.findUnique({
       where: { id },
       include: {
@@ -460,8 +485,11 @@ export class VideoService implements OnModuleInit {
     if (profileId && userId) {
       const profile = await this.prisma.childProfile.findFirst({
         where: { id: profileId, userId, deletedAt: null },
-        select: { ageGroup: true },
+        select: { ageGroup: true, isViewingBlocked: true },
       })
+      if (profile?.isViewingBlocked) {
+        return { items: [], total: 0, page, limit, pages: 0 }
+      }
       if (profile) ageRatingFilter = allowedAgeRatings(profile.ageGroup) as unknown as string[]
     }
 
@@ -541,12 +569,87 @@ export class VideoService implements OnModuleInit {
   ) {
     if (!ids.length) return { updated: 0 }
 
-    const data: Record<string, unknown> = {
-      validationStatus: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+    const finalReason = rejectionReason?.trim() || 'Contenu non conforme aux critères de sécurité et bienveillance pour les enfants.'
+
+    const videos = await this.prisma.video.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        title: true,
+        submittedById: true,
+        validationLog: true,
+      },
+    })
+
+    const submitterIds = videos.map(v => v.submittedById).filter((id): id is string => Boolean(id))
+    const submitters = submitterIds.length > 0
+      ? await this.prisma.user.findMany({
+          where: { id: { in: submitterIds } },
+          select: { id: true, email: true, locale: true },
+        })
+      : []
+    const submitterMap = new Map(submitters.map(s => [s.id, s]))
+
+    let updatedCount = 0
+    for (const video of videos) {
+      const data: Record<string, unknown> = {
+        validationStatus: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        ...(action === 'REJECT' && {
+          validationLog: { ...((video.validationLog as object) ?? {}), rejectionReason: finalReason },
+        }),
+      }
+
+      await this.prisma.video.update({
+        where: { id: video.id },
+        data,
+      })
+      updatedCount++
+
+      if (video.submittedById) {
+        const submitter = submitterMap.get(video.submittedById)
+        const emailAction = action === 'APPROVE' ? 'approve' : 'reject'
+        const reasonToSend = action === 'REJECT' ? finalReason : undefined
+
+        if (submitter?.email && this.email) {
+          void this.email
+            .sendVideoReviewEmail(
+              submitter.email,
+              video.title,
+              emailAction,
+              reasonToSend,
+              submitter.locale,
+            )
+            .catch(error => {
+              this.logger.error(
+                `Failed to send bulk review email for video ${video.id}`,
+                error instanceof Error ? error.stack : String(error),
+              )
+            })
+        }
+
+        void this.prisma.notification
+          .create({
+            data: {
+              userId: video.submittedById,
+              type: action === 'APPROVE' ? 'VIDEO_APPROVED' : 'VIDEO_REJECTED',
+              payload: {
+                videoId: video.id,
+                videoTitle: video.title,
+                ...(reasonToSend ? { reason: reasonToSend } : {}),
+                automated: false,
+              } as Prisma.InputJsonValue,
+            },
+          })
+          .catch(error => {
+            this.logger.error(
+              `Failed to create bulk review notification for video ${video.id}`,
+              error instanceof Error ? error.stack : String(error),
+            )
+          })
+      }
     }
 
-    const result = await this.prisma.video.updateMany({ where: { id: { in: ids } }, data })
-    return { updated: result.count }
+    return { updated: updatedCount }
   }
 
   async approveAllPending(actorId?: string, actorRole?: string) {

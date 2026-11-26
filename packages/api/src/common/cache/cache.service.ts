@@ -7,9 +7,9 @@ export class CacheService {
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
   async get<T>(key: string): Promise<T | null> {
-    const raw = await this.redis.get(key)
-    if (raw === null) return null
     try {
+      const raw = await this.redis.get(key)
+      if (raw === null) return null
       return JSON.parse(raw) as T
     } catch {
       return null
@@ -17,10 +17,18 @@ export class CacheService {
   }
 
   async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
-    await this.redis.setex(key, ttlSeconds, JSON.stringify(value))
+    try {
+      await this.redis.setex(key, ttlSeconds, JSON.stringify(value))
+    } catch {
+      // Ignoré en cas d'erreur Redis
+    }
   }
 
   async del(...keys: string[]): Promise<void> {
-    if (keys.length > 0) await this.redis.del(...keys)
+    try {
+      if (keys.length > 0) await this.redis.del(...keys)
+    } catch {
+      // Ignoré en cas d'erreur Redis
+    }
   }
 }

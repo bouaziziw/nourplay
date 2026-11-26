@@ -13,13 +13,14 @@ import { ChildCountdownTimer } from '../../../components/ChildCountdownTimer'
 import { useTvNavigation } from '../../../hooks/useTvNavigation'
 
 function ChildGuard({ children }: { children: React.ReactNode }) {
-  const { session, hydrated, clear, isSessionExpired } = useChildSession()
-  const { token, loading: authLoading, unlockParentMode } = useAuth()
+  const { session, hydrated, clear, updateViewingBlocked, isSessionExpired } = useChildSession()
+  const { token, loading: authLoading, unlockParentMode, parentModeUnlocked } = useAuth()
   const { isTv, showTvHelper } = useTvNavigation()
   const router = useRouter()
   const locale = useLocale()
   const pathname = usePathname()
   const [dailyWatchedSec, setDailyWatchedSec] = useState<number | null>(null)
+  const [isViewingBlocked, setIsViewingBlocked] = useState<boolean>(Boolean(session?.isViewingBlocked))
   const [unlockOpen, setUnlockOpen] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
 
@@ -36,7 +37,7 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (authLoading || isUnlocking) return
+    if (authLoading || isUnlocking || parentModeUnlocked) return
     if (!token) {
       router.replace(`/${locale}/auth/login`)
       return
@@ -45,30 +46,73 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
     if (!session && !isProfileSelector) {
       router.replace(`/${locale}/child`)
     }
-  }, [authLoading, isUnlocking, token, hydrated, session, isProfileSelector, router, locale])
+  }, [authLoading, isUnlocking, parentModeUnlocked, token, hydrated, session, isProfileSelector, router, locale])
 
-  const handleParentUnlock = async (password: string) => {
+  const handleParentUnlock = async (secret: string) => {
     setIsUnlocking(true)
-    await unlockParentMode(password)
-    await clear()
-    router.push(`/${locale}/dashboard`)
+    try {
+      await unlockParentMode(secret)
+      const targetProfileId = session?.profileId
+      if (targetProfileId && token && (isViewingBlocked || session?.isViewingBlocked)) {
+        try {
+          await api.users.setViewingBlocked(token, targetProfileId, false)
+          updateViewingBlocked(false)
+          setIsViewingBlocked(false)
+        } catch {
+          // ignore if backend call fails
+        }
+      }
+      if (targetProfileId) {
+        router.replace(`/${locale}/dashboard/profiles/${targetProfileId}`)
+      } else {
+        router.replace(`/${locale}/dashboard`)
+      }
+    } catch (err) {
+      setIsUnlocking(false)
+      throw err
+    }
   }
+
+  useEffect(() => {
+    const handleOpenUnlock = () => setUnlockOpen(true)
+    window.addEventListener('nourplay:open-parent-unlock', handleOpenUnlock)
+    return () => window.removeEventListener('nourplay:open-parent-unlock', handleOpenUnlock)
+  }, [])
+
+  useEffect(() => {
+    if (session?.isViewingBlocked !== undefined) {
+      setIsViewingBlocked(Boolean(session.isViewingBlocked))
+    }
+  }, [session?.isViewingBlocked])
 
   useEffect(() => {
     const profileId = session?.profileId
     if (!token || !profileId) return
-    const fetch = async () => {
+    const fetchStatus = async () => {
       try {
-        const { watchedSec } = await api.users.getDailyWatchTime(token, profileId)
-        setDailyWatchedSec(watchedSec)
+        const res = await api.users.getDailyWatchTime(token, profileId)
+        setDailyWatchedSec(res.watchedSec)
+        if (res.isViewingBlocked !== undefined) {
+          setIsViewingBlocked(res.isViewingBlocked)
+          if (res.isViewingBlocked !== session?.isViewingBlocked) {
+            updateViewingBlocked(res.isViewingBlocked)
+          }
+        }
       } catch {
         // Fail open
       }
     }
-    fetch()
-    const interval = setInterval(fetch, 60_000)
-    return () => clearInterval(interval)
-  }, [token, session?.profileId])
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 10_000)
+    const onFocus = () => { void fetchStatus() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [token, session?.profileId, session?.isViewingBlocked, updateViewingBlocked])
 
   if (authLoading || !token || !hydrated) {
     return (
@@ -79,6 +123,20 @@ function ChildGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (session && !isProfileSelector) {
+    if (isViewingBlocked || session.isViewingBlocked) {
+      return (
+        <BlockingScreen
+          title="Visionnage interrompu ⏸️"
+          message="Le visionnage a été mis en pause par un parent."
+          onExit={() => { clear(); router.replace(`/${locale}/child`) }}
+          onParentUnlock={() => setUnlockOpen(true)}
+          unlockOpen={unlockOpen}
+          onUnlockClose={() => setUnlockOpen(false)}
+          onUnlockSubmit={handleParentUnlock}
+        />
+      )
+    }
+
     if (!isWithinSchedule(session.viewingSchedule)) {
       return (
         <BlockingScreen
@@ -271,29 +329,43 @@ function BlockingScreen({
   onUnlockClose: () => void
   onUnlockSubmit: (password: string) => Promise<void>
 }) {
+  const locale = useLocale()
   return (
     <>
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="text-center text-slate-900 max-w-sm bg-white p-8 rounded-3xl border border-slate-200 shadow-xl backdrop-blur-md">
           <p className="text-5xl mb-4">{title.slice(-2)}</p>
           <h2 className="text-xl font-bold mb-2 text-slate-900">{title.slice(0, -2).trim()}</h2>
-          <p className="text-slate-600 text-sm mb-8">{message}</p>
-          <button
-            onClick={onExit}
-            data-tv-focus="primary"
-            tabIndex={0}
-            className="w-full bg-[#1c90d8] hover:bg-[#1572ad] text-white font-black px-6 py-3 rounded-2xl transition-transform active:scale-95 shadow-xl"
-          >
-            Retourner au mode enfant
-          </button>
+          <p className="text-slate-600 text-sm mb-6">{message}</p>
+
+          {/* Bouton principal : Accéder au Mode Parent */}
           <button
             onClick={onParentUnlock}
+            data-tv-focus="primary"
+            tabIndex={0}
+            className="w-full bg-[#1c90d8] hover:bg-[#1572ad] text-white font-black px-6 py-3 rounded-2xl transition-transform active:scale-95 shadow-xl flex items-center justify-center gap-2"
+          >
+            <span>🔒</span>
+            <span>Accéder au Mode Parent</span>
+          </button>
+
+          {/* Bouton secondaire : Changer de profil */}
+          <button
+            onClick={onExit}
             data-tv-focus="secondary"
             tabIndex={0}
-            className="mt-4 block w-full text-sm font-bold text-[#1c90d8] hover:text-[#1572ad] underline underline-offset-4 focus:ring-2 focus:ring-[#1c90d8] rounded-lg py-1 transition-colors"
+            className="mt-3 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl transition-colors text-sm"
           >
-            🔒 Déverrouiller le Mode Parent
+            Changer de profil
           </button>
+
+          {/* Lien de secours : Page de connexion */}
+          <Link
+            href={`/${locale}/auth/login`}
+            className="mt-4 block text-xs font-semibold text-slate-500 hover:text-[#1c90d8] underline underline-offset-2 transition-colors"
+          >
+            Se connecter avec un autre compte
+          </Link>
         </div>
       </div>
       {unlockOpen && (

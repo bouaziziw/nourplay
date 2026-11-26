@@ -8,6 +8,7 @@
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "migrate:reset": "prisma migrate reset --force",
+    "db:push": "prisma db push",
     "seed": "tsx src/seed.ts",
     "studio": "prisma studio",
     "generate": "prisma generate",

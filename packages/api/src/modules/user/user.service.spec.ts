@@ -17,6 +17,7 @@ const makePrisma = () => ({
   childProfile: {
     findMany: vi.fn(),
     findFirst: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     count: vi.fn(),
@@ -331,6 +332,148 @@ describe('UserService', () => {
     })
   })
 
+  // ── setViewingBlocked ─────────────────────────────────────────
+
+  describe('setViewingBlocked', () => {
+    it('met à jour isViewingBlocked pour le profil enfant', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', isViewingBlocked: false })
+      const updated = { id: 'p-1', isViewingBlocked: true }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.setViewingBlocked('u-1', 'p-1', true)
+
+      expect(result).toBe(updated)
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { isViewingBlocked: true },
+        }),
+      )
+    })
+
+    it('débloque le profil enfant quand blocked = false', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', isViewingBlocked: true })
+      const updated = { id: 'p-1', isViewingBlocked: false }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.setViewingBlocked('u-1', 'p-1', false)
+
+      expect(result).toBe(updated)
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { isViewingBlocked: false },
+        }),
+      )
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas au parent', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+      await expect(service.setViewingBlocked('u-other', 'p-1', true)).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── reactivateProfile ─────────────────────────────────────────
+
+  describe('reactivateProfile', () => {
+    it('supprime l\'historique d\'aujourd\'hui et débloque isViewingBlocked', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', isViewingBlocked: true })
+      prisma.watchHistory.deleteMany.mockResolvedValue({ count: 3 })
+      const updated = { id: 'p-1', isViewingBlocked: false }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.reactivateProfile('u-1', 'p-1')
+
+      expect(result).toBe(updated)
+      expect(prisma.watchHistory.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ profileId: 'p-1' }),
+        }),
+      )
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { isViewingBlocked: false },
+        }),
+      )
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas au parent', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+      await expect(service.reactivateProfile('u-other', 'p-1')).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── addProfileWatchTime ───────────────────────────────────────
+
+  describe('addProfileWatchTime', () => {
+    it('ajoute des minutes à dailyLimitMin et sessionLimitMin existantes', async () => {
+      prisma.childProfile.findFirst
+        .mockResolvedValueOnce({ id: 'p-1', isViewingBlocked: false })
+        .mockResolvedValueOnce({ dailyLimitMin: 60, sessionLimitMin: 30 })
+      const updated = { id: 'p-1', dailyLimitMin: 75, sessionLimitMin: 45, isViewingBlocked: false }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.addProfileWatchTime('u-1', 'p-1', 15)
+
+      expect(result).toBe(updated)
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { dailyLimitMin: 75, sessionLimitMin: 45, isViewingBlocked: false },
+        }),
+      )
+    })
+
+    it('définit dailyLimitMin si aucune limite n\'était configurée', async () => {
+      prisma.childProfile.findFirst
+        .mockResolvedValueOnce({ id: 'p-1', isViewingBlocked: false })
+        .mockResolvedValueOnce({ dailyLimitMin: null, sessionLimitMin: null })
+      const updated = { id: 'p-1', dailyLimitMin: 15, isViewingBlocked: false }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.addProfileWatchTime('u-1', 'p-1', 15)
+
+      expect(result).toBe(updated)
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { dailyLimitMin: 15, isViewingBlocked: false },
+        }),
+      )
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas au parent', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+      await expect(service.addProfileWatchTime('u-other', 'p-1', 15)).rejects.toThrow(NotFoundException)
+    })
+  })
+
+  // ── disableProfileTimer ───────────────────────────────────────
+
+  describe('disableProfileTimer', () => {
+    it('met les limites à null et débloque le profil', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', isViewingBlocked: true })
+      const updated = { id: 'p-1', dailyLimitMin: null, sessionLimitMin: null, isViewingBlocked: false }
+      prisma.childProfile.update.mockResolvedValue(updated)
+
+      const result = await service.disableProfileTimer('u-1', 'p-1')
+
+      expect(result).toBe(updated)
+      expect(prisma.childProfile.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'p-1' },
+          data: { dailyLimitMin: null, sessionLimitMin: null, isViewingBlocked: false },
+        }),
+      )
+    })
+
+    it('lève NotFoundException si le profil n\'appartient pas au parent', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+      await expect(service.disableProfileTimer('u-other', 'p-1')).rejects.toThrow(NotFoundException)
+    })
+  })
+
   // ── verifyPin ─────────────────────────────────────────────────
 
   describe('verifyPin', () => {
@@ -513,6 +656,25 @@ describe('UserService', () => {
 
         expect(prisma.notification.create).not.toHaveBeenCalled()
       })
+    })
+  })
+
+  // ── deleteBlock ──────────────────────────────────────────────
+
+  describe('getDailyWatchTime', () => {
+    it('retourne le temps regardé et l\'état isViewingBlocked', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue({ id: 'p-1', isViewingBlocked: true })
+      prisma.watchHistory.aggregate.mockResolvedValue({
+        _sum: { durationWatchedSec: 1800 },
+      })
+
+      const res = await service.getDailyWatchTime('u-1', 'p-1')
+      expect(res).toEqual({ watchedSec: 1800, isViewingBlocked: true })
+    })
+
+    it('lève NotFoundException si le profil n\'existe pas pour l\'utilisateur', async () => {
+      prisma.childProfile.findFirst.mockResolvedValue(null)
+      await expect(service.getDailyWatchTime('u-1', 'p-missing')).rejects.toThrow(NotFoundException)
     })
   })
 
