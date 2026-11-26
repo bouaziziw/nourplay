@@ -4,7 +4,11 @@
   "private": true,
   "main": "expo/AppEntry",
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --offline",
+    "start:lan": "expo start --offline --lan",
+    "start:localhost": "expo start --offline --localhost",
+    "start:clear": "expo start --offline -c",
+    "start:online": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
