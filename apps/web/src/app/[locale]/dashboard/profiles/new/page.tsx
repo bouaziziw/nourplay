@@ -159,12 +159,14 @@ export default function NewProfilePage() {
         </div>
 
         <div className="border-t border-gray-100 pt-4 space-y-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-gray-900">Limites de visionnage & Minuteur</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                  timerEnabled ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'
+                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                  timerEnabled
+                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-200'
                 }`}>
                   {timerEnabled ? '⏱️ Actif' : '♾️ Illimité'}
                 </span>
@@ -176,32 +178,38 @@ export default function NewProfilePage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              role="switch"
-              aria-checked={timerEnabled}
-              onClick={() => {
-                const next = !timerEnabled
-                setTimerEnabled(next)
-                if (!next) {
-                  set('dailyLimitMin', '')
-                  set('sessionLimitMin', '')
-                } else if (!form.dailyLimitMin) {
-                  set('dailyLimitMin', '60')
-                }
-              }}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                timerEnabled ? 'bg-indigo-600' : 'bg-gray-300'
-              }`}
-            >
-              <span className="sr-only">Activer ou désactiver le minuteur</span>
-              <span
-                aria-hidden="true"
-                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  timerEnabled ? 'translate-x-5' : 'translate-x-0'
+            <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
+              <span className={`text-xs font-semibold select-none ${timerEnabled ? 'text-indigo-600 font-bold' : 'text-gray-500'}`}>
+                {timerEnabled ? 'Activé' : 'Désactivé'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={timerEnabled}
+                aria-label="Activer ou désactiver le minuteur"
+                onClick={() => {
+                  const next = !timerEnabled
+                  setTimerEnabled(next)
+                  if (!next) {
+                    set('dailyLimitMin', '')
+                    set('sessionLimitMin', '')
+                  } else if (!form.dailyLimitMin) {
+                    set('dailyLimitMin', '60')
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                  timerEnabled ? 'bg-indigo-600' : 'bg-gray-200 hover:bg-gray-300'
                 }`}
-              />
-            </button>
+              >
+                <span className="sr-only">Activer ou désactiver le minuteur</span>
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    timerEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           {timerEnabled && (

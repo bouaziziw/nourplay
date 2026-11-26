@@ -799,13 +799,13 @@ export default function EditProfilePage() {
 
           {/* Limites de visionnage avec Bouton Activer / Désactiver accessible */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <h2 className="font-semibold text-gray-900 text-base">Limites de visionnage & Minuteur</h2>
                   <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
                     timerEnabled
-                      ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                      ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
                       : 'bg-gray-100 text-gray-600 border border-gray-200'
                   }`}>
                     {timerEnabled ? '⏱️ Timer activé' : '♾️ Désactivé (Illimité)'}
@@ -818,32 +818,38 @@ export default function EditProfilePage() {
                 </p>
               </div>
 
-              {/* Bouton / Switch Activer / Désactiver */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={timerEnabled}
-                onClick={() => {
-                  const next = !timerEnabled
-                  setTimerEnabled(next)
-                  if (!next) {
-                    setForm(f => ({ ...f, dailyLimitMin: '', sessionLimitMin: '' }))
-                  } else if (!form.dailyLimitMin) {
-                    setForm(f => ({ ...f, dailyLimitMin: '60' }))
-                  }
-                }}
-                className={`relative inline-flex h-7 w-13 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
-                  timerEnabled ? 'bg-sky-600' : 'bg-gray-300'
-                }`}
-              >
-                <span className="sr-only">Activer ou désactiver le minuteur</span>
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    timerEnabled ? 'translate-x-6' : 'translate-x-0'
+              {/* Bouton switch élégant et ergonomique */}
+              <div className="flex items-center gap-3 shrink-0 self-start sm:self-center">
+                <span className={`text-xs font-semibold select-none ${timerEnabled ? 'text-indigo-600 font-bold' : 'text-gray-500'}`}>
+                  {timerEnabled ? 'Activé' : 'Désactivé'}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={timerEnabled}
+                  aria-label="Activer ou désactiver le minuteur"
+                  onClick={() => {
+                    const next = !timerEnabled
+                    setTimerEnabled(next)
+                    if (!next) {
+                      setForm(f => ({ ...f, dailyLimitMin: '', sessionLimitMin: '' }))
+                    } else if (!form.dailyLimitMin) {
+                      setForm(f => ({ ...f, dailyLimitMin: '60' }))
+                    }
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                    timerEnabled ? 'bg-indigo-600' : 'bg-gray-200 hover:bg-gray-300'
                   }`}
-                />
-              </button>
+                >
+                  <span className="sr-only">Activer ou désactiver le minuteur</span>
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      timerEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
 
             {/* En cas d'activation : On affiche et règle le minuteur */}
@@ -862,8 +868,8 @@ export default function EditProfilePage() {
                         onClick={() => setForm(f => ({ ...f, dailyLimitMin: String(mins) }))}
                         className={`px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                           form.dailyLimitMin === String(mins)
-                            ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-sky-50 hover:border-sky-300'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300'
                         }`}
                       >
                         {mins < 60 ? `${mins} min` : mins === 60 ? '1 heure' : `${mins / 60}h`}
@@ -885,7 +891,7 @@ export default function EditProfilePage() {
                         value={form.dailyLimitMin}
                         onChange={e => setForm(f => ({ ...f, dailyLimitMin: e.target.value }))}
                         placeholder="Ex : 60"
-                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
+                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-medium">min</span>
                     </div>
@@ -904,7 +910,7 @@ export default function EditProfilePage() {
                         value={form.sessionLimitMin}
                         onChange={e => setForm(f => ({ ...f, sessionLimitMin: e.target.value }))}
                         placeholder="Optionnelle"
-                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium"
+                        className="w-full h-10 px-3 pr-12 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-gray-400 font-medium">min</span>
                     </div>
