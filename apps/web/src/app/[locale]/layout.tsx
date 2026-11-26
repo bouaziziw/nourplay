@@ -56,6 +56,13 @@ export default async function RootLayout({
           <AuthProvider>{children}</AuthProvider>
           <InstallBanner />
         </NextIntlClientProvider>
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}`,
+            }}
+          />
+        )}
       </body>
     </html>
   )

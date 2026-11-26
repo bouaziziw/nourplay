@@ -110,10 +110,24 @@ const nextConfig = {
       { protocol: 'https', hostname: 'assets.nourplay.app' },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/login',
+        destination: '/auth/login',
+        permanent: false,
+      },
+      {
+        source: '/register',
+        destination: '/auth/register',
+        permanent: false,
+      },
+    ]
+  },
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/((?!_next/static|_next/image|favicon.ico).*)',
         headers: securityHeaders,
       },
     ]
